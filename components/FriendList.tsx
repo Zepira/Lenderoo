@@ -1,0 +1,104 @@
+/**
+ * FriendList Component
+ *
+ * Scrollable list of friends with pull-to-refresh and empty state
+ */
+
+import { FlatList, type ListRenderItemInfo, RefreshControl } from 'react-native'
+import { YStack, Spinner } from 'tamagui'
+import type { Friend } from 'lib/types'
+import { FriendCard } from './FriendCard'
+import { EmptyState } from './EmptyState'
+import { EMPTY_STATES } from 'lib/constants'
+
+interface FriendListProps {
+  /** Array of friends to display */
+  friends: Friend[]
+  /** Handler when a friend is pressed */
+  onFriendPress?: (friend: Friend) => void
+  /** Handler for pull to refresh */
+  onRefresh?: () => void
+  /** Whether the list is refreshing */
+  refreshing?: boolean
+  /** Whether the list is loading */
+  loading?: boolean
+  /** Custom empty state */
+  emptyState?: {
+    title: string
+    message: string
+    actionLabel?: string
+    onAction?: () => void
+  }
+  /** Content padding */
+  contentPadding?: number
+  /** Show detailed friend cards */
+  detailed?: boolean
+}
+
+export function FriendList({
+  friends,
+  onFriendPress,
+  onRefresh,
+  refreshing = false,
+  loading = false,
+  emptyState,
+  contentPadding = 16,
+  detailed = false,
+}: FriendListProps) {
+  const renderItem = ({ item }: ListRenderItemInfo<Friend>) => {
+    return (
+      <YStack pb="$3">
+        <FriendCard
+          friend={item}
+          onPress={() => onFriendPress?.(item)}
+          detailed={detailed}
+        />
+      </YStack>
+    )
+  }
+
+  const renderEmpty = () => {
+    if (loading) {
+      return (
+        <YStack flex={1} items="center" justify="center" p="$6">
+          <Spinner size="large" color="$blue10" />
+        </YStack>
+      )
+    }
+
+    const emptyConfig = emptyState || EMPTY_STATES.NO_FRIENDS
+
+    return (
+      <EmptyState
+        icon="Users"
+        title={emptyConfig.title}
+        message={emptyConfig.message}
+        actionLabel={emptyConfig.actionLabel}
+        onAction={'onAction' in emptyConfig ? emptyConfig.onAction : undefined}
+      />
+    )
+  }
+
+  const keyExtractor = (item: Friend) => item.id
+
+  return (
+    <FlatList
+      data={friends}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      contentContainerStyle={{
+        paddingHorizontal: contentPadding,
+        paddingTop: contentPadding,
+        paddingBottom: contentPadding + 80, // Extra padding for FAB
+        flexGrow: 1,
+      }}
+      ListEmptyComponent={renderEmpty}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        ) : undefined
+      }
+      showsVerticalScrollIndicator={false}
+    />
+  )
+}

@@ -1,27 +1,39 @@
-# React Native Starter
+# Lenderoo
 
-A modern React Native starter template built with Expo Router and Tamagui for cross-platform mobile, web, and desktop development.
+Never forget who borrowed your stuff! Lenderoo helps you track items you've lent to friends - books, tools, clothes, games, and more.
 
-## Features
+## What is Lenderoo?
 
-- 🚀 **Expo Router v6** - File-based routing with typed routes
-- 🎨 **Tamagui** - Cross-platform UI components with optimized styling
-- ⚡ **New Architecture** - React Native's new architecture enabled for iOS and Android
-- 📱 **Multi-platform** - iOS, Android, and Web support out of the box
-- 🎯 **TypeScript** - Full type safety with strict mode
-- 🔧 **Biome** - Fast linting and formatting
-- 🧪 **Jest** - Testing setup included
-- 🌙 **Dark Mode** - Automatic system theme detection
+Lenderoo is a cross-platform mobile app that solves a common problem: keeping track of items you've lent to friends. Whether it's a book, power drill, jacket, or board game, Lenderoo helps you remember who has what and when they borrowed it.
+
+### Key Features (Planned)
+
+- **Track Borrowed Items**: Add items you've lent out with photos, descriptions, and due dates
+- **Friend Management**: Keep a list of friends and see what each person currently has
+- **Reminders**: Get notified when items are overdue
+- **Item History**: See the complete borrowing history for each item
+- **Categories**: Organize items by type (books, tools, clothes, electronics, etc.)
+- **Search**: Quickly find items or friends
+- **Authentication**: Secure login to protect your data
+- **Cloud Sync**: Access your data across multiple devices
 
 ## Tech Stack
 
-- **React Native** 0.81.5
+- **React Native** 0.81.5 (New Architecture enabled)
 - **React** 19.1.0
-- **Expo** 54
-- **Expo Router** 6
-- **Tamagui** 1.138
-- **TypeScript** 5.9
+- **Expo** 54 with Expo Router 6 (file-based routing)
+- **Tamagui** 1.138 (cross-platform UI components)
+- **TypeScript** 5.9 (strict mode enabled)
 - **Yarn** 4.5.0
+- **Biome** (linting and formatting)
+- **Jest** (testing)
+
+### Planned Backend
+
+- **Authentication**: Clerk or Supabase Auth
+- **Database**: Supabase (PostgreSQL) or Firebase
+- **Serverless Functions**: Expo Router API routes or Supabase Edge Functions
+- **Storage**: Supabase Storage or Cloudinary (for item photos)
 
 ## Getting Started
 
@@ -63,15 +75,22 @@ The development server will start with tunneling enabled for easy device testing
 .
 ├── app/                    # Expo Router file-based routing
 │   ├── (tabs)/            # Tab navigator group
-│   │   ├── _layout.tsx   # Tab layout configuration
-│   │   ├── index.tsx     # Tab 1 screen
-│   │   └── two.tsx       # Tab 2 screen
+│   │   ├── _layout.tsx    # Tab layout configuration
+│   │   ├── index.tsx      # Home screen (borrowed items list)
+│   │   └── friends.tsx    # Friends list screen
+│   ├── (auth)/            # Authentication flow (to be created)
 │   ├── _layout.tsx        # Root layout with providers
-│   ├── modal.tsx          # Modal screen example
+│   ├── item/[id].tsx      # Item detail screen
+│   ├── friend/[id].tsx    # Friend detail screen
 │   └── +not-found.tsx     # 404 error screen
 ├── components/            # Reusable components
 │   ├── Provider.tsx       # Tamagui & Toast providers
-│   └── CurrentToast.tsx   # Toast implementation
+│   ├── ItemCard.tsx       # Item display component
+│   └── FriendCard.tsx     # Friend display component
+├── lib/                   # Utilities and services
+│   ├── database.ts        # Database client and queries
+│   ├── auth.ts            # Authentication helpers
+│   └── types.ts           # TypeScript type definitions
 ├── assets/                # Images, fonts, and static files
 ├── tamagui.config.ts      # Tamagui theme configuration
 ├── babel.config.js        # Babel configuration
@@ -107,44 +126,22 @@ npx @biomejs/biome lint .
 npx @biomejs/biome check --write .
 ```
 
-## Configuration
+## Development Roadmap
 
-### Theme & Styling
+See [TODO.md](./TODO.md) for the complete development roadmap and tasks.
 
-Tamagui configuration is in `tamagui.config.ts`. The app automatically adapts to system light/dark mode.
+### Current Status
 
-To customize themes:
-1. Modify `tamagui.config.ts`
-2. Run `yarn check:tamagui` to validate
-3. Refer to [Tamagui configuration docs](https://tamagui.dev/docs/core/configuration)
+🚧 **In Development** - Setting up project foundation
 
-### Routing
+### Upcoming Milestones
 
-Expo Router uses file-based routing. To add a new screen:
-
-1. Create a file in the `app/` directory
-2. Export a React component as default
-3. The route is automatically available based on the file path
-
-Example: `app/profile.tsx` → accessible at `/profile`
-
-### Native Toasts
-
-Native toasts require a development build (not available in Expo Go). To enable:
-
-1. Uncomment `'mobile'` in `components/Provider.tsx:23`
-2. Build a development build: `npx expo run:ios` or `npx expo run:android`
-
-## TypeScript
-
-The project uses strict TypeScript with path aliases configured:
-
-```typescript
-// Import from project root
-import { Provider } from 'components/Provider'
-```
-
-No need for relative paths like `../../components/Provider`.
+1. **Phase 1: Foundation** - Project setup, UI components, navigation
+2. **Phase 2: Core Features** - Item tracking, friend management (local storage)
+3. **Phase 3: Authentication** - User accounts and secure login
+4. **Phase 4: Backend Integration** - Database, cloud sync, API
+5. **Phase 5: Advanced Features** - Reminders, notifications, search
+6. **Phase 6: Polish & Launch** - Testing, optimization, deployment
 
 ## Code Style
 
@@ -154,16 +151,16 @@ This project uses Biome for fast linting and formatting:
 - **Indentation**: 2 spaces
 - **Quotes**: Single quotes (double for JSX)
 - **Semicolons**: Automatic insertion
-- **No console.log**: Enforced (use proper logging)
+- **No console.log**: Use proper logging
 
-## Monorepo Note
+## Contributing
 
-This starter was adapted from a monorepo setup. The following dependencies were moved to workspace root:
-- `react`
-- `react-dom`
-- `react-native-web`
+This is currently a personal project, but contributions are welcome! Please follow these guidelines:
 
-If using in a monorepo, ensure these are properly hoisted or referenced.
+1. Follow the existing code style (enforced by Biome)
+2. Write tests for new features
+3. Update documentation as needed
+4. Run `npx @biomejs/biome check --write .` before committing
 
 ## Build & Deploy
 
@@ -218,7 +215,12 @@ This project has React Native's New Architecture enabled for better performance.
 - [Expo Router Documentation](https://docs.expo.dev/router/introduction/)
 - [Tamagui Documentation](https://tamagui.dev/)
 - [React Native Documentation](https://reactnative.dev/)
+- [Supabase Documentation](https://supabase.com/docs)
 
 ## License
 
 MIT
+
+---
+
+Built with ❤️ to help friends keep track of their stuff

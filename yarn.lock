@@ -3769,6 +3769,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-native-async-storage/async-storage@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "@react-native-async-storage/async-storage@npm:2.2.0"
+  dependencies:
+    merge-options: "npm:^3.0.4"
+  peerDependencies:
+    react-native: ^0.0.0-0 || >=0.65 <1.0
+  checksum: 10/625e42134f0c487acfd4ba9b3ba182e6f6f29581485004cc658850ef024372cdb7381b7399393f4416fda39df2d822e3008427d7671d635a7363f9a65430a2dd
+  languageName: node
+  linkType: hard
+
 "@react-native-community/cli-clean@npm:14.0.0":
   version: 14.0.0
   resolution: "@react-native-community/cli-clean@npm:14.0.0"
@@ -9713,6 +9724,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"is-plain-obj@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "is-plain-obj@npm:2.1.0"
+  checksum: 10/cec9100678b0a9fe0248a81743041ed990c2d4c99f893d935545cfbc42876cbe86d207f3b895700c690ad2fa520e568c44afc1605044b535a7820c1d40e38daa
+  languageName: node
+  linkType: hard
+
 "is-plain-object@npm:^2.0.4":
   version: 2.0.4
   resolution: "is-plain-object@npm:2.0.4"
@@ -10173,6 +10191,49 @@ __metadata:
   checksum: 10/005b6a30c114b7caa69922756cf5d5dd07679dab254127823255525b426c979388db0f1f74d7c364d96fb2c4dabcbe29bed8ed97a96c290431f3c6127a592f46
   languageName: node
   linkType: hard
+
+"lenderoo@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "lenderoo@workspace:."
+  dependencies:
+    "@babel/core": "npm:^7.24.6"
+    "@expo/metro-config": "npm:~54.0.2"
+    "@expo/metro-runtime": "npm:~6.1.2"
+    "@react-native-async-storage/async-storage": "npm:^2.2.0"
+    "@react-navigation/native": "npm:^7.1.6"
+    "@tamagui/babel-plugin": "npm:^1.138.0"
+    "@tamagui/cli": "npm:^1.138.0"
+    "@tamagui/config": "npm:^1.138.0"
+    "@tamagui/lucide-icons": "npm:^1.138.0"
+    "@tamagui/metro-plugin": "npm:^1.138.0"
+    "@tamagui/toast": "npm:^1.138.0"
+    "@types/react": "npm:~19.1.10"
+    "@types/react-native": "npm:^0.73.0"
+    babel-preset-expo: "npm:~54.0.0"
+    burnt: "npm:^0.12.2"
+    expo: "npm:^54.0.23"
+    expo-build-properties: "npm:~1.0.9"
+    expo-font: "npm:~14.0.9"
+    expo-linking: "npm:~8.0.8"
+    expo-router: "npm:~6.0.14"
+    expo-splash-screen: "npm:~31.0.10"
+    expo-status-bar: "npm:~3.0.8"
+    expo-system-ui: "npm:~6.0.8"
+    expo-web-browser: "npm:~15.0.9"
+    react: "npm:19.1.0"
+    react-dom: "npm:19.1.0"
+    react-native: "npm:0.81.5"
+    react-native-reanimated: "npm:~4.1.1"
+    react-native-safe-area-context: "npm:~5.6.0"
+    react-native-screens: "npm:~4.16.0"
+    react-native-svg: "npm:15.12.1"
+    react-native-web: "npm:^0.21.0"
+    react-native-worklets: "npm:0.5.1"
+    tamagui: "npm:^1.138.0"
+    typescript: "npm:~5.9.2"
+    zod: "npm:^4.3.5"
+  languageName: unknown
+  linkType: soft
 
 "leven@npm:^3.1.0":
   version: 3.1.0
@@ -10664,6 +10725,15 @@ __metadata:
   version: 1.0.3
   resolution: "merge-descriptors@npm:1.0.3"
   checksum: 10/52117adbe0313d5defa771c9993fe081e2d2df9b840597e966aadafde04ae8d0e3da46bac7ca4efc37d4d2b839436582659cd49c6a43eacb3fe3050896a105d1
+  languageName: node
+  linkType: hard
+
+"merge-options@npm:^3.0.4":
+  version: 3.0.4
+  resolution: "merge-options@npm:3.0.4"
+  dependencies:
+    is-plain-obj: "npm:^2.1.0"
+  checksum: 10/d86ddb3dd6e85d558dbf25dc944f3527b6bacb944db3fdda6e84a3f59c4e4b85231095f58b835758b9a57708342dee0f8de0dffa352974a48221487fe9f4584f
   languageName: node
   linkType: hard
 
@@ -12539,47 +12609,6 @@ __metadata:
   checksum: 10/9863e3f35132bf99ae1636d31ff1e1e3501251d480336edb1c211133c8d58906bed80f154a1d723652df1fda91e01c7442c2eeaf9dc83157c7ae89087e43c8d6
   languageName: node
   linkType: hard
-
-"plant-app@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "plant-app@workspace:."
-  dependencies:
-    "@babel/core": "npm:^7.24.6"
-    "@expo/metro-config": "npm:~54.0.2"
-    "@expo/metro-runtime": "npm:~6.1.2"
-    "@react-navigation/native": "npm:^7.1.6"
-    "@tamagui/babel-plugin": "npm:^1.138.0"
-    "@tamagui/cli": "npm:^1.138.0"
-    "@tamagui/config": "npm:^1.138.0"
-    "@tamagui/lucide-icons": "npm:^1.138.0"
-    "@tamagui/metro-plugin": "npm:^1.138.0"
-    "@tamagui/toast": "npm:^1.138.0"
-    "@types/react": "npm:~19.1.10"
-    "@types/react-native": "npm:^0.73.0"
-    babel-preset-expo: "npm:~54.0.0"
-    burnt: "npm:^0.12.2"
-    expo: "npm:^54.0.23"
-    expo-build-properties: "npm:~1.0.9"
-    expo-font: "npm:~14.0.9"
-    expo-linking: "npm:~8.0.8"
-    expo-router: "npm:~6.0.14"
-    expo-splash-screen: "npm:~31.0.10"
-    expo-status-bar: "npm:~3.0.8"
-    expo-system-ui: "npm:~6.0.8"
-    expo-web-browser: "npm:~15.0.9"
-    react: "npm:19.1.0"
-    react-dom: "npm:19.1.0"
-    react-native: "npm:0.81.5"
-    react-native-reanimated: "npm:~4.1.1"
-    react-native-safe-area-context: "npm:~5.6.0"
-    react-native-screens: "npm:~4.16.0"
-    react-native-svg: "npm:15.12.1"
-    react-native-web: "npm:^0.21.0"
-    react-native-worklets: "npm:0.5.1"
-    tamagui: "npm:^1.138.0"
-    typescript: "npm:~5.9.2"
-  languageName: unknown
-  linkType: soft
 
 "plist@npm:^3.0.5":
   version: 3.1.0
@@ -15339,5 +15368,12 @@ __metadata:
   version: 3.25.76
   resolution: "zod@npm:3.25.76"
   checksum: 10/f0c963ec40cd96858451d1690404d603d36507c1fc9682f2dae59ab38b578687d542708a7fdbf645f77926f78c9ed558f57c3d3aa226c285f798df0c4da16995
+  languageName: node
+  linkType: hard
+
+"zod@npm:^4.3.5":
+  version: 4.3.5
+  resolution: "zod@npm:4.3.5"
+  checksum: 10/3148bd52e56ab7c1641ec397e6be6eddbb1d8f5db71e95baab9bb9622a0ea49d8a385885fc1c22b90fa6d8c5234e051f4ef5d469cfe3fb90198d5a91402fd89c
   languageName: node
   linkType: hard

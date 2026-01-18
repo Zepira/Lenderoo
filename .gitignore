@@ -40,9 +40,20 @@ node_modules
 # local env files
 .env.local
 .env.development.local
-.env.test.localp
+.env.test.local
 .env.production.local
 
 .expo
 ios
 android
+
+# Lenderoo specific
+*.local.*
+.claude/*.local.*
+credentials.json
+secrets.json
+*.key
+*.pem
+*.cer
+*.p12
+*.mobileprovision
