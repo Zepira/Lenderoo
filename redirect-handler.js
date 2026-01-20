@@ -5,6 +5,6 @@
   if (redirect) {
     sessionStorage.removeItem('redirect');
     // Use history.replaceState to restore the URL without a page reload
-    history.replaceState(null, null, redirect);
+    history.replaceState(null, null, '/Lenderoo' + redirect);
   }
 })();

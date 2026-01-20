@@ -13,6 +13,14 @@ const config = getDefaultConfig(__dirname, {
 
 config.resolver.sourceExts.push("mjs");
 
+// Configure public path for GitHub Pages deployment
+if (process.env.EXPO_PUBLIC_URL) {
+  config.transformer = {
+    ...config.transformer,
+    publicPath: process.env.EXPO_PUBLIC_URL,
+  };
+}
+
 // Apply both Tamagui and NativeWind transformations
 // First apply Tamagui, then wrap with NativeWind
 module.exports = withNativeWind(
