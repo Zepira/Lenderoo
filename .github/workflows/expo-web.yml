@@ -45,34 +45,13 @@ jobs:
 
       - name: Fix paths for GitHub Pages subdirectory deployment
         run: |
-          BASE_PATH="/Lenderoo"
-
-          # Fix all asset references in HTML files to include base path
-          find dist -name "*.html" -type f -exec sed -i \
-            -e "s|href=\"/|href=\"${BASE_PATH}/|g" \
-            -e "s|src=\"/|src=\"${BASE_PATH}/|g" \
-            -e "s|content=\"/|content=\"${BASE_PATH}/|g" \
-            {} +
-
-          # Fix asset references in CSS files
-          find dist -name "*.css" -type f -exec sed -i \
-            -e "s|url(/|url(${BASE_PATH}/|g" \
-            {} +
-
-          # Fix asset references in JS files (for dynamic imports)
-          find dist -name "*.js" -type f -exec sed -i \
-            -e "s|\"/_expo/|\"${BASE_PATH}/_expo/|g" \
-            -e "s|'/_expo/|'${BASE_PATH}/_expo/|g" \
-            {} +
-
+        
           # Copy 404.html for client-side routing
           cp 404.html dist/404.html
 
-          # Copy the redirect handler script
-          cp redirect-handler.js dist/redirect-handler.js
 
-          # Inject redirect handler into index.html
-          sed -i "/<head>/a <script src=\"${BASE_PATH}/redirect-handler.js\"></script>" dist/index.html
+
+        
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
