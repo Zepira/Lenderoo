@@ -44,6 +44,19 @@ jobs:
         run: |
           npx expo export --platform web
 
+      - name: Fix routing for GitHub Pages
+        run: |
+          # Copy 404.html for client-side routing
+          cp 404.html dist/404.html
+
+          # Inject redirect handler into index.html
+          # Find the first <script> tag and insert our redirect handler before it
+          awk '/<script/ && !found {print "<script src=\"./redirect-handler.js\"></script>"; found=1} 1' dist/index.html > dist/index.tmp
+          mv dist/index.tmp dist/index.html
+
+          # Copy the redirect handler script
+          cp redirect-handler.js dist/redirect-handler.js
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

@@ -1,50 +1,50 @@
-name: EAS Build and Submit
+# name: EAS Build and Submit
 
-on:
-  workflow_dispatch:
-    inputs:
-      platform:
-        description: 'Platform to build for'
-        required: true
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - android
-          - ios
-      profile:
-        description: 'Build profile'
-        required: true
-        default: 'preview'
-        type: choice
-        options:
-          - development
-          - preview
-          - production
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       platform:
+#         description: 'Platform to build for'
+#         required: true
+#         default: 'all'
+#         type: choice
+#         options:
+#           - all
+#           - android
+#           - ios
+#       profile:
+#         description: 'Build profile'
+#         required: true
+#         default: 'preview'
+#         type: choice
+#         options:
+#           - development
+#           - preview
+#           - production
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
 
-      - name: Setup Yarn
-        run: corepack enable
+#       - name: Setup Yarn
+#         run: corepack enable
 
-      - name: Install dependencies
-        run: yarn install --immutable
+#       - name: Install dependencies
+#         run: yarn install --immutable
 
-      - name: Setup Expo and EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+#       - name: Setup Expo and EAS
+#         uses: expo/expo-github-action@v8
+#         with:
+#           eas-version: latest
+#           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build on EAS
-        run: eas build --platform ${{ github.event.inputs.platform }} --profile ${{ github.event.inputs.profile }} --non-interactive --no-wait
+#       - name: Build on EAS
+#         run: eas build --platform ${{ github.event.inputs.platform }} --profile ${{ github.event.inputs.profile }} --non-interactive --no-wait

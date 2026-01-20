@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Lenderoo</title>
+  <script>
+    // GitHub Pages SPA redirect handler
+    // Save the path and redirect to index.html
+    var pathSegments = window.location.pathname.split('/').filter(function(segment) {
+      return segment;
+    });
+
+    // Remove 'Lenderoo' from the path if it's the first segment (repository name)
+    if (pathSegments[0] === 'Lenderoo') {
+      pathSegments.shift();
+    }
+
+    var redirectPath = '/' + pathSegments.join('/');
+    sessionStorage.setItem('redirect', redirectPath + window.location.search + window.location.hash);
+    window.location.replace('/Lenderoo/');
+  </script>
+</head>
+<body>
+  <p>Redirecting...</p>
+</body>
+</html>

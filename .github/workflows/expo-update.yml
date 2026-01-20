@@ -1,46 +1,46 @@
-name: EAS Update (OTA)
+# name: EAS Update (OTA)
 
-on:
-  push:
-    branches:
-      - main
-      - master
-  workflow_dispatch:
-    inputs:
-      channel:
-        description: 'Update channel'
-        required: true
-        default: 'preview'
-        type: choice
-        options:
-          - preview
-          - production
+# on:
+#   push:
+#     branches:
+#       - main
+#       - master
+#   workflow_dispatch:
+#     inputs:
+#       channel:
+#         description: 'Update channel'
+#         required: true
+#         default: 'preview'
+#         type: choice
+#         options:
+#           - preview
+#           - production
 
-jobs:
-  update:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+# jobs:
+#   update:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
 
-      - name: Setup Yarn
-        run: corepack enable
+#       - name: Setup Yarn
+#         run: corepack enable
 
-      - name: Install dependencies
-        run: yarn install --immutable
+#       - name: Install dependencies
+#         run: yarn install --immutable
 
-      - name: Setup Expo and EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+#       - name: Setup Expo and EAS
+#         uses: expo/expo-github-action@v8
+#         with:
+#           eas-version: latest
+#           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Publish EAS Update
-        run: |
-          CHANNEL=${{ github.event.inputs.channel || 'preview' }}
-          eas update --branch $CHANNEL --message "Update from commit ${{ github.sha }}" --non-interactive
+#       - name: Publish EAS Update
+#         run: |
+#           CHANNEL=${{ github.event.inputs.channel || 'preview' }}
+#           eas update --branch $CHANNEL --message "Update from commit ${{ github.sha }}" --non-interactive

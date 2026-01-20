@@ -128,9 +128,33 @@ git push origin main
 5. Click "Run workflow"
 
 ### Deploy Web Version
-1. Enable GitHub Pages in repository settings
-2. Push to main branch
+
+**Prerequisites:**
+1. Enable GitHub Pages in repository settings:
+   - Go to Settings → Pages
+   - Source: GitHub Actions
+   - Wait for GitHub Actions permissions to be configured
+
+**Deploy:**
+1. Commit and push changes to main/master branch
+2. GitHub Actions will automatically build and deploy
 3. Access at `https://[username].github.io/[repo-name]`
+
+**Client-Side Routing Fix:**
+The deployment includes a client-side routing fix for GitHub Pages:
+- `404.html`: Redirects all 404 errors back to index.html while preserving the path
+- `redirect-handler.js`: Restores the correct URL after redirect
+- `basePath: "/Lenderoo"` in app.json: Configures Expo to build for the subdirectory
+
+**Important:** If your repository has a different name:
+1. Update `basePath` in `app.json` to match your repo name (e.g., `"/my-repo"`)
+2. Update the redirect URL in `404.html` to use your repo name
+3. Commit and redeploy
+
+For custom domain deployment (no subdirectory):
+1. Set `basePath: ""` or remove it from `app.json`
+2. Update `404.html` to redirect to `/` instead of `/Lenderoo/`
+3. Follow custom domain setup steps below
 
 ## Custom Domain Setup
 
@@ -274,6 +298,12 @@ eas build:view [build-id]
 - DNS propagation can take 24-48 hours
 - Verify CNAME file exists in dist folder
 - Check GitHub Pages settings
+
+### 404 Errors on Navigation (GitHub Pages):
+- The project includes a 404.html file for client-side routing
+- Ensure `basePath` in app.json matches your repository name
+- For root domain deployment, set `basePath: ""` and update 404.html to remove basePath logic
+- The workflow automatically copies 404.html to the dist folder
 
 ## Resources
 
