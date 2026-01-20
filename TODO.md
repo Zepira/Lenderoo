@@ -19,8 +19,8 @@ This document tracks all tasks needed to build Lenderoo, a cross-platform app fo
 - [x] Create comprehensive CLAUDE.md
 - [x] Create comprehensive README.md
 - [x] Create TODO.md roadmap
-- [ ] Add .env.example file with required environment variables
-- [ ] Create .gitignore entries for sensitive files
+- [x] Add .env.example file with required environment variables
+- [x] Create .gitignore entries for sensitive files
 - [ ] Set up EAS configuration (eas.json)
 - [ ] Configure app icons and splash screens
 
@@ -94,31 +94,31 @@ This document tracks all tasks needed to build Lenderoo, a cross-platform app fo
 ## Phase 3: Navigation & Screens
 
 ### Tab Navigation
-- [ ] Update `app/(tabs)/_layout.tsx` with proper tabs
-  - [ ] Home/Items tab (list icon)
-  - [ ] Friends tab (users icon)
-  - [ ] Profile/Settings tab (user icon)
-- [ ] Add custom tab bar styling
-- [ ] Add active/inactive icons
+- [x] Update `app/(tabs)/_layout.tsx` with proper tabs
+  - [x] Home/Items tab (list icon)
+  - [x] Friends tab (users icon)
+  - [x] Profile/Settings tab (user icon)
+- [x] Add custom tab bar styling
+- [x] Add active/inactive icons
 
 ### Home Screen (Items List)
-- [ ] Create/update `app/(tabs)/index.tsx`
-- [ ] Display list of currently borrowed items
-- [ ] Add floating action button (FAB) to add new item
+- [x] Create/update `app/(tabs)/index.tsx`
+- [x] Display list of currently borrowed items
+- [x] Add floating action button (FAB) to add new item
 - [ ] Implement filter by category
 - [ ] Implement sort options (date, name, due date)
-- [ ] Add search functionality
-- [ ] Show overdue items with warning
-- [ ] Pull to refresh
+- [x] Add search functionality
+- [x] Show overdue items with warning
+- [x] Pull to refresh
 
 ### Friends Screen
-- [ ] Create `app/(tabs)/friends.tsx`
-- [ ] Display list of all friends
-- [ ] Show item count per friend
-- [ ] Add FAB to add new friend
-- [ ] Implement search
-- [ ] Alphabetical sorting
-- [ ] Pull to refresh
+- [x] Create `app/(tabs)/friends.tsx`
+- [x] Display list of all friends
+- [x] Show item count per friend
+- [x] Add FAB to add new friend
+- [x] Implement search
+- [x] Alphabetical sorting
+- [x] Pull to refresh
 
 ### Item Detail Screen
 - [ ] Create `app/item/[id].tsx`
@@ -153,37 +153,37 @@ This document tracks all tasks needed to build Lenderoo, a cross-platform app fo
 - [ ] Add "Send Reminder" button (future)
 
 ### Add Item Screen/Modal
-- [ ] Create `app/add-item.tsx` (modal)
-- [ ] Item name input (required)
-- [ ] Description textarea
-- [ ] Category selector
+- [x] Create `app/add-item.tsx` (modal)
+- [x] Item name input (required)
+- [x] Description textarea
+- [x] Category selector
 - [ ] Image picker (with camera option)
-- [ ] Friend selector (who's borrowing)
-- [ ] Borrow date picker (default today)
+- [x] Friend selector (who's borrowing)
+- [x] Borrow date picker (default today)
 - [ ] Due date picker (optional)
-- [ ] Notes field
-- [ ] Save button
-- [ ] Cancel button
-- [ ] Form validation
+- [x] Notes field
+- [x] Save button
+- [x] Cancel button
+- [x] Form validation
 
 ### Add Friend Screen/Modal
-- [ ] Create `app/add-friend.tsx` (modal)
-- [ ] Name input (required)
-- [ ] Email input (optional)
-- [ ] Phone input (optional)
+- [x] Create `app/add-friend.tsx` (modal)
+- [x] Name input (required)
+- [x] Email input (optional)
+- [x] Phone input (optional)
 - [ ] Avatar picker (optional)
-- [ ] Save button
-- [ ] Cancel button
-- [ ] Form validation
+- [x] Save button
+- [x] Cancel button
+- [x] Form validation
 
 ### Settings/Profile Screen
-- [ ] Create `app/(tabs)/settings.tsx`
-- [ ] Display user profile info
-- [ ] Theme toggle (light/dark/system)
+- [x] Create `app/(tabs)/settings.tsx`
+- [x] Display user profile info
+- [x] Theme toggle (light/dark/system)
 - [ ] Notification preferences
 - [ ] Default reminder days before due date
-- [ ] Export data option
-- [ ] About/version info
+- [x] Export data option
+- [x] About/version info
 - [ ] Sign out button (when auth is added)
 
 ### Other Screens
@@ -196,49 +196,51 @@ This document tracks all tasks needed to build Lenderoo, a cross-platform app fo
 ## Phase 4: Local Data Management (MVP)
 
 ### Storage Setup
-- [ ] Install @react-native-async-storage/async-storage
-- [ ] Create `lib/storage.ts` utility wrapper
-- [ ] Implement generic CRUD operations
+- [x] Install @react-native-async-storage/async-storage
+- [x] Create `lib/storage.ts` utility wrapper
+- [x] Implement generic CRUD operations
 
 ### Data Services
-- [ ] Create `lib/database.ts` for local data management
-  - [ ] **Items Service**
-    - [ ] getAllItems()
-    - [ ] getItemById(id)
-    - [ ] createItem(item)
-    - [ ] updateItem(id, updates)
-    - [ ] deleteItem(id)
-    - [ ] getItemsByFriend(friendId)
-    - [ ] getActiveItems() (not returned)
-    - [ ] getOverdueItems()
-  - [ ] **Friends Service**
-    - [ ] getAllFriends()
-    - [ ] getFriendById(id)
-    - [ ] createFriend(friend)
-    - [ ] updateFriend(id, updates)
-    - [ ] deleteFriend(id)
-    - [ ] getFriendStats(id)
-  - [ ] **History Service**
-    - [ ] getBorrowHistory(itemId or friendId)
-    - [ ] addHistoryEntry(entry)
+- [x] Create `lib/database.ts` for local data management
+  - [x] **Items Service**
+    - [x] getAllItems()
+    - [x] getItemById(id)
+    - [x] createItem(item)
+    - [x] updateItem(id, updates)
+    - [x] deleteItem(id)
+    - [x] getItemsByFriend(friendId)
+    - [x] getActiveItems() (not returned)
+    - [x] getOverdueItems()
+  - [x] **Friends Service**
+    - [x] getAllFriends()
+    - [x] getFriendById(id)
+    - [x] createFriend(friend)
+    - [x] updateFriend(id, updates)
+    - [x] deleteFriend(id)
+    - [x] getFriendStats(id)
+  - [x] **History Service**
+    - [x] getBorrowHistory(itemId or friendId)
+    - [x] addHistoryEntry(entry)
+  - [x] **Demo Data**
+    - [x] seedDemoData() - populate with sample data
 
 ### React Hooks
-- [ ] Create `hooks/useItems.ts`
-  - [ ] useItems() - get all items
-  - [ ] useItem(id) - get single item
-  - [ ] useActiveItems() - get unreturned items
-  - [ ] useOverdueItems() - get overdue items
-  - [ ] useCreateItem() - mutation hook
-  - [ ] useUpdateItem() - mutation hook
-  - [ ] useDeleteItem() - mutation hook
-  - [ ] useMarkItemReturned() - mutation hook
-- [ ] Create `hooks/useFriends.ts`
-  - [ ] useFriends() - get all friends
-  - [ ] useFriend(id) - get single friend
-  - [ ] useFriendItems(friendId) - get items for friend
-  - [ ] useCreateFriend() - mutation hook
-  - [ ] useUpdateFriend() - mutation hook
-  - [ ] useDeleteFriend() - mutation hook
+- [x] Create `hooks/useItems.ts`
+  - [x] useItems() - get all items
+  - [x] useItem(id) - get single item
+  - [x] useActiveItems() - get unreturned items
+  - [x] useOverdueItems() - get overdue items
+  - [x] useCreateItem() - mutation hook
+  - [x] useUpdateItem() - mutation hook
+  - [x] useDeleteItem() - mutation hook
+  - [x] useMarkItemReturned() - mutation hook
+- [x] Create `hooks/useFriends.ts`
+  - [x] useFriends() - get all friends
+  - [x] useFriend(id) - get single friend
+  - [x] useFriendItems(friendId) - get items for friend
+  - [x] useCreateFriend() - mutation hook
+  - [x] useUpdateFriend() - mutation hook
+  - [x] useDeleteFriend() - mutation hook
 - [ ] Create `hooks/useSearch.ts`
   - [ ] useSearchItems(query)
   - [ ] useSearchFriends(query)
@@ -787,16 +789,25 @@ This document tracks all tasks needed to build Lenderoo, a cross-platform app fo
 
 ## Current Sprint (Next Up)
 
-Based on current status, focus on these tasks first:
+Based on current status (as of 2026-01-19), focus on these tasks:
 
-1. [ ] Create type definitions in `lib/types.ts`
-2. [ ] Create core UI components (ItemCard, FriendCard, EmptyState)
-3. [ ] Set up local storage with AsyncStorage
-4. [ ] Create basic data services in `lib/database.ts`
-5. [ ] Create React hooks for data management
-6. [ ] Update home screen to use real data
-7. [ ] Create add-item modal
-8. [ ] Create item detail screen
+1. [x] Create type definitions in `lib/types.ts`
+2. [x] Create core UI components (ItemCard, FriendCard, EmptyState)
+3. [x] Set up local storage with AsyncStorage
+4. [x] Create basic data services in `lib/database.ts`
+5. [x] Create React hooks for data management
+6. [x] Update home screen to use real data
+7. [x] Create add-item modal
+8. [x] Create add-friend modal
+9. [~] Create item detail screen (in progress)
+10. [~] Create friend detail screen (in progress)
+
+**Next priorities:**
+- Complete item and friend detail screens
+- Add edit functionality for items and friends
+- Implement image picker for items and friend avatars
+- Add date picker for due dates
+- Create filter/sort functionality for items list
 
 ---
 
@@ -811,4 +822,4 @@ Based on current status, focus on these tasks first:
 
 ---
 
-**Last Updated:** 2026-01-18
+**Last Updated:** 2026-01-19

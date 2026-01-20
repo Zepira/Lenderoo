@@ -1,157 +1,190 @@
-import { YStack, XStack, Text, Button, ScrollView, Separator } from 'tamagui'
-import { Moon, Sun, Info, Database, Download, Trash2 } from '@tamagui/lucide-icons'
-import { useColorScheme } from 'react-native'
-import { clearAllData, exportData, seedDemoData } from 'lib/database'
-import { useState } from 'react'
+import { View, ScrollView, Alert } from "react-native";
+import {
+  Moon,
+  Sun,
+  Monitor,
+  Info,
+  Database,
+  Download,
+  Trash2,
+} from "lucide-react-native";
+import { clearAllData, exportData, seedDemoData } from "lib/database";
+import { useState } from "react";
+import { useThemeContext } from "contexts/ThemeContext";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/utils";
 
 export default function SettingsScreen() {
-  const colorScheme = useColorScheme()
-  const [exporting, setExporting] = useState(false)
+  const { themeMode, setThemeMode } = useThemeContext();
+  const [exporting, setExporting] = useState(false);
 
   const handleExportData = async () => {
     try {
-      setExporting(true)
-      const data = await exportData()
-      console.log('Exported data:', data)
+      setExporting(true);
+      const data = await exportData();
+      console.log("Exported data:", data);
       // TODO: Implement actual export functionality (save to file, share, etc.)
-      alert(`Exported ${data.items.length} items, ${data.friends.length} friends`)
+      Alert.alert(
+        "Data Exported",
+        `Exported ${data.items.length} items, ${data.friends.length} friends`
+      );
     } catch (error) {
-      console.error('Export error:', error)
-      alert('Failed to export data')
+      console.error("Export error:", error);
+      Alert.alert("Error", "Failed to export data");
     } finally {
-      setExporting(false)
+      setExporting(false);
     }
-  }
+  };
 
   const handleClearData = async () => {
-    // TODO: Add confirmation dialog
-    if (confirm('Are you sure you want to delete all data? This cannot be undone.')) {
-      try {
-        await clearAllData()
-        alert('All data cleared')
-      } catch (error) {
-        console.error('Clear error:', error)
-        alert('Failed to clear data')
-      }
-    }
-  }
+    Alert.alert(
+      "Clear All Data",
+      "Are you sure you want to delete all data? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearAllData();
+              Alert.alert("Success", "All data cleared");
+            } catch (error) {
+              console.error("Clear error:", error);
+              Alert.alert("Error", "Failed to clear data");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleSeedDemo = async () => {
     try {
-      await seedDemoData()
-      alert('Demo data added')
+      await seedDemoData();
+      Alert.alert("Success", "Demo data added");
     } catch (error) {
-      console.error('Seed error:', error)
-      alert('Failed to seed demo data')
+      console.error("Seed error:", error);
+      Alert.alert("Error", "Failed to seed demo data");
     }
-  }
+  };
 
   return (
-    <ScrollView flex={1} bg="$background">
-      <YStack p="$4" gap="$4">
+    <ScrollView className="flex-1 bg-background">
+      <View className="p-4 gap-4">
         {/* App Info */}
-        <YStack gap="$2">
-          <Text fontSize="$6" fontWeight="600" color="$color">
-            Lenderoo
-          </Text>
-          <Text fontSize="$3" color="$gray11">
+        <View className="gap-2">
+          <Text variant="h3">Lenderoo</Text>
+          <Text variant="small" className="text-muted-foreground">
             Version 1.0.0
           </Text>
-          <Text fontSize="$3" color="$gray11">
+          <Text variant="small" className="text-muted-foreground">
             Never forget who borrowed your stuff!
           </Text>
-        </YStack>
+        </View>
 
-        <Separator />
+        <View className="h-px bg-border" />
 
         {/* Theme */}
-        <YStack gap="$3">
-          <Text fontSize="$5" fontWeight="600" color="$color">
-            Appearance
+        <View className="gap-3">
+          <Text variant="h4">Appearance</Text>
+          <Text variant="small" className="text-muted-foreground">
+            Choose your preferred theme
           </Text>
-          <XStack items="center" justify="space-between">
-            <XStack items="center" gap="$2">
-              {colorScheme === 'dark' ? (
-                <Moon size={20} color="$gray11" />
-              ) : (
-                <Sun size={20} color="$gray11" />
-              )}
-              <Text fontSize="$4" color="$gray12">
-                Theme
+          <View className="flex-row gap-2">
+            <Button
+              variant={themeMode === "light" ? "default" : "outline"}
+              className={cn("flex-1", themeMode === "light" && "bg-blue-600")}
+              onPress={() => setThemeMode("light")}
+            >
+              <Sun size={16} />
+              <Text className={themeMode === "light" ? "text-white" : ""}>
+                Light
               </Text>
-            </XStack>
-            <Text fontSize="$4" color="$gray11" textTransform="capitalize">
-              {colorScheme}
-            </Text>
-          </XStack>
-        </YStack>
+            </Button>
+            <Button
+              variant={themeMode === "dark" ? "default" : "outline"}
+              className={cn("flex-1", themeMode === "dark" && "bg-blue-600")}
+              onPress={() => setThemeMode("dark")}
+            >
+              <Moon size={16} />
+              <Text className={themeMode === "dark" ? "text-white" : ""}>
+                Dark
+              </Text>
+            </Button>
+            <Button
+              variant={themeMode === "system" ? "default" : "outline"}
+              className={cn("flex-1", themeMode === "system" && "bg-blue-600")}
+              onPress={() => setThemeMode("system")}
+            >
+              <Monitor size={16} />
+              <Text className={themeMode === "system" ? "text-white" : ""}>
+                System
+              </Text>
+            </Button>
+          </View>
+        </View>
 
-        <Separator />
+        <View className="h-px bg-border" />
 
         {/* Data Management */}
-        <YStack gap="$3">
-          <Text fontSize="$5" fontWeight="600" color="$color">
-            Data
-          </Text>
+        <View className="gap-3">
+          <Text variant="h4">Data</Text>
 
           <Button
-            icon={Download}
+            variant="ghost"
+            className="justify-start"
             onPress={handleExportData}
             disabled={exporting}
-            chromeless
-            justify="flex-start"
           >
-            Export Data
+            <Download size={20} />
+            <Text>Export Data</Text>
           </Button>
 
           <Button
-            icon={Database}
+            variant="ghost"
+            className="justify-start"
             onPress={handleSeedDemo}
-            chromeless
-            justify="flex-start"
           >
-            Add Demo Data
+            <Database size={20} />
+            <Text>Add Demo Data</Text>
           </Button>
 
           <Button
-            icon={Trash2}
+            variant="ghost"
+            className="justify-start"
             onPress={handleClearData}
-            chromeless
-            justify="flex-start"
-            color="$red10"
           >
-            Clear All Data
+            <Trash2 size={20} color="#ef4444" />
+            <Text className="text-red-600">Clear All Data</Text>
           </Button>
-        </YStack>
+        </View>
 
-        <Separator />
+        <View className="h-px bg-border" />
 
         {/* About */}
-        <YStack gap="$3">
-          <Text fontSize="$5" fontWeight="600" color="$color">
-            About
-          </Text>
+        <View className="gap-3">
+          <Text variant="h4">About</Text>
 
-          <XStack items="center" gap="$2">
-            <Info size={20} color="$gray11" />
-            <YStack gap="$1">
-              <Text fontSize="$4" color="$gray12">
-                Built with Expo Router & Tamagui
-              </Text>
-              <Text fontSize="$3" color="$gray11">
+          <View className="flex-row items-center gap-2">
+            <Info size={20} color="#888" />
+            <View className="gap-1 flex-1">
+              <Text variant="small">Built with Expo Router & shadcn/ui</Text>
+              <Text variant="muted">
                 Open source project for tracking borrowed items
               </Text>
-            </YStack>
-          </XStack>
-        </YStack>
+            </View>
+          </View>
+        </View>
 
         {/* Footer */}
-        <YStack mt="$6" items="center">
-          <Text fontSize="$2" color="$gray10" ta="center">
+        <View className="mt-6 items-center">
+          <Text variant="muted" className="text-center">
             Made with ❤️ to help friends keep track of their stuff
           </Text>
-        </YStack>
-      </YStack>
+        </View>
+      </View>
     </ScrollView>
-  )
+  );
 }

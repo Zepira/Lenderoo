@@ -13,35 +13,39 @@
  * Item categories for organization and filtering
  */
 export type ItemCategory =
-  | 'book'
-  | 'tool'
-  | 'clothing'
-  | 'electronics'
-  | 'game'
-  | 'sports'
-  | 'kitchen'
-  | 'other'
+  | "book"
+  | "tool"
+  | "clothing"
+  | "electronics"
+  | "game"
+  | "sports"
+  | "kitchen"
+  | "other";
 
 /**
  * Status of a borrowed item
  */
-export type ItemStatus = 'borrowed' | 'returned' | 'overdue'
+export type ItemStatus = "borrowed" | "overdue" | "requested" | "available";
 
 /**
  * Sort options for item lists
  */
 export type ItemSortOption =
-  | 'dateNewest'
-  | 'dateOldest'
-  | 'nameAsc'
-  | 'nameDesc'
-  | 'dueDateSoonest'
-  | 'dueDateLatest'
+  | "dateNewest"
+  | "dateOldest"
+  | "nameAsc"
+  | "nameDesc"
+  | "dueDateSoonest"
+  | "dueDateLatest";
 
 /**
  * Sort options for friend lists
  */
-export type FriendSortOption = 'nameAsc' | 'nameDesc' | 'mostItems' | 'leastItems'
+export type FriendSortOption =
+  | "nameAsc"
+  | "nameDesc"
+  | "mostItems"
+  | "leastItems";
 
 // ============================================================================
 // Core Data Models
@@ -52,17 +56,17 @@ export type FriendSortOption = 'nameAsc' | 'nameDesc' | 'mostItems' | 'leastItem
  */
 export interface User {
   /** Unique user identifier */
-  id: string
+  id: string;
   /** User's email address */
-  email: string
+  email: string;
   /** User's display name */
-  name: string
+  name: string;
   /** URL to user's avatar image */
-  avatarUrl?: string
+  avatarUrl?: string;
   /** Account creation timestamp */
-  createdAt: Date
+  createdAt: Date;
   /** Last update timestamp */
-  updatedAt: Date
+  updatedAt: Date;
 }
 
 /**
@@ -70,25 +74,24 @@ export interface User {
  */
 export interface Friend {
   /** Unique friend identifier */
-  id: string
+  id: string;
   /** ID of the user who owns this friend record */
-  userId: string
+  userId: string;
   /** Friend's name */
-  name: string
+  name: string;
   /** Friend's email address (optional) */
-  email?: string
-  /** Friend's phone number (optional) */
-  phone?: string
+  email?: string;
+
   /** URL to friend's avatar image */
-  avatarUrl?: string
+  avatarUrl?: string;
   /** Total number of items this friend has ever borrowed */
-  totalItemsBorrowed: number
+  totalItemsBorrowed: number;
   /** Current number of items this friend has borrowed and not returned */
-  currentItemsBorrowed: number
+  currentItemsBorrowed: number;
   /** Friend record creation timestamp */
-  createdAt: Date
+  createdAt: Date;
   /** Last update timestamp */
-  updatedAt: Date
+  updatedAt: Date;
 }
 
 /**
@@ -96,35 +99,85 @@ export interface Friend {
  */
 export interface Item {
   /** Unique item identifier */
-  id: string
+  id: string;
   /** ID of the user who owns this item */
-  userId: string
+  userId: string;
   /** Item name/title */
-  name: string
+  name: string;
   /** Detailed description of the item */
-  description?: string
+  description?: string;
   /** Category for organization */
-  category: ItemCategory
+  category: ItemCategory;
   /** URL to item's photo */
-  imageUrl?: string
+  imageUrl?: string;
   /** Array of image URLs for multiple photos */
-  imageUrls?: string[]
-  /** ID of the friend who borrowed this item */
-  borrowedBy: string
-  /** Date when item was borrowed */
-  borrowedDate: Date
+  imageUrls?: string[];
+  /** ID of the friend who borrowed this item (null if available) */
+  borrowedBy?: string;
+  /** Date when item was borrowed (null if never borrowed) */
+  borrowedDate?: Date;
   /** Optional due date for return */
-  dueDate?: Date
+  dueDate?: Date;
   /** Date when item was returned (null if still borrowed) */
-  returnedDate?: Date
+  returnedDate?: Date;
   /** Additional notes about the item or borrowing */
-  notes?: string
+  notes?: string;
   /** Estimated value of the item (optional) */
-  value?: number
+  value?: number;
+  /** Category-specific metadata (author, ISBN, etc.) */
+  metadata?: ItemMetadata;
   /** Item record creation timestamp */
-  createdAt: Date
+  createdAt: Date;
   /** Last update timestamp */
-  updatedAt: Date
+  updatedAt: Date;
+}
+
+/**
+ * Category-specific metadata for items
+ */
+export type ItemMetadata =
+  | BookMetadata
+  | ToolMetadata
+  | Record<string, unknown>;
+
+/**
+ * Metadata specific to books
+ */
+export interface BookMetadata {
+  /** Book author(s) */
+  author?: string;
+  /** Series name if part of a series */
+  series?: string;
+  /** Position in series (e.g., "Book 3") */
+  seriesNumber?: string | number;
+  /** Book genre(s) */
+  genre?: string | string[];
+  /** ISBN-10 or ISBN-13 */
+  isbn?: string;
+  /** Publisher name */
+  publisher?: string;
+  /** Publication year */
+  publicationYear?: number;
+  /** Number of pages */
+  pageCount?: number;
+  /** Goodreads or Open Library URL */
+  goodreadsUrl?: string;
+}
+
+/**
+ * Metadata specific to tools
+ */
+export interface ToolMetadata {
+  /** Tool brand/manufacturer */
+  brand?: string;
+  /** Model number */
+  modelNumber?: string;
+  /** Purchase date */
+  purchaseDate?: Date | string;
+  /** Warranty expiration */
+  warrantyExpiration?: Date | string;
+  /** Serial number */
+  serialNumber?: string;
 }
 
 /**
@@ -133,21 +186,21 @@ export interface Item {
  */
 export interface BorrowHistory {
   /** Unique history entry identifier */
-  id: string
+  id: string;
   /** ID of the item that was borrowed */
-  itemId: string
+  itemId: string;
   /** ID of the friend who borrowed the item */
-  friendId: string
+  friendId: string;
   /** Date when item was borrowed */
-  borrowedDate: Date
+  borrowedDate: Date;
   /** Optional due date for return */
-  dueDate?: Date
+  dueDate?: Date;
   /** Date when item was returned (null if still borrowed) */
-  returnedDate?: Date
+  returnedDate?: Date;
   /** Notes about this borrowing instance */
-  notes?: string
+  notes?: string;
   /** History entry creation timestamp */
-  createdAt: Date
+  createdAt: Date;
 }
 
 // ============================================================================
@@ -160,13 +213,13 @@ export interface BorrowHistory {
  */
 export interface ItemWithDetails extends Item {
   /** Computed status based on dates */
-  status: ItemStatus
+  status: ItemStatus;
   /** Friend information for the borrower */
-  friend: Friend
+  friend: Friend;
   /** Number of days until due (negative if overdue) */
-  daysUntilDue?: number
+  daysUntilDue?: number;
   /** Number of days borrowed */
-  daysBorrowed: number
+  daysBorrowed: number;
 }
 
 /**
@@ -175,9 +228,9 @@ export interface ItemWithDetails extends Item {
  */
 export interface FriendWithItems extends Friend {
   /** Array of items currently borrowed by this friend */
-  currentItems: Item[]
+  currentItems: Item[];
   /** Complete borrow history for this friend */
-  borrowHistory: BorrowHistory[]
+  borrowHistory: BorrowHistory[];
 }
 
 /**
@@ -185,17 +238,17 @@ export interface FriendWithItems extends Friend {
  */
 export interface FriendStats {
   /** Friend ID */
-  friendId: string
+  friendId: string;
   /** Total items ever borrowed */
-  totalItemsBorrowed: number
+  totalItemsBorrowed: number;
   /** Current items borrowed (not returned) */
-  currentItemsBorrowed: number
+  currentItemsBorrowed: number;
   /** Average number of days items are kept */
-  averageBorrowDuration: number
+  averageBorrowDuration: number;
   /** Number of overdue items currently held */
-  overdueItemsCount: number
+  overdueItemsCount: number;
   /** Most borrowed item category */
-  favoriteCategory?: ItemCategory
+  favoriteCategory?: ItemCategory;
 }
 
 /**
@@ -203,23 +256,23 @@ export interface FriendStats {
  */
 export interface AppStats {
   /** Total number of items in the system */
-  totalItems: number
+  totalItems: number;
   /** Number of items currently borrowed */
-  itemsCurrentlyBorrowed: number
+  itemsCurrentlyBorrowed: number;
   /** Number of items returned */
-  itemsReturned: number
+  itemsReturned: number;
   /** Number of overdue items */
-  overdueItems: number
+  overdueItems: number;
   /** Total number of friends */
-  totalFriends: number
+  totalFriends: number;
   /** Most borrowed item category */
-  mostBorrowedCategory?: ItemCategory
+  mostBorrowedCategory?: ItemCategory;
   /** Friend who has borrowed the most items */
   topBorrower?: {
-    friendId: string
-    friendName: string
-    count: number
-  }
+    friendId: string;
+    friendName: string;
+    count: number;
+  };
 }
 
 // ============================================================================
@@ -230,62 +283,62 @@ export interface AppStats {
  * Input data for creating a new item
  */
 export interface CreateItemInput {
-  name: string
-  description?: string
-  category: ItemCategory
-  imageUrl?: string
-  imageUrls?: string[]
-  borrowedBy: string
-  borrowedDate: Date
-  dueDate?: Date
-  notes?: string
-  value?: number
+  name: string;
+  description?: string;
+  category: ItemCategory;
+  imageUrl?: string;
+  imageUrls?: string[];
+  borrowedBy?: string;
+  borrowedDate?: Date;
+  dueDate?: Date;
+  notes?: string;
+  value?: number;
 }
 
 /**
  * Input data for updating an existing item
  */
 export interface UpdateItemInput {
-  name?: string
-  description?: string
-  category?: ItemCategory
-  imageUrl?: string
-  imageUrls?: string[]
-  borrowedBy?: string
-  borrowedDate?: Date
-  dueDate?: Date
-  returnedDate?: Date
-  notes?: string
-  value?: number
+  name?: string;
+  description?: string;
+  category?: ItemCategory;
+  imageUrl?: string;
+  imageUrls?: string[];
+  borrowedBy?: string;
+  borrowedDate?: Date;
+  dueDate?: Date;
+  returnedDate?: Date;
+  notes?: string;
+  value?: number;
 }
 
 /**
  * Input data for creating a new friend
  */
 export interface CreateFriendInput {
-  name: string
-  email?: string
-  phone?: string
-  avatarUrl?: string
+  name: string;
+  email?: string;
+  phone?: string;
+  avatarUrl?: string;
 }
 
 /**
  * Input data for updating an existing friend
  */
 export interface UpdateFriendInput {
-  name?: string
-  email?: string
-  phone?: string
-  avatarUrl?: string
+  name?: string;
+  email?: string;
+  phone?: string;
+  avatarUrl?: string;
 }
 
 /**
  * Input for marking an item as returned
  */
 export interface ReturnItemInput {
-  itemId: string
-  returnedDate?: Date
-  notes?: string
+  itemId: string;
+  returnedDate?: Date;
+  notes?: string;
 }
 
 // ============================================================================
@@ -297,18 +350,18 @@ export interface ReturnItemInput {
  */
 export interface ItemFilters {
   /** Filter by category */
-  category?: ItemCategory
+  category?: ItemCategory;
   /** Filter by friend ID */
-  friendId?: string
+  friendId?: string;
   /** Filter by status */
-  status?: ItemStatus
+  status?: ItemStatus;
   /** Search query for name/description */
-  searchQuery?: string
+  searchQuery?: string;
   /** Filter by date range */
   dateRange?: {
-    start: Date
-    end: Date
-  }
+    start: Date;
+    end: Date;
+  };
 }
 
 /**
@@ -316,9 +369,9 @@ export interface ItemFilters {
  */
 export interface FriendFilters {
   /** Search query for name/email */
-  searchQuery?: string
+  searchQuery?: string;
   /** Only friends with currently borrowed items */
-  hasActiveLoans?: boolean
+  hasActiveLoans?: boolean;
 }
 
 /**
@@ -326,9 +379,9 @@ export interface FriendFilters {
  */
 export interface PaginationParams {
   /** Number of items per page */
-  limit: number
+  limit: number;
   /** Page offset */
-  offset: number
+  offset: number;
 }
 
 /**
@@ -336,15 +389,15 @@ export interface PaginationParams {
  */
 export interface PaginatedResponse<T> {
   /** Array of items for this page */
-  data: T[]
+  data: T[];
   /** Total count of items (all pages) */
-  total: number
+  total: number;
   /** Current page number */
-  page: number
+  page: number;
   /** Number of items per page */
-  limit: number
+  limit: number;
   /** Whether there are more pages */
-  hasMore: boolean
+  hasMore: boolean;
 }
 
 // ============================================================================
@@ -354,30 +407,30 @@ export interface PaginatedResponse<T> {
 /**
  * Notification types for reminders
  */
-export type NotificationType = 'dueSoon' | 'overdue' | 'returned' | 'reminder'
+export type NotificationType = "dueSoon" | "overdue" | "returned" | "reminder";
 
 /**
  * Notification data
  */
 export interface Notification {
   /** Unique notification identifier */
-  id: string
+  id: string;
   /** Type of notification */
-  type: NotificationType
+  type: NotificationType;
   /** Notification title */
-  title: string
+  title: string;
   /** Notification body message */
-  body: string
+  body: string;
   /** Related item ID */
-  itemId?: string
+  itemId?: string;
   /** Related friend ID */
-  friendId?: string
+  friendId?: string;
   /** Scheduled time for notification */
-  scheduledFor: Date
+  scheduledFor: Date;
   /** Whether notification has been sent */
-  sent: boolean
+  sent: boolean;
   /** When notification was created */
-  createdAt: Date
+  createdAt: Date;
 }
 
 // ============================================================================
@@ -389,25 +442,25 @@ export interface Notification {
  */
 export interface UserSettings {
   /** User ID these settings belong to */
-  userId: string
+  userId: string;
   /** Theme preference */
-  theme: 'light' | 'dark' | 'system'
+  theme: "light" | "dark" | "system";
   /** Enable push notifications */
-  notificationsEnabled: boolean
+  notificationsEnabled: boolean;
   /** Days before due date to send reminder */
-  reminderDaysBefore: number
+  reminderDaysBefore: number;
   /** Enable overdue notifications */
-  overdueNotificationsEnabled: boolean
+  overdueNotificationsEnabled: boolean;
   /** Default item category */
-  defaultCategory?: ItemCategory
+  defaultCategory?: ItemCategory;
   /** Whether to require due dates for new items */
-  requireDueDate: boolean
+  requireDueDate: boolean;
   /** Default view for items list */
-  defaultItemView: 'list' | 'grid'
+  defaultItemView: "list" | "grid";
   /** Default sort for items */
-  defaultItemSort: ItemSortOption
+  defaultItemSort: ItemSortOption;
   /** Default sort for friends */
-  defaultFriendSort: FriendSortOption
+  defaultFriendSort: FriendSortOption;
 }
 
 // ============================================================================
@@ -419,11 +472,11 @@ export interface UserSettings {
  */
 export interface ApiError {
   /** Error code */
-  code: string
+  code: string;
   /** Human-readable error message */
-  message: string
+  message: string;
   /** Additional error details */
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>;
 }
 
 /**
@@ -431,9 +484,9 @@ export interface ApiError {
  */
 export interface ValidationError {
   /** Field name that failed validation */
-  field: string
+  field: string;
   /** Validation error message */
-  message: string
+  message: string;
 }
 
 // ============================================================================
@@ -445,9 +498,9 @@ export interface ValidationError {
  */
 export interface ApiResponse<T> {
   /** Response data */
-  data: T
+  data: T;
   /** Success message */
-  message?: string
+  message?: string;
 }
 
 /**
@@ -455,7 +508,7 @@ export interface ApiResponse<T> {
  */
 export interface ApiErrorResponse {
   /** Error information */
-  error: ApiError
+  error: ApiError;
 }
 
 // ============================================================================
@@ -467,29 +520,29 @@ export interface ApiErrorResponse {
  */
 export interface AsyncState<T> {
   /** The data */
-  data: T | null
+  data: T | null;
   /** Loading state */
-  loading: boolean
+  loading: boolean;
   /** Error if any */
-  error: ApiError | null
+  error: ApiError | null;
 }
 
 /**
  * Represents a database timestamp (for Supabase compatibility)
  */
-export type Timestamp = string | Date
+export type Timestamp = string | Date;
 
 /**
  * Utility type to convert Date fields to Timestamp (for DB storage)
  */
 export type WithTimestamps<T> = {
-  [K in keyof T]: T[K] extends Date ? Timestamp : T[K]
-}
+  [K in keyof T]: T[K] extends Date ? Timestamp : T[K];
+};
 
 /**
  * Database row types (with string timestamps instead of Date objects)
  */
-export type ItemRow = WithTimestamps<Item>
-export type FriendRow = WithTimestamps<Friend>
-export type BorrowHistoryRow = WithTimestamps<BorrowHistory>
-export type UserRow = WithTimestamps<User>
+export type ItemRow = WithTimestamps<Item>;
+export type FriendRow = WithTimestamps<Friend>;
+export type BorrowHistoryRow = WithTimestamps<BorrowHistory>;
+export type UserRow = WithTimestamps<User>;

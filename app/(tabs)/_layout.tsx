@@ -1,38 +1,56 @@
 import { Tabs } from "expo-router";
-import { useTheme } from "tamagui";
-import { Package, Users, Settings } from "@tamagui/lucide-icons";
+import {
+  BookText,
+  Users,
+  Search,
+  Home,
+  UserCog,
+} from "lucide-react-native";
+import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 
 export default function TabLayout() {
-  const theme = useTheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: theme.blue10.val,
-        tabBarInactiveTintColor: theme.gray10?.val ?? "#A0A0A0", // Fallback to a default gray color
+        tabBarActiveTintColor: "#3b82f6", // blue-600
+        tabBarInactiveTintColor: "#9ca3af", // gray-400
         tabBarStyle: {
-          backgroundColor: theme.background.val,
-          borderTopColor: theme.borderColor.val,
           paddingTop: 8,
           paddingBottom: 8,
           height: 60,
         },
-        headerStyle: {
-          backgroundColor: theme.background.val,
-          borderBottomColor: theme.borderColor.val,
-        },
-        headerTintColor: theme.color.val,
         headerShadowVisible: false,
+        headerRight: () => <ThemeSwitcher />,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Items",
+          title: "Home",
           tabBarIcon: ({ color, size }) => (
-            <Package color={color as any} size={size} />
+            <Home color={color} size={size} />
           ),
-          headerTitle: "My Items",
+          headerTitle: "Home",
+        }}
+      />
+      <Tabs.Screen
+        name="library"
+        options={{
+          title: "My Library",
+          tabBarIcon: ({ color, size }) => (
+            <BookText color={color} size={size} />
+          ),
+          headerTitle: "My Library",
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: "Explore",
+          tabBarIcon: ({ color, size }) => (
+            <Search color={color} size={size} />
+          ),
+          headerTitle: "Explore",
         }}
       />
       <Tabs.Screen
@@ -40,7 +58,7 @@ export default function TabLayout() {
         options={{
           title: "Friends",
           tabBarIcon: ({ color, size }) => (
-            <Users color={color as any} size={size} />
+            <Users color={color} size={size} />
           ),
           headerTitle: "Friends",
         }}
@@ -48,11 +66,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <Settings color={color as any} size={size} />
+            <UserCog color={color} size={size} />
           ),
-          headerTitle: "Settings",
+          headerTitle: "Profile",
         }}
       />
     </Tabs>

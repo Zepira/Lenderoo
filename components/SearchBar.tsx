@@ -4,10 +4,12 @@
  * Reusable search input component with clear button
  */
 
-import { XStack, Input, type InputProps, Button } from 'tamagui'
-import * as Icons from '@tamagui/lucide-icons'
+import { View, type TextInputProps, Pressable } from 'react-native'
+import { Search, X } from 'lucide-react-native'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
-interface SearchBarProps extends Omit<InputProps, 'value' | 'onChangeText'> {
+interface SearchBarProps extends Omit<TextInputProps, 'value' | 'onChangeText'> {
   /** Current search value */
   value: string
   /** Handler when search value changes */
@@ -16,6 +18,8 @@ interface SearchBarProps extends Omit<InputProps, 'value' | 'onChangeText'> {
   onClear?: () => void
   /** Placeholder text */
   placeholder?: string
+  /** Additional class names */
+  className?: string
 }
 
 export function SearchBar({
@@ -23,6 +27,7 @@ export function SearchBar({
   onChangeText,
   onClear,
   placeholder = 'Search...',
+  className,
   ...props
 }: SearchBarProps) {
   const handleClear = () => {
@@ -31,42 +36,30 @@ export function SearchBar({
   }
 
   return (
-    <XStack
-      items="center"
-      gap="$2"
-      bg="$background"
-      borderWidth={1}
-      borderColor="$borderColor"
-      rounded="$4"
-      pl="$3"
-      pr="$2"
-      py="$2"
-    >
-      <Icons.Search size={20} color="$gray10" />
+    <View className={cn('relative', className)}>
+      <Search
+        size={20}
+        color="#888"
+        style={{ position: 'absolute', left: 12, top: 10, zIndex: 1 }}
+      />
 
       <Input
-        flex={1}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="$gray10"
-        borderWidth={0}
-        p={0}
-        fontSize="$4"
-        unstyled
+        className="pl-10 pr-10"
         {...props}
       />
 
       {value.length > 0 && (
-        <Button
-          size="$2"
-          circular
-          chromeless
-          icon={Icons.X}
+        <Pressable
           onPress={handleClear}
-          pressStyle={{ opacity: 0.6 }}
-        />
+          className="absolute right-3 top-2.5 p-1"
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+        >
+          <X size={18} color="#888" />
+        </Pressable>
       )}
-    </XStack>
+    </View>
   )
 }

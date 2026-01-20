@@ -4,10 +4,14 @@
  * Displays a summary of a friend in a card format
  */
 
-import { Card, XStack, YStack, Text, Avatar } from 'tamagui'
-import * as Icons from '@tamagui/lucide-icons'
+import { View, Pressable } from 'react-native'
+import { Mail, Phone, Package } from 'lucide-react-native'
 import type { Friend } from 'lib/types'
 import { getInitials, formatCount } from 'lib/utils'
+import { Card, CardHeader, CardFooter } from '@/components/ui/card'
+import { Text } from '@/components/ui/text'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { cn } from '@/lib/utils'
 
 interface FriendCardProps {
   /** The friend to display */
@@ -22,105 +26,88 @@ export function FriendCard({ friend, onPress, detailed = false }: FriendCardProp
   const hasActiveItems = friend.currentItemsBorrowed > 0
 
   return (
-    <Card
-      elevate
-      size="$4"
-      bordered
-      animation="bouncy"
-      scale={0.98}
-      hoverStyle={{ scale: 1 }}
-      pressStyle={{ scale: 0.96 }}
-      onPress={onPress}
-      bg="$background"
-      cursor="pointer"
-    >
-      <Card.Header padded>
-        <XStack gap="$3" items="center">
-          {/* Friend Avatar */}
-          <Avatar circular size="$6">
-            {friend.avatarUrl ? (
-              <Avatar.Image src={friend.avatarUrl} />
-            ) : (
-              <Avatar.Fallback bg="$blue5">
-                <Text fontSize="$6" color="$blue11" fontWeight="600">
-                  {getInitials(friend.name)}
-                </Text>
-              </Avatar.Fallback>
-            )}
-          </Avatar>
+    <Pressable onPress={onPress}>
+      <Card className="active:scale-95 transition-transform">
+        <CardHeader>
+          <View className="flex-row gap-3 items-center">
+            {/* Friend Avatar */}
+            <Avatar className="w-12 h-12">
+              {friend.avatarUrl ? (
+                <AvatarImage source={{ uri: friend.avatarUrl }} />
+              ) : (
+                <AvatarFallback className="bg-blue-100">
+                  <Text variant="large" className="text-blue-600 font-semibold">
+                    {getInitials(friend.name)}
+                  </Text>
+                </AvatarFallback>
+              )}
+            </Avatar>
 
-          {/* Friend Info */}
-          <YStack flex={1} gap="$1.5">
-            {/* Friend Name */}
-            <Text fontSize="$5" fontWeight="600" color="$color" numberOfLines={1}>
-              {friend.name}
-            </Text>
-
-            {/* Contact Info */}
-            {detailed && (friend.email || friend.phone) && (
-              <YStack gap="$1">
-                {friend.email && (
-                  <XStack gap="$1.5" items="center">
-                    <Icons.Mail size={14} color="$gray10" />
-                    <Text fontSize="$3" color="$gray11" numberOfLines={1}>
-                      {friend.email}
-                    </Text>
-                  </XStack>
-                )}
-                {friend.phone && (
-                  <XStack gap="$1.5" items="center">
-                    <Icons.Phone size={14} color="$gray10" />
-                    <Text fontSize="$3" color="$gray11" numberOfLines={1}>
-                      {friend.phone}
-                    </Text>
-                  </XStack>
-                )}
-              </YStack>
-            )}
-          </YStack>
-
-          {/* Active Items Indicator */}
-          {hasActiveItems && (
-            <YStack
-              bg="$blue5"
-              px="$2.5"
-              py="$1.5"
-              rounded="$10"
-              minW={32}
-              items="center"
-            >
-              <Text fontSize="$5" fontWeight="700" color="$blue11">
-                {friend.currentItemsBorrowed}
+            {/* Friend Info */}
+            <View className="flex-1 gap-1.5">
+              {/* Friend Name */}
+              <Text variant="large" className="font-semibold" numberOfLines={1}>
+                {friend.name}
               </Text>
-            </YStack>
-          )}
-        </XStack>
-      </Card.Header>
 
-      <Card.Footer padded>
-        <XStack justify="space-between" items="center" width="100%">
+              {/* Contact Info */}
+              {detailed && (friend.email || friend.phone) && (
+                <View className="gap-1">
+                  {friend.email && (
+                    <View className="flex-row gap-1.5 items-center">
+                      <Mail size={14} color="#888" />
+                      <Text variant="small" className="text-muted-foreground" numberOfLines={1}>
+                        {friend.email}
+                      </Text>
+                    </View>
+                  )}
+                  {friend.phone && (
+                    <View className="flex-row gap-1.5 items-center">
+                      <Phone size={14} color="#888" />
+                      <Text variant="small" className="text-muted-foreground" numberOfLines={1}>
+                        {friend.phone}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* Active Items Indicator */}
+            {hasActiveItems && (
+              <View className="bg-blue-100 px-2.5 py-1.5 rounded-full min-w-[32px] items-center">
+                <Text variant="large" className="font-bold text-blue-600">
+                  {friend.currentItemsBorrowed}
+                </Text>
+              </View>
+            )}
+          </View>
+        </CardHeader>
+
+        <CardFooter className="justify-between items-center w-full">
           {/* Current Items */}
-          <XStack gap="$1.5" items="center">
-            <Icons.Package size={16} color={hasActiveItems ? '$blue10' : '$gray10'} />
+          <View className="flex-row gap-1.5 items-center">
+            <Package size={16} color={hasActiveItems ? '#3b82f6' : '#888'} />
             <Text
-              fontSize="$3"
-              color={hasActiveItems ? '$blue11' : '$gray11'}
-              fontWeight={hasActiveItems ? '600' : '400'}
+              variant="small"
+              className={cn(
+                hasActiveItems ? 'text-blue-600 font-semibold' : 'text-muted-foreground'
+              )}
             >
               {hasActiveItems
                 ? formatCount(friend.currentItemsBorrowed, 'item')
                 : 'No active items'}
             </Text>
-          </XStack>
+          </View>
 
           {/* Total Items Borrowed */}
           {detailed && friend.totalItemsBorrowed > 0 && (
-            <Text fontSize="$2" color="$gray10">
+            <Text variant="muted">
               {formatCount(friend.totalItemsBorrowed, 'item')} total
             </Text>
           )}
-        </XStack>
-      </Card.Footer>
-    </Card>
+        </CardFooter>
+      </Card>
+    </Pressable>
   )
 }

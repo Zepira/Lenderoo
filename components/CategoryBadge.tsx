@@ -4,41 +4,45 @@
  * Displays a visual badge for item categories with icon and label
  */
 
-import { XStack, Text, type XStackProps, getTokens } from 'tamagui'
-import * as Icons from '@tamagui/lucide-icons'
+import { View } from 'react-native'
+import * as LucideIcons from 'lucide-react-native'
 import type { ItemCategory } from 'lib/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from 'lib/constants'
+import { Badge } from '@/components/ui/badge'
+import { Text } from '@/components/ui/text'
+import { cn } from '@/lib/utils'
 
-interface CategoryBadgeProps extends Omit<XStackProps, 'children'> {
+interface CategoryBadgeProps {
   /** The category to display */
   category: ItemCategory
   /** Whether to show the label text */
   showLabel?: boolean
   /** Size of the badge */
   size?: 'sm' | 'md' | 'lg'
+  /** Additional class names */
+  className?: string
 }
+
+const categoryColors = {
+  book: 'border-blue-500 text-blue-600',
+  tool: 'border-orange-500 text-orange-600',
+  clothing: 'border-purple-500 text-purple-600',
+  electronics: 'border-cyan-500 text-cyan-600',
+  game: 'border-pink-500 text-pink-600',
+  sports: 'border-green-500 text-green-600',
+  kitchen: 'border-yellow-500 text-yellow-600',
+  other: 'border-gray-500 text-gray-600',
+} as const
 
 export function CategoryBadge({
   category,
   showLabel = true,
   size = 'md',
-  ...props
+  className,
 }: CategoryBadgeProps) {
-  const iconName = CATEGORY_ICONS[category] as keyof typeof Icons
-  const Icon = Icons[iconName]
+  const iconName = CATEGORY_ICONS[category]
+  const Icon = (LucideIcons as any)[iconName]
   const label = CATEGORY_LABELS[category]
-
-  // Use token colors
-  const colorToken = {
-    book: '$blue9',
-    tool: '$orange9',
-    clothing: '$purple9',
-    electronics: '$cyan9',
-    game: '$pink9',
-    sports: '$green9',
-    kitchen: '$yellow9',
-    other: '$gray9',
-  }[category]
 
   const iconSize = {
     sm: 12,
@@ -46,36 +50,16 @@ export function CategoryBadge({
     lg: 20,
   }[size]
 
-  const fontSize = {
-    sm: '$2',
-    md: '$3',
-    lg: '$4',
-  }[size] as '$2' | '$3' | '$4'
-
-  const padding = {
-    sm: '$1.5',
-    md: '$2',
-    lg: '$2.5',
-  }[size] as '$1.5' | '$2' | '$2.5'
+  const colorClass = categoryColors[category]
 
   return (
-    <XStack
-      items="center"
-      gap="$1.5"
-      bg="$background"
-      borderWidth={1}
-      borderColor={colorToken}
-      rounded="$3"
-      px={padding}
-      py={size === 'sm' ? '$1' : '$1.5'}
-      {...props}
-    >
-      {Icon && <Icon size={iconSize} color={colorToken} />}
+    <Badge variant="outline" className={cn('gap-1.5', colorClass, className)}>
+      {Icon && <Icon size={iconSize} />}
       {showLabel && (
-        <Text fontSize={fontSize} color={colorToken} fontWeight="500">
+        <Text className="font-medium">
           {label}
         </Text>
       )}
-    </XStack>
+    </Badge>
   )
 }

@@ -5,49 +5,54 @@
  * They correspond to the TypeScript types defined in types.ts.
  */
 
-import { z } from 'zod'
+import { z } from "zod";
 
 // ============================================================================
 // Enums and Literals
 // ============================================================================
 
 export const itemCategorySchema = z.enum([
-  'book',
-  'tool',
-  'clothing',
-  'electronics',
-  'game',
-  'sports',
-  'kitchen',
-  'other',
-])
+  "book",
+  "tool",
+  "clothing",
+  "electronics",
+  "game",
+  "sports",
+  "kitchen",
+  "other",
+]);
 
-export const itemStatusSchema = z.enum(['borrowed', 'returned', 'overdue'])
+export const itemStatusSchema = z.enum([
+  "borrowed",
+  "overdue",
+  "requested",
+  "available",
+]);
 
 export const itemSortOptionSchema = z.enum([
-  'dateNewest',
-  'dateOldest',
-  'nameAsc',
-  'nameDesc',
-  'dueDateSoonest',
-  'dueDateLatest',
-])
+  "dateNewest",
+  "dateOldest",
+  "nameAsc",
+  "nameDesc",
+  "dueDateSoonest",
+  "dueDateLatest",
+]);
 
 export const friendSortOptionSchema = z.enum([
-  'nameAsc',
-  'nameDesc',
-  'mostItems',
-  'leastItems',
-])
+  "nameAsc",
+  "nameDesc",
+  "mostItems",
+  "leastItems",
+]);
 
 export const notificationTypeSchema = z.enum([
-  'dueSoon',
-  'overdue',
-  'returned',
-  'reminder',
-])
+  "dueSoon",
+  "overdue",
+  "returned",
+  "reminder",
+]);
 
-export const themeSchema = z.enum(['light', 'dark', 'system'])
+export const themeSchema = z.enum(["light", "dark", "system"]);
 
 // ============================================================================
 // Core Data Schemas
@@ -59,11 +64,11 @@ export const themeSchema = z.enum(['light', 'dark', 'system'])
 export const userSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, "Name is required"),
   avatarUrl: z.string().url().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-})
+});
 
 /**
  * Friend schema
@@ -71,15 +76,15 @@ export const userSchema = z.object({
 export const friendSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
-  name: z.string().min(1, 'Name is required').max(100),
-  email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().optional().or(z.literal('')),
+  name: z.string().min(1, "Name is required").max(100),
+  email: z.string().email().optional().or(z.literal("")),
+  phone: z.string().optional().or(z.literal("")),
   avatarUrl: z.string().url().optional(),
   totalItemsBorrowed: z.number().int().nonnegative().default(0),
   currentItemsBorrowed: z.number().int().nonnegative().default(0),
   createdAt: z.date(),
   updatedAt: z.date(),
-})
+});
 
 /**
  * Item schema
@@ -87,20 +92,21 @@ export const friendSchema = z.object({
 export const itemSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
-  name: z.string().min(1, 'Item name is required').max(200),
+  name: z.string().min(1, "Item name is required").max(200),
   description: z.string().max(1000).optional(),
   category: itemCategorySchema,
   imageUrl: z.string().url().optional(),
   imageUrls: z.array(z.string().url()).optional(),
-  borrowedBy: z.string().uuid(),
-  borrowedDate: z.date(),
+  borrowedBy: z.string().uuid().optional(),
+  borrowedDate: z.date().optional(),
   dueDate: z.date().optional(),
   returnedDate: z.date().optional(),
   notes: z.string().max(1000).optional(),
   value: z.number().positive().optional(),
+  metadata: z.record(z.unknown()).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-})
+});
 
 /**
  * Borrow history schema
@@ -114,7 +120,7 @@ export const borrowHistorySchema = z.object({
   returnedDate: z.date().optional(),
   notes: z.string().max(1000).optional(),
   createdAt: z.date(),
-})
+});
 
 // ============================================================================
 // Form Input Schemas
@@ -125,37 +131,51 @@ export const borrowHistorySchema = z.object({
  */
 export const createItemSchema = z
   .object({
-    name: z.string().min(1, 'Item name is required').max(200),
+    name: z.string().min(1, "Item name is required").max(200),
     description: z.string().max(1000).optional(),
     category: itemCategorySchema,
     imageUrl: z.string().url().optional(),
     imageUrls: z.array(z.string().url()).optional(),
-    borrowedBy: z.string().uuid('Please select a friend'),
-    borrowedDate: z.date(),
+    borrowedBy: z.string().uuid().optional(),
+    borrowedDate: z.date().optional(),
     dueDate: z.date().optional(),
     notes: z.string().max(1000).optional(),
     value: z.number().positive().optional(),
+    metadata: z.record(z.unknown()).optional(),
   })
+  .refine(
+    (data) => {
+      // If borrowedBy is provided, borrowedDate should also be provided
+      if (data.borrowedBy && !data.borrowedDate) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Borrowed date is required when lending to someone",
+      path: ["borrowedDate"],
+    }
+  )
   .refine(
     (data) => {
       // If due date is provided, it must be after borrowed date
       if (data.dueDate && data.borrowedDate) {
-        return data.dueDate >= data.borrowedDate
+        return data.dueDate >= data.borrowedDate;
       }
-      return true
+      return true;
     },
     {
-      message: 'Due date must be after borrowed date',
-      path: ['dueDate'],
+      message: "Due date must be after borrowed date",
+      path: ["dueDate"],
     }
-  )
+  );
 
 /**
  * Schema for updating an existing item
  */
 export const updateItemSchema = z
   .object({
-    name: z.string().min(1, 'Item name is required').max(200).optional(),
+    name: z.string().min(1, "Item name is required").max(200).optional(),
     description: z.string().max(1000).optional(),
     category: itemCategorySchema.optional(),
     imageUrl: z.string().url().optional(),
@@ -171,56 +191,48 @@ export const updateItemSchema = z
     (data) => {
       // If due date is provided, it must be after borrowed date
       if (data.dueDate && data.borrowedDate) {
-        return data.dueDate >= data.borrowedDate
+        return data.dueDate >= data.borrowedDate;
       }
-      return true
+      return true;
     },
     {
-      message: 'Due date must be after borrowed date',
-      path: ['dueDate'],
+      message: "Due date must be after borrowed date",
+      path: ["dueDate"],
     }
   )
   .refine(
     (data) => {
       // If returned date is provided, it must be after borrowed date
       if (data.returnedDate && data.borrowedDate) {
-        return data.returnedDate >= data.borrowedDate
+        return data.returnedDate >= data.borrowedDate;
       }
-      return true
+      return true;
     },
     {
-      message: 'Returned date must be after borrowed date',
-      path: ['returnedDate'],
+      message: "Returned date must be after borrowed date",
+      path: ["returnedDate"],
     }
-  )
+  );
 
 /**
  * Schema for creating a new friend
  */
 export const createFriendSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100),
-  email: z
-    .string()
-    .email('Invalid email address')
-    .optional()
-    .or(z.literal('')),
-  phone: z.string().optional().or(z.literal('')),
+  name: z.string().min(1, "Name is required").max(100),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  phone: z.string().optional().or(z.literal("")),
   avatarUrl: z.string().url().optional(),
-})
+});
 
 /**
  * Schema for updating an existing friend
  */
 export const updateFriendSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100).optional(),
-  email: z
-    .string()
-    .email('Invalid email address')
-    .optional()
-    .or(z.literal('')),
-  phone: z.string().optional().or(z.literal('')),
+  name: z.string().min(1, "Name is required").max(100).optional(),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  phone: z.string().optional().or(z.literal("")),
   avatarUrl: z.string().url().optional(),
-})
+});
 
 /**
  * Schema for marking an item as returned
@@ -229,7 +241,7 @@ export const returnItemSchema = z.object({
   itemId: z.string().uuid(),
   returnedDate: z.date().optional(),
   notes: z.string().max(1000).optional(),
-})
+});
 
 // ============================================================================
 // Filter and Query Schemas
@@ -249,7 +261,7 @@ export const itemFiltersSchema = z.object({
       end: z.date(),
     })
     .optional(),
-})
+});
 
 /**
  * Schema for friend filters
@@ -257,7 +269,7 @@ export const itemFiltersSchema = z.object({
 export const friendFiltersSchema = z.object({
   searchQuery: z.string().optional(),
   hasActiveLoans: z.boolean().optional(),
-})
+});
 
 /**
  * Schema for pagination parameters
@@ -265,7 +277,7 @@ export const friendFiltersSchema = z.object({
 export const paginationSchema = z.object({
   limit: z.number().int().positive().max(100).default(20),
   offset: z.number().int().nonnegative().default(0),
-})
+});
 
 // ============================================================================
 // Settings Schema
@@ -282,10 +294,10 @@ export const userSettingsSchema = z.object({
   overdueNotificationsEnabled: z.boolean().default(true),
   defaultCategory: itemCategorySchema.optional(),
   requireDueDate: z.boolean().default(false),
-  defaultItemView: z.enum(['list', 'grid']).default('list'),
-  defaultItemSort: itemSortOptionSchema.default('dateNewest'),
-  defaultFriendSort: friendSortOptionSchema.default('nameAsc'),
-})
+  defaultItemView: z.enum(["list", "grid"]).default("list"),
+  defaultItemSort: itemSortOptionSchema.default("dateNewest"),
+  defaultFriendSort: friendSortOptionSchema.default("nameAsc"),
+});
 
 // ============================================================================
 // Notification Schema
@@ -304,7 +316,7 @@ export const notificationSchema = z.object({
   scheduledFor: z.date(),
   sent: z.boolean().default(false),
   createdAt: z.date(),
-})
+});
 
 // ============================================================================
 // Utility Functions
@@ -317,32 +329,32 @@ export function safeValidate<T>(
   schema: z.ZodSchema<T>,
   data: unknown
 ): { success: true; data: T } | { success: false; errors: z.ZodError } {
-  const result = schema.safeParse(data)
+  const result = schema.safeParse(data);
   if (result.success) {
-    return { success: true, data: result.data }
+    return { success: true, data: result.data };
   }
-  return { success: false, errors: result.error }
+  return { success: false, errors: result.error };
 }
 
 /**
  * Get friendly error messages from Zod errors
  */
 export function getValidationErrors(error: z.ZodError): Record<string, string> {
-  const errors: Record<string, string> = {}
+  const errors: Record<string, string> = {};
 
   for (const issue of error.issues) {
-    const path = issue.path.join('.')
-    errors[path] = issue.message
+    const path = issue.path.join(".");
+    errors[path] = issue.message;
   }
 
-  return errors
+  return errors;
 }
 
 /**
  * Validate and throw on error
  */
 export function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
-  return schema.parse(data)
+  return schema.parse(data);
 }
 
 // ============================================================================
@@ -350,16 +362,16 @@ export function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
 // ============================================================================
 
 // Infer TypeScript types from Zod schemas for consistency
-export type UserSchemaType = z.infer<typeof userSchema>
-export type FriendSchemaType = z.infer<typeof friendSchema>
-export type ItemSchemaType = z.infer<typeof itemSchema>
-export type BorrowHistorySchemaType = z.infer<typeof borrowHistorySchema>
-export type CreateItemSchemaType = z.infer<typeof createItemSchema>
-export type UpdateItemSchemaType = z.infer<typeof updateItemSchema>
-export type CreateFriendSchemaType = z.infer<typeof createFriendSchema>
-export type UpdateFriendSchemaType = z.infer<typeof updateFriendSchema>
-export type ReturnItemSchemaType = z.infer<typeof returnItemSchema>
-export type ItemFiltersSchemaType = z.infer<typeof itemFiltersSchema>
-export type FriendFiltersSchemaType = z.infer<typeof friendFiltersSchema>
-export type UserSettingsSchemaType = z.infer<typeof userSettingsSchema>
-export type NotificationSchemaType = z.infer<typeof notificationSchema>
+export type UserSchemaType = z.infer<typeof userSchema>;
+export type FriendSchemaType = z.infer<typeof friendSchema>;
+export type ItemSchemaType = z.infer<typeof itemSchema>;
+export type BorrowHistorySchemaType = z.infer<typeof borrowHistorySchema>;
+export type CreateItemSchemaType = z.infer<typeof createItemSchema>;
+export type UpdateItemSchemaType = z.infer<typeof updateItemSchema>;
+export type CreateFriendSchemaType = z.infer<typeof createFriendSchema>;
+export type UpdateFriendSchemaType = z.infer<typeof updateFriendSchema>;
+export type ReturnItemSchemaType = z.infer<typeof returnItemSchema>;
+export type ItemFiltersSchemaType = z.infer<typeof itemFiltersSchema>;
+export type FriendFiltersSchemaType = z.infer<typeof friendFiltersSchema>;
+export type UserSettingsSchemaType = z.infer<typeof userSettingsSchema>;
+export type NotificationSchemaType = z.infer<typeof notificationSchema>;

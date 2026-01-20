@@ -1,15 +1,11 @@
-/**
- * Utility functions
- *
- * Commonly used helper functions throughout the app
- */
-
-import type { Item, ItemStatus, ItemWithDetails, Friend } from "./types";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+import type { Item, Friend, ItemStatus, ItemWithDetails } from "./types";
 import { DUE_SOON_THRESHOLD_DAYS } from "./constants";
 
-// ============================================================================
-// Date Utilities
-// ============================================================================
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 /**
  * Calculate the number of days between two dates
@@ -167,7 +163,6 @@ export function calculateItemStatus(item: Item): ItemStatus {
 
   return "borrowed";
 }
-
 /**
  * Convert Item to ItemWithDetails by adding computed properties
  */

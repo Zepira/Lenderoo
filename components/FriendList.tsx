@@ -4,8 +4,7 @@
  * Scrollable list of friends with pull-to-refresh and empty state
  */
 
-import { FlatList, type ListRenderItemInfo, RefreshControl } from 'react-native'
-import { YStack, Spinner } from 'tamagui'
+import { FlatList, type ListRenderItemInfo, RefreshControl, View, ActivityIndicator } from 'react-native'
 import type { Friend } from 'lib/types'
 import { FriendCard } from './FriendCard'
 import { EmptyState } from './EmptyState'
@@ -47,22 +46,22 @@ export function FriendList({
 }: FriendListProps) {
   const renderItem = ({ item }: ListRenderItemInfo<Friend>) => {
     return (
-      <YStack pb="$3">
+      <View className="pb-3">
         <FriendCard
           friend={item}
           onPress={() => onFriendPress?.(item)}
           detailed={detailed}
         />
-      </YStack>
+      </View>
     )
   }
 
   const renderEmpty = () => {
     if (loading) {
       return (
-        <YStack flex={1} items="center" justify="center" p="$6">
-          <Spinner size="large" color="$blue10" />
-        </YStack>
+        <View className="flex-1 items-center justify-center p-6">
+          <ActivityIndicator size="large" color="#3b82f6" />
+        </View>
       )
     }
 

@@ -1,22 +1,15 @@
-import { Anchor, Paragraph, View, XStack } from 'tamagui'
+import { View, Linking, Pressable } from 'react-native'
+import { Text } from '@/components/ui/text'
 
 export default function ModalScreen() {
   return (
-    <View flex={1} items="center" justify="center">
-      <XStack gap="$2">
-        <Paragraph text="center">Made by</Paragraph>
-        <Anchor color="$blue10" href="https://twitter.com/natebirdman" target="_blank">
-          @natebirdman,
-        </Anchor>
-        <Anchor
-          color="$accent10"
-          href="https://github.com/tamagui/tamagui"
-          target="_blank"
-          rel="noreferrer"
-        >
-          give it a ⭐️
-        </Anchor>
-      </XStack>
+    <View className="flex-1 items-center justify-center p-4">
+      <View className="flex-row gap-2 flex-wrap justify-center">
+        <Text className="text-center">Made with shadcn/ui for React Native</Text>
+        <Pressable onPress={() => Linking.openURL('https://ui.shadcn.com')}>
+          <Text className="text-blue-600">Visit shadcn/ui</Text>
+        </Pressable>
+      </View>
     </View>
   )
 }

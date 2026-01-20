@@ -4,13 +4,16 @@
  * Generic empty state component for lists and screens
  */
 
-import { YStack, Text, Button } from 'tamagui'
-import * as Icons from '@tamagui/lucide-icons'
+import { View } from 'react-native'
+import * as LucideIcons from 'lucide-react-native'
+import { Plus } from 'lucide-react-native'
 import type { ComponentType } from 'react'
+import { Text } from '@/components/ui/text'
+import { Button } from '@/components/ui/button'
 
 interface EmptyStateProps {
   /** Icon to display (Lucide icon name) */
-  icon?: keyof typeof Icons
+  icon?: string
   /** Title text */
   title: string
   /** Description/message text */
@@ -31,48 +34,34 @@ export function EmptyState({
   onAction,
   IconComponent,
 }: EmptyStateProps) {
-  const Icon = IconComponent || (Icons[icon] as ComponentType<{ size?: number; color?: string }>)
+  const Icon = IconComponent || (LucideIcons as any)[icon]
 
   return (
-    <YStack flex={1} items="center" justify="center" p="$6" gap="$4">
+    <View className="flex-1 items-center justify-center p-6 gap-4">
       {Icon && (
-        <YStack
-          width={80}
-          height={80}
-          items="center"
-          justify="center"
-          bg="$background"
-          rounded="$10"
-          borderWidth={2}
-          borderColor="$borderColor"
-        >
-          <Icon size={40} color="$gray10" />
-        </YStack>
+        <View className="w-20 h-20 items-center justify-center bg-background rounded-2xl border-2 border-border">
+          <Icon size={40} color="#888" />
+        </View>
       )}
 
-      <YStack gap="$2" items="center" mw={300}>
-        <Text fontSize="$6" fontWeight="600" color="$color" text="center">
+      <View className="gap-2 items-center max-w-xs">
+        <Text variant="h4" className="text-center">
           {title}
         </Text>
 
         {message && (
-          <Text fontSize="$4" color="$gray11" text="center" lineHeight={20}>
+          <Text variant="muted" className="text-center">
             {message}
           </Text>
         )}
-      </YStack>
+      </View>
 
       {actionLabel && onAction && (
-        <Button
-          size="$4"
-          themeInverse
-          onPress={onAction}
-          mt="$2"
-          icon={Icons.Plus}
-        >
-          {actionLabel}
+        <Button onPress={onAction} className="mt-2">
+          <Plus size={16} />
+          <Text>{actionLabel}</Text>
         </Button>
       )}
-    </YStack>
+    </View>
   )
 }

@@ -1,9 +1,12 @@
 import { useState } from 'react'
+import { View, ScrollView, Pressable } from 'react-native'
 import { Stack, useRouter } from 'expo-router'
-import { YStack, XStack, Text, Input, Button, ScrollView, Label } from 'tamagui'
 import { useCreateFriend } from 'hooks'
 import { createFriendSchema } from 'lib/validation'
-import type { z } from 'zod'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Text } from '@/components/ui/text'
+import { cn } from '@/lib/utils'
 
 export default function AddFriendScreen() {
   const router = useRouter()
@@ -68,109 +71,109 @@ export default function AddFriendScreen() {
           title: 'Add Friend',
           presentation: 'modal',
           headerLeft: () => (
-            <Button chromeless onPress={handleCancel} disabled={loading}>
-              Cancel
-            </Button>
+            <Pressable onPress={handleCancel} disabled={loading}>
+              <Text className="text-blue-600">Cancel</Text>
+            </Pressable>
           ),
         }}
       />
 
-      <ScrollView flex={1} bg="$background">
-        <YStack p="$4" gap="$4">
+      <ScrollView className="flex-1 bg-background">
+        <View className="p-4 gap-4">
           {errors.general && (
-            <YStack p="$3" bg="$red2" rounded="$3" borderWidth={1} borderColor="$red7">
-              <Text color="$red11" fontSize="$3">
+            <View className="p-3 bg-red-50 rounded-lg border border-red-200">
+              <Text variant="small" className="text-red-600">
                 {errors.general}
               </Text>
-            </YStack>
+            </View>
           )}
 
           {/* Name */}
-          <YStack gap="$2">
-            <Label htmlFor="name" fontSize="$4" fontWeight="600">
+          <View className="gap-2">
+            <Text variant="small" className="font-semibold">
               Name *
-            </Label>
+            </Text>
             <Input
-              id="name"
               value={name}
               onChangeText={setName}
               placeholder="e.g., John Doe"
-              borderColor={errors.name ? '$red7' : '$borderColor'}
-              disabled={loading}
+              className={cn(errors.name && "border-red-500")}
+              editable={!loading}
               autoFocus
             />
             {errors.name && (
-              <Text color="$red10" fontSize="$2">
+              <Text variant="muted" className="text-red-600">
                 {errors.name}
               </Text>
             )}
-          </YStack>
+          </View>
 
           {/* Email */}
-          <YStack gap="$2">
-            <Label htmlFor="email" fontSize="$4" fontWeight="600">
+          <View className="gap-2">
+            <Text variant="small" className="font-semibold">
               Email
-            </Label>
+            </Text>
             <Input
-              id="email"
               value={email}
               onChangeText={setEmail}
               placeholder="e.g., john@example.com"
               keyboardType="email-address"
               autoCapitalize="none"
-              borderColor={errors.email ? '$red7' : '$borderColor'}
-              disabled={loading}
+              className={cn(errors.email && "border-red-500")}
+              editable={!loading}
             />
             {errors.email && (
-              <Text color="$red10" fontSize="$2">
+              <Text variant="muted" className="text-red-600">
                 {errors.email}
               </Text>
             )}
-            <Text color="$gray11" fontSize="$2">
+            <Text variant="muted">
               Optional - useful for sending reminders (coming soon)
             </Text>
-          </YStack>
+          </View>
 
           {/* Phone */}
-          <YStack gap="$2">
-            <Label htmlFor="phone" fontSize="$4" fontWeight="600">
+          <View className="gap-2">
+            <Text variant="small" className="font-semibold">
               Phone
-            </Label>
+            </Text>
             <Input
-              id="phone"
               value={phone}
               onChangeText={setPhone}
               placeholder="e.g., (555) 123-4567"
               keyboardType="phone-pad"
-              borderColor={errors.phone ? '$red7' : '$borderColor'}
-              disabled={loading}
+              className={cn(errors.phone && "border-red-500")}
+              editable={!loading}
             />
             {errors.phone && (
-              <Text color="$red10" fontSize="$2">
+              <Text variant="muted" className="text-red-600">
                 {errors.phone}
               </Text>
             )}
-            <Text color="$gray11" fontSize="$2">
+            <Text variant="muted">
               Optional - useful for sending reminders (coming soon)
             </Text>
-          </YStack>
+          </View>
 
           {/* Action Buttons */}
-          <XStack gap="$3" pt="$4">
-            <Button flex={1} variant="outlined" onPress={handleCancel} disabled={loading}>
-              Cancel
+          <View className="flex-row gap-3 pt-4">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onPress={handleCancel}
+              disabled={loading}
+            >
+              <Text>Cancel</Text>
             </Button>
             <Button
-              flex={1}
-              bg="$blue10"
-              color="white"
+              className="flex-1 bg-blue-600"
               onPress={handleSubmit}
               disabled={loading}
             >
-              {loading ? 'Saving...' : 'Add Friend'}
+              <Text className="text-white">{loading ? 'Saving...' : 'Add Friend'}</Text>
             </Button>
-          </XStack>
-        </YStack>
+          </View>
+        </View>
       </ScrollView>
     </>
   )
