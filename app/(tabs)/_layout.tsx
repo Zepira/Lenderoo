@@ -1,11 +1,5 @@
 import { Tabs } from "expo-router";
-import {
-  BookText,
-  Users,
-  Search,
-  Home,
-  UserCog,
-} from "lucide-react-native";
+import { BookText, Users, Search, Home, UserCog } from "lucide-react-native";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 
 export default function TabLayout() {
@@ -17,6 +11,7 @@ export default function TabLayout() {
         tabBarStyle: {
           paddingTop: 8,
           paddingBottom: 8,
+          marginBottom: 4,
           height: 60,
         },
         headerShadowVisible: false,
@@ -27,9 +22,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Home color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
           headerTitle: "Home",
         }}
       />
@@ -47,9 +40,7 @@ export default function TabLayout() {
         name="explore"
         options={{
           title: "Explore",
-          tabBarIcon: ({ color, size }) => (
-            <Search color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <Search color={color} size={size} />,
           headerTitle: "Explore",
         }}
       />
@@ -57,9 +48,7 @@ export default function TabLayout() {
         name="friends"
         options={{
           title: "Friends",
-          tabBarIcon: ({ color, size }) => (
-            <Users color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
           headerTitle: "Friends",
         }}
       />
