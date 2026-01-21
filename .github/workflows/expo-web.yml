@@ -1,3 +1,5 @@
+#use this later: https://expo.dev/blog/how-to-integrate-eas-workflows-with-github-actions
+
 name: Deploy Web to Expo
 
 on:
@@ -43,4 +45,4 @@ jobs:
         run: npx expo export --platform web
 
       - name: Deploy Expo
-        run: eas deploy
+        run: npx eas deploy
