@@ -1,51 +1,95 @@
-#use this later: https://expo.dev/blog/how-to-integrate-eas-workflows-with-github-actions
+# #use this later: https://expo.dev/blog/how-to-integrate-eas-workflows-with-github-actions
 
-name: Deploy Web to Expo
+# name: Deploy Web to Expo
 
+# on:
+#   push:
+#     branches:
+#       - main
+#       - master
+#   workflow_dispatch:
+
+# permissions:
+#   contents: read
+#   pages: write
+#   id-token: write
+
+# concurrency:
+#   group: "pages"
+#   cancel-in-progress: false
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: "22"
+
+#       - name: Setup Yarn
+#         run: corepack enable
+
+#       - name: Install dependencies
+#         run: yarn install --immutable
+
+#       - name: Setup Expo and EAS
+#         uses: expo/expo-github-action@v8
+#         with:
+#           eas-version: latest
+#           token: ${{ secrets.EXPO_TOKEN }}
+#       - name: Install dependencies
+#         run: yarn install --frozen-lockfile
+
+#       - name: Export web build
+#         run: npx expo export --platform web
+
+#       - name: Deploy Expo
+#         run: eas deploy
+
+# Source - https://stackoverflow.com/a
+# Posted by Lavínia Beghini
+# Retrieved 2026-01-21, License - CC BY-SA 4.0
+
+name: Web
 on:
   push:
     branches:
       - main
-      - master
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
-  build:
+  web:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v2
         with:
-          node-version: "22"
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Yarn
-        run: corepack enable
+      - name: ⚙️ Set up repository
+        uses: actions/checkout@v2
 
-      - name: Install dependencies
-        run: yarn install --immutable
-
-      - name: Setup Expo and EAS
-        uses: expo/expo-github-action@v8
+      - name: ❇️ Setup Node.js environment
+        uses: actions/setup-node@v3.6.0
         with:
-          eas-version: latest
+          node-version: 16.x
+
+      - name: 🔷 Set up Expo
+        uses: expo/expo-github-action@v7
+        with:
+          expo-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
 
-      - name: Export web build
-        run: npx expo export --platform web
+      - name: 📦 Install dependencies
+        run: yarn install
 
-      - name: Deploy Expo
-        run: eas deploy
+      - name: 🌐 Export the app
+        run: |
+          git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+          yarn deploy -- -u "github-actions-bot <support+actions@github.com>"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
