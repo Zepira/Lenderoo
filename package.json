@@ -15,7 +15,9 @@
     "web": "expo start --web",
     "test": "jest --watchAll",
     "publish:web": "yarn build:web && eas deploy",
-    "build:web": "expo export --platform web"
+    "build:web": "expo export --platform web",
+    "deploy": "gh-pages --nojekyll -d dist",
+    "predeploy": "expo export -p web"
   },
   "jest": {
     "preset": "jest-expo"
@@ -70,8 +72,10 @@
     "@tamagui/babel-plugin": "^1.144.2",
     "@tamagui/cli": "^1.138.0",
     "@tamagui/metro-plugin": "^1.138.0",
+    "@types/gh-pages": "^6",
     "@types/react": "~19.1.10",
     "@types/react-native": "^0.73.0",
+    "gh-pages": "^6.3.0",
     "typescript": "~5.9.2"
   }
 }

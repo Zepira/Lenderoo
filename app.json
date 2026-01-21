@@ -12,9 +12,8 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lenderoo.lenderoo",
@@ -51,7 +50,8 @@
       "expo-web-browser"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "baseUrl": "/expo-gh-pages"
     },
     "extra": {
       "router": {},
