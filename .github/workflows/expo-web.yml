@@ -36,13 +36,16 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Setup Expo
+      - name: Setup Expo and EAS
         uses: expo/expo-github-action@v8
         with:
-          expo-version: latest
+          eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
+      - name: Install dependencies
+        run: npm ci
+
       - name: Export web build
         run: npx expo export --platform web
 
       - name: Deploy Expo
-        run: npx eas deploy
+        run: eas deploy
