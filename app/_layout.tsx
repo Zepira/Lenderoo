@@ -1,5 +1,6 @@
 import "../global.css";
 
+import * as React from "react";
 import { View } from "react-native";
 import {
   DarkTheme,
@@ -26,18 +27,40 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutContent() {
-  const { activeTheme } = useThemeContext();
+  const { activeTheme, isLoading } = useThemeContext();
   const isDark = activeTheme === "dark";
+
+  // Memoize the navigation theme to prevent context disruption
+  const navigationTheme = React.useMemo(
+    () => (isDark ? DarkTheme : DefaultTheme),
+    [isDark]
+  );
+
+  // Memoize screen options to prevent unnecessary re-renders
+  const stackScreenOptions = React.useMemo(
+    () => ({
+      contentStyle: { backgroundColor: isDark ? "#0a0a0a" : "#ffffff" },
+    }),
+    [isDark]
+  );
+
+  // Hide splash screen once theme is loaded
+  React.useEffect(() => {
+    if (!isLoading) {
+      SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
+
+  // Don't render anything until theme is loaded
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <View className={isDark ? "dark flex-1" : "flex-1"}>
-      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={navigationTheme}>
         <StatusBar style={isDark ? "light" : "dark"} />
-        <Stack
-          screenOptions={{
-            contentStyle: { backgroundColor: isDark ? "#0a0a0a" : "#ffffff" },
-          }}
-        >
+        <Stack screenOptions={stackScreenOptions}>
           <Stack.Screen
             name="(tabs)"
             options={{

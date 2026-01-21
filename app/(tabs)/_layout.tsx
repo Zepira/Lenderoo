@@ -1,23 +1,44 @@
+import * as React from "react";
 import { Tabs } from "expo-router";
 import { BookText, Users, Search, Home, UserCog } from "lucide-react-native";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
+import { useThemeContext } from "../../contexts/ThemeContext";
+import { THEME } from "@/lib/theme";
 
 export default function TabLayout() {
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+
+  const screenOptions = React.useMemo(
+    () => ({
+      tabBarActiveTintColor: isDark ? THEME.dark.accent : THEME.light.accent,
+      tabBarInactiveTintColor: isDark
+        ? THEME.dark.mutedForeground
+        : THEME.light.mutedForeground,
+      tabBarStyle: {
+        paddingTop: 8,
+        paddingBottom: 8,
+        marginBottom: 4,
+        height: 60,
+        backgroundColor: isDark
+          ? THEME.dark.background
+          : THEME.light.background,
+        borderTopColor: isDark ? THEME.dark.border : THEME.light.border,
+      },
+      headerShadowVisible: false,
+      headerStyle: {
+        backgroundColor: isDark
+          ? THEME.dark.background
+          : THEME.light.background,
+      },
+      headerTintColor: isDark ? THEME.dark.foreground : THEME.light.foreground,
+      headerRight: () => <ThemeSwitcher />,
+    }),
+    [isDark]
+  );
+
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: "#3b82f6", // blue-600
-        tabBarInactiveTintColor: "#9ca3af", // gray-400
-        tabBarStyle: {
-          paddingTop: 8,
-          paddingBottom: 8,
-          marginBottom: 4,
-          height: 60,
-        },
-        headerShadowVisible: false,
-        headerRight: () => <ThemeSwitcher />,
-      }}
-    >
+    <Tabs screenOptions={screenOptions}>
       <Tabs.Screen
         name="index"
         options={{

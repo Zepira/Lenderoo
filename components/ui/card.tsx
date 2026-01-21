@@ -1,15 +1,22 @@
 import { Text, TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { View, type ViewProps } from "react-native";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { THEME } from "@/lib/theme";
 
-function Card({ className, ...props }: ViewProps & React.RefAttributes<View>) {
+function Card({ className, style, ...props }: ViewProps & React.RefAttributes<View>) {
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
+
   return (
     <TextClassContext.Provider value="text-card-foreground">
       <View
         className={cn(
-          "bg-card border-border flex flex-col gap-6 rounded-xl border py-6 shadow-sm shadow-black/5",
+          "border-border flex flex-col gap-6 rounded-xl border py-6 shadow-sm shadow-black/5",
           className
         )}
+        style={[{ backgroundColor: theme.card }, style]}
         {...props}
       />
     </TextClassContext.Provider>

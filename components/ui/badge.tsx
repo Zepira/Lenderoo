@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils';
 import * as Slot from '@rn-primitives/slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Platform, View, ViewProps } from 'react-native';
+import { useThemeContext } from '@/contexts/ThemeContext';
+import { THEME } from '@/lib/theme';
 
 const badgeVariants = cva(
   cn(
@@ -15,16 +17,16 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: cn(
-          'bg-primary border-transparent',
-          Platform.select({ web: '[a&]:hover:bg-primary/90' })
+          'border-transparent',
+          Platform.select({ web: '[a&]:hover:opacity-90' })
         ),
         secondary: cn(
-          'bg-secondary border-transparent',
-          Platform.select({ web: '[a&]:hover:bg-secondary/90' })
+          'border-transparent',
+          Platform.select({ web: '[a&]:hover:opacity-90' })
         ),
         destructive: cn(
-          'bg-destructive border-transparent',
-          Platform.select({ web: '[a&]:hover:bg-destructive/90' })
+          'border-transparent',
+          Platform.select({ web: '[a&]:hover:opacity-90' })
         ),
         outline: Platform.select({ web: '[a&]:hover:bg-accent [a&]:hover:text-accent-foreground' }),
       },
@@ -54,11 +56,29 @@ type BadgeProps = ViewProps &
     asChild?: boolean;
   } & VariantProps<typeof badgeVariants>;
 
-function Badge({ className, variant, asChild, ...props }: BadgeProps) {
+function Badge({ className, variant, asChild, style, ...props }: BadgeProps) {
   const Component = asChild ? Slot.View : View;
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
+
+  // Get background color based on variant
+  const getBackgroundColor = () => {
+    if (variant === 'default') return theme.accent;
+    if (variant === 'secondary') return theme.secondary;
+    if (variant === 'destructive') return theme.destructive;
+    return undefined;
+  };
+
+  const backgroundColor = getBackgroundColor();
+
   return (
     <TextClassContext.Provider value={badgeTextVariants({ variant })}>
-      <Component className={cn(badgeVariants({ variant }), className)} {...props} />
+      <Component
+        className={cn(badgeVariants({ variant }), className)}
+        style={[backgroundColor ? { backgroundColor } : undefined, style]}
+        {...props}
+      />
     </TextClassContext.Provider>
   );
 }
