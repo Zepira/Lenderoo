@@ -1,4 +1,4 @@
-name: Deploy Web to GitHub Pages
+name: Deploy Web to Expo
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "22"
 
       - name: Setup Yarn
         run: corepack enable
@@ -39,35 +39,8 @@ jobs:
         with:
           expo-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-
       - name: Export web build
         run: npx expo export --platform web
 
-      - name: Fix paths for GitHub Pages subdirectory deployment
-        run: |
-        
-          # Copy 404.html for client-side routing
-          cp 404.html dist/404.html
-
-
-
-        
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy Expo
+        run: eas deploy

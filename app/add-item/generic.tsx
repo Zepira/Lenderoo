@@ -1,23 +1,15 @@
 import { useState } from "react";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
-import {
-  YStack,
-  XStack,
-  Text,
-  Input,
-  TextArea,
-  Button,
-  ScrollView,
-  Label,
-  Select,
-  Adapt,
-  Sheet,
-} from "tamagui";
-import { Check, ChevronDown } from "@tamagui/lucide-icons";
-import { Platform } from "react-native";
+import { ScrollView, View, Alert } from "react-native";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { Label } from "@/components/ui/label";
 import { useFriends, useCreateItem } from "hooks";
 import { CATEGORY_CONFIG, type ItemCategory } from "lib/constants";
 import { createItemSchema } from "lib/validation";
+import { cn } from "lib/utils";
 
 export default function AddGenericItemScreen() {
   const { category: categoryParam } = useLocalSearchParams<{
@@ -84,43 +76,54 @@ export default function AddGenericItemScreen() {
 
   const categoryLabel = CATEGORY_CONFIG[category]?.label || "Item";
 
+  const selectedFriend = friends.find((f) => f.id === borrowedBy);
+
+  const handleSelectFriend = () => {
+    if (friends.length === 0) return;
+
+    Alert.alert(
+      "Select Friend",
+      "Choose who to lend this item to",
+      [
+        ...friends.map((friend) => ({
+          text: friend.name,
+          onPress: () => setBorrowedBy(friend.id),
+        })),
+        {
+          text: "Don't lend out (add to library)",
+          onPress: () => setBorrowedBy(""),
+        },
+        { text: "Cancel", style: "cancel" },
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
     <>
       <Stack.Screen
         options={{
           title: `Add ${categoryLabel}`,
           presentation: "modal",
-          headerLeft: () => (
-            <Button chromeless onPress={handleCancel} disabled={loading}>
-              Cancel
-            </Button>
-          ),
         }}
       />
 
-      <ScrollView flex={1} bg="$background">
-        <YStack p="$4" gap="$4">
+      <ScrollView className="flex-1 bg-background">
+        <View className="p-4 gap-4">
           {errors.general && (
-            <YStack
-              p="$3"
-              bg="$red2"
-              rounded="$3"
-              borderWidth={1}
-              borderColor="$red7"
-            >
-              <Text color="$red11" fontSize="$3">
+            <View className="p-3 bg-red-50 rounded-lg border border-red-200">
+              <Text variant="small" className="text-red-600">
                 {errors.general}
               </Text>
-            </YStack>
+            </View>
           )}
 
           {/* Item Name */}
-          <YStack gap="$2">
-            <Label htmlFor="name" fontSize="$4" fontWeight="600">
+          <View className="gap-2">
+            <Label nativeID="name" className="font-semibold">
               {categoryLabel} Name *
             </Label>
             <Input
-              id="name"
               value={name}
               onChangeText={setName}
               placeholder={`e.g., ${
@@ -130,164 +133,126 @@ export default function AddGenericItemScreen() {
                   ? "Winter Jacket"
                   : "Item name"
               }`}
-              borderColor={errors.name ? "$red7" : "$borderColor"}
-              disabled={loading}
+              className={cn(errors.name && "border-red-500")}
+              editable={!loading}
+              autoFocus
             />
             {errors.name && (
-              <Text color="$red10" fontSize="$2">
+              <Text variant="muted" className="text-red-600">
                 {errors.name}
               </Text>
             )}
-          </YStack>
+          </View>
 
           {/* Description */}
-          <YStack gap="$2">
-            <Label htmlFor="description" fontSize="$4" fontWeight="600">
+          <View className="gap-2">
+            <Label nativeID="description" className="font-semibold">
               Description
             </Label>
-            <TextArea
-              id="description"
+            <Textarea
               value={description}
               onChangeText={setDescription}
               placeholder="Add any details about the item..."
               numberOfLines={3}
-              borderColor={errors.description ? "$red7" : "$borderColor"}
-              disabled={loading}
+              className={cn(errors.description && "border-red-500")}
+              editable={!loading}
             />
             {errors.description && (
-              <Text color="$red10" fontSize="$2">
+              <Text variant="muted" className="text-red-600">
                 {errors.description}
               </Text>
             )}
-          </YStack>
+          </View>
 
           {/* Friend Selector */}
-          <YStack gap="$2">
-            <Label htmlFor="borrowedBy" fontSize="$4" fontWeight="600">
+          <View className="gap-2">
+            <Label nativeID="borrowedBy" className="font-semibold">
               Lending To (Optional)
             </Label>
-            <Text fontSize="$3" color="$gray11">
+            <Text variant="muted">
               Leave empty to add to your library without lending it out
             </Text>
             {friends.length === 0 ? (
-              <YStack gap="$2" p="$3" bg="$gray2" rounded="$3">
-                <Text color="$gray11" fontSize="$3">
+              <View className="gap-2 p-3 bg-muted rounded-lg">
+                <Text variant="muted">
                   You haven't added any friends yet. You can add this item to
                   your library now and lend it out later.
                 </Text>
                 <Button
-                  size="$3"
-                  variant="outlined"
+                  variant="outline"
+                  size="sm"
                   onPress={() => router.push("/add-friend" as any)}
                 >
-                  Add a Friend
+                  <Text>Add a Friend</Text>
                 </Button>
-              </YStack>
+              </View>
             ) : (
               <>
-                <Select
-                  id="borrowedBy"
-                  value={borrowedBy}
-                  onValueChange={setBorrowedBy}
+                <Button
+                  variant="outline"
+                  onPress={handleSelectFriend}
+                  disabled={loading}
                 >
-                  <Select.Trigger iconAfter={ChevronDown}>
-                    <Select.Value placeholder="Add to library (don't lend out)" />
-                  </Select.Trigger>
-
-                  <Adapt when="sm" platform="touch">
-                    <Sheet
-                      native={Platform.OS === "ios"}
-                      modal
-                      dismissOnSnapToBottom
-                    >
-                      <Sheet.Frame>
-                        <Sheet.ScrollView>
-                          <Adapt.Contents />
-                        </Sheet.ScrollView>
-                      </Sheet.Frame>
-                      <Sheet.Overlay
-                        animation="lazy"
-                        enterStyle={{ opacity: 0 }}
-                        exitStyle={{ opacity: 0 }}
-                      />
-                    </Sheet>
-                  </Adapt>
-
-                  <Select.Content>
-                    <Select.Viewport minW={200}>
-                      <Select.Group>
-                        <Select.Label>Friends</Select.Label>
-                        {friends.map((friend, idx) => (
-                          <Select.Item
-                            key={friend.id}
-                            index={idx}
-                            value={friend.id}
-                          >
-                            <Select.ItemText>{friend.name}</Select.ItemText>
-                            <Select.ItemIndicator marginLeft="auto">
-                              <Check size={16} />
-                            </Select.ItemIndicator>
-                          </Select.Item>
-                        ))}
-                      </Select.Group>
-                    </Select.Viewport>
-                  </Select.Content>
-                </Select>
+                  <Text>
+                    {selectedFriend
+                      ? selectedFriend.name
+                      : "Add to library (don't lend out)"}
+                  </Text>
+                </Button>
                 {errors.borrowedBy && (
-                  <Text color="$red10" fontSize="$2">
+                  <Text variant="muted" className="text-red-600">
                     {errors.borrowedBy}
                   </Text>
                 )}
               </>
             )}
-          </YStack>
+          </View>
 
           {/* Notes */}
-          <YStack gap="$2">
-            <Label htmlFor="notes" fontSize="$4" fontWeight="600">
+          <View className="gap-2">
+            <Label nativeID="notes" className="font-semibold">
               Notes
             </Label>
-            <TextArea
-              id="notes"
+            <Textarea
               value={notes}
               onChangeText={setNotes}
               placeholder="Any additional notes or conditions..."
               numberOfLines={2}
-              borderColor={errors.notes ? "$red7" : "$borderColor"}
-              disabled={loading}
+              className={cn(errors.notes && "border-red-500")}
+              editable={!loading}
             />
             {errors.notes && (
-              <Text color="$red10" fontSize="$2">
+              <Text variant="muted" className="text-red-600">
                 {errors.notes}
               </Text>
             )}
-          </YStack>
+          </View>
 
           {/* Action Buttons */}
-          <XStack gap="$3" pt="$4">
+          <View className="flex-row gap-3 pt-4">
             <Button
-              flex={1}
-              variant="outlined"
+              variant="outline"
               onPress={handleCancel}
               disabled={loading}
+              className="flex-1"
             >
-              Cancel
+              <Text>Cancel</Text>
             </Button>
             <Button
-              flex={1}
-              bg="$blue10"
-              color="white"
               onPress={handleSubmit}
               disabled={loading || !name.trim()}
+              className="flex-1 bg-blue-600"
             >
-              {loading
-                ? "Saving..."
-                : borrowedBy
-                ? `Add & Lend ${categoryLabel}`
-                : `Add to Library`}
+              <Text className="text-white">
+                {loading
+                  ? "Saving..."
+                  : borrowedBy
+                  ? `Add & Lend ${categoryLabel}`
+                  : `Add to Library`}
+              </Text>
             </Button>
-          </XStack>
-        </YStack>
+          </View>
+        </View>
       </ScrollView>
     </>
   );

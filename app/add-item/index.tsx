@@ -1,9 +1,11 @@
 import { Stack, useRouter } from "expo-router";
-import { YStack, XStack, Text, Card, ScrollView } from "tamagui";
-import * as Icons from "@tamagui/lucide-icons";
+import { ScrollView, View, Pressable } from "react-native";
+import { Card, CardHeader } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
+import * as LucideIcons from "lucide-react-native";
 import { CATEGORY_CONFIG, type ItemCategory } from "lib/constants";
 
-const CATEGORY_ICONS_MAP: Record<ItemCategory, keyof typeof Icons> = {
+const CATEGORY_ICONS_MAP: Record<ItemCategory, keyof typeof LucideIcons> = {
   book: "Book",
   tool: "Wrench",
   clothing: "Shirt",
@@ -36,70 +38,54 @@ export default function SelectCategoryScreen() {
         }}
       />
 
-      <ScrollView flex={1} bg="$background">
-        <YStack p="$4" gap="$4">
-          <YStack gap="$2">
-            <Text fontSize="$7" fontWeight="700" color="$color">
+      <ScrollView className="flex-1 bg-background">
+        <View className="p-4 gap-4">
+          <View className="gap-2">
+            <Text variant="h1" className="font-bold">
               What are you lending?
             </Text>
-            <Text fontSize="$4" color="$gray11">
+            <Text variant="muted">
               Select the type of item to get started
             </Text>
-          </YStack>
+          </View>
 
-          <YStack gap="$3" pt="$2">
+          <View className="gap-3 pt-2">
             {Object.entries(CATEGORY_CONFIG).map(([key, config]) => {
               const category = key as ItemCategory;
-              const IconComponent = Icons[CATEGORY_ICONS_MAP[category]] as any;
+              const IconComponent = (LucideIcons as any)[CATEGORY_ICONS_MAP[category]];
 
               return (
-                <Card
+                <Pressable
                   key={category}
-                  elevate
-                  size="$4"
-                  bordered
-                  animation="bouncy"
-                  scale={0.98}
-                  hoverStyle={{ scale: 1 }}
-                  pressStyle={{ scale: 0.96 }}
                   onPress={() => handleCategorySelect(category)}
-                  bg="$background"
-                  cursor="pointer"
                 >
-                  <Card.Header padded>
-                    <XStack gap="$4" items="center">
-                      <YStack
-                        width={60}
-                        height={60}
-                        rounded="$4"
-                        bg="$blue2"
-                        borderColor="$blue7"
-                        borderWidth={1}
-                        items="center"
-                        justify="center"
-                      >
-                        <IconComponent size={32} color="$blue10" />
-                      </YStack>
+                  <Card className="active:scale-95">
+                    <CardHeader>
+                      <View className="flex-row gap-4 items-center">
+                        <View className="w-[60px] h-[60px] rounded-lg bg-blue-50 border border-blue-200 items-center justify-center">
+                          <IconComponent size={32} color="#3b82f6" />
+                        </View>
 
-                      <YStack flex={1} gap="$1">
-                        <Text fontSize="$6" fontWeight="600" color="$color">
-                          {config.label}
-                        </Text>
-                        {category === "book" && (
-                          <Text fontSize="$3" color="$blue10" fontWeight="500">
-                            Auto-fill from Open Library
+                        <View className="flex-1 gap-1">
+                          <Text variant="large" className="font-semibold">
+                            {config.label}
                           </Text>
-                        )}
-                      </YStack>
+                          {category === "book" && (
+                            <Text variant="small" className="text-blue-600 font-medium">
+                              Auto-fill from Open Library
+                            </Text>
+                          )}
+                        </View>
 
-                      <Icons.ChevronRight size={24} color="$gray10" />
-                    </XStack>
-                  </Card.Header>
-                </Card>
+                        <LucideIcons.ChevronRight size={24} color="#9ca3af" />
+                      </View>
+                    </CardHeader>
+                  </Card>
+                </Pressable>
               );
             })}
-          </YStack>
-        </YStack>
+          </View>
+        </View>
       </ScrollView>
     </>
   );

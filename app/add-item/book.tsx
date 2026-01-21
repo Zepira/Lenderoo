@@ -1,25 +1,23 @@
 import { useState } from "react";
 import { Stack, useRouter } from "expo-router";
 import {
-  YStack,
-  XStack,
-  Text,
-  Input,
-  Button,
   ScrollView,
-  Label,
+  View,
   Image,
-  Card,
-  Spinner,
-  Select,
-  Adapt,
-  Sheet,
-} from "tamagui";
-import { Check, ChevronDown, Search, X } from "@tamagui/lucide-icons";
-import { Platform } from "react-native";
+  ActivityIndicator,
+  Alert,
+  Pressable,
+} from "react-native";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { Label } from "@/components/ui/label";
+import { Card, CardHeader } from "@/components/ui/card";
+import { Search, X } from "lucide-react-native";
 import { useFriends, useCreateItem } from "hooks";
 import { createItemSchema } from "lib/validation";
 import type { BookMetadata } from "lib/types";
+import { cn } from "lib/utils";
 
 interface GoodreadsBook {
   title: string;
@@ -186,153 +184,148 @@ export default function AddBookScreen() {
     router.back();
   };
 
+  const selectedFriend = friends.find((f) => f.id === borrowedBy);
+
+  const handleSelectFriend = () => {
+    if (friends.length === 0) return;
+
+    Alert.alert(
+      "Select Friend",
+      "Choose who to lend this book to",
+      [
+        ...friends.map((friend) => ({
+          text: friend.name,
+          onPress: () => setBorrowedBy(friend.id),
+        })),
+        {
+          text: "Don't lend out (add to library)",
+          onPress: () => setBorrowedBy(""),
+        },
+        { text: "Cancel", style: "cancel" },
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
     <>
       <Stack.Screen
         options={{
           title: "Add Book",
           presentation: "modal",
-          headerLeft: () => (
-            <Button chromeless onPress={handleCancel} disabled={saving}>
-              Cancel
-            </Button>
-          ),
         }}
       />
 
-      <ScrollView flex={1} bg="$background">
-        <YStack p="$4" gap="$4">
+      <ScrollView className="flex-1 bg-background">
+        <View className="p-4 gap-4">
           {errors.general && (
-            <YStack
-              p="$3"
-              bg="$red2"
-              rounded="$3"
-              borderWidth={1}
-              borderColor="$red7"
-            >
-              <Text color="$red11" fontSize="$3">
+            <View className="p-3 bg-red-50 rounded-lg border border-red-200">
+              <Text variant="small" className="text-red-600">
                 {errors.general}
               </Text>
-            </YStack>
+            </View>
           )}
 
           {/* Search Section */}
           {!selectedBook && (
-            <YStack gap="$3">
-              <YStack gap="$2">
-                <Label fontSize="$5" fontWeight="600">
+            <View className="gap-3">
+              <View className="gap-2">
+                <Label className="text-xl font-semibold">
                   Search for a Book
                 </Label>
-                <Text fontSize="$3" color="$gray11">
+                <Text variant="muted">
                   Search Open Library to auto-fill book details
                 </Text>
-              </YStack>
+              </View>
 
-              <XStack gap="$2">
+              <View className="flex-row gap-2">
                 <Input
-                  flex={1}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   placeholder="Enter book title or author..."
                   onSubmitEditing={handleSearchGoodreads}
+                  className="flex-1"
                 />
                 <Button
-                  icon={Search}
                   onPress={handleSearchGoodreads}
                   disabled={!searchQuery.trim() || searching}
-                  bg="$blue10"
-                  color="white"
+                  className="bg-blue-600"
                 >
                   {searching ? (
-                    <Spinner size="small" color="white" />
+                    <ActivityIndicator size="small" color="white" />
                   ) : (
-                    "Search"
+                    <>
+                      <Search size={16} color="white" />
+                      <Text className="text-white">Search</Text>
+                    </>
                   )}
                 </Button>
-              </XStack>
+              </View>
 
               {searchResults.length > 0 && (
-                <YStack gap="$2">
-                  <Text fontSize="$4" fontWeight="600">
+                <View className="gap-2">
+                  <Text variant="large" className="font-semibold">
                     Search Results
                   </Text>
                   {searchResults.map((book, index) => (
-                    <Card
+                    <Pressable
                       key={index}
-                      elevate
-                      bordered
-                      pressStyle={{ scale: 0.98 }}
                       onPress={() => handleSelectBook(book)}
-                      cursor="pointer"
                     >
-                      <Card.Header padded>
-                        <XStack gap="$3" items="center">
-                          {book.coverUrl && (
-                            <Image
-                              source={{ uri: book.coverUrl }}
-                              width={50}
-                              height={75}
-                              resizeMode="cover"
-                              rounded="$2"
-                            />
-                          )}
-                          <YStack flex={1} gap="$1">
-                            <Text fontSize="$4" fontWeight="600">
-                              {book.title}
-                            </Text>
-                            <Text fontSize="$3" color="$gray11">
-                              {book.author}
-                            </Text>
-                            {book.series && (
-                              <Text fontSize="$2" color="$blue10">
-                                {book.series}{" "}
-                                {book.seriesNumber && `#${book.seriesNumber}`}
-                              </Text>
+                      <Card className="active:scale-95">
+                        <CardHeader>
+                          <View className="flex-row gap-3 items-center">
+                            {book.coverUrl && (
+                              <Image
+                                source={{ uri: book.coverUrl }}
+                                style={{ width: 50, height: 75 }}
+                                resizeMode="cover"
+                                className="rounded"
+                              />
                             )}
-                          </YStack>
-                        </XStack>
-                      </Card.Header>
-                    </Card>
+                            <View className="flex-1 gap-1">
+                              <Text variant="large" className="font-semibold">
+                                {book.title}
+                              </Text>
+                              <Text variant="muted">{book.author}</Text>
+                              {book.series && (
+                                <Text variant="small" className="text-blue-600">
+                                  {book.series}{" "}
+                                  {book.seriesNumber && `#${book.seriesNumber}`}
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+                        </CardHeader>
+                      </Card>
+                    </Pressable>
                   ))}
-                  <Button
-                    variant="outlined"
-                    onPress={handleManualEntry}
-                    size="$3"
-                  >
-                    Can't find it? Enter manually
+                  <Button variant="outline" size="sm" onPress={handleManualEntry}>
+                    <Text>Can't find it? Enter manually</Text>
                   </Button>
-                </YStack>
+                </View>
               )}
 
               {searchQuery &&
                 !searching &&
                 searchResults.length === 0 &&
                 !selectedBook && (
-                  <Button variant="outlined" onPress={handleManualEntry}>
-                    Enter "{searchQuery}" manually
+                  <Button variant="outline" onPress={handleManualEntry}>
+                    <Text>Enter "{searchQuery}" manually</Text>
                   </Button>
                 )}
-            </YStack>
+            </View>
           )}
 
           {/* Form Section - shown after search or manual entry */}
           {(selectedBook || title) && (
             <>
               {selectedBook && (
-                <XStack
-                  justify="space-between"
-                  items="center"
-                  p="$3"
-                  bg="$green2"
-                  rounded="$3"
-                >
-                  <Text fontSize="$3" color="$green11">
+                <View className="flex-row justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <Text variant="small" className="text-green-600">
                     ✓ Book details loaded from Open Library
                   </Text>
-                  <Button
-                    size="$2"
-                    chromeless
-                    icon={X}
+                  <Pressable
                     onPress={() => {
                       setSelectedBook(null);
                       setTitle("");
@@ -344,233 +337,191 @@ export default function AddBookScreen() {
                       setDescription("");
                       setGoodreadsUrl("");
                     }}
-                  />
-                </XStack>
+                    className="p-1"
+                  >
+                    <X size={18} color="#9ca3af" />
+                  </Pressable>
+                </View>
               )}
 
               {/* Cover Preview */}
               {coverUrl && (
-                <YStack items="center" gap="$2">
+                <View className="items-center gap-2">
                   <Image
                     source={{ uri: coverUrl }}
-                    width={150}
-                    height={225}
+                    style={{ width: 150, height: 225 }}
                     resizeMode="cover"
-                    rounded="$3"
+                    className="rounded-lg"
                   />
-                </YStack>
+                </View>
               )}
 
               {/* Book Title */}
-              <YStack gap="$2">
-                <Label htmlFor="title" fontSize="$4" fontWeight="600">
+              <View className="gap-2">
+                <Label nativeID="title" className="font-semibold">
                   Title *
                 </Label>
                 <Input
-                  id="title"
                   value={title}
                   onChangeText={setTitle}
                   placeholder="Book title"
-                  borderColor={errors.name ? "$red7" : "$borderColor"}
+                  className={cn(errors.name && "border-red-500")}
                 />
                 {errors.name && (
-                  <Text color="$red10" fontSize="$2">
+                  <Text variant="muted" className="text-red-600">
                     {errors.name}
                   </Text>
                 )}
-              </YStack>
+              </View>
 
               {/* Author */}
-              <YStack gap="$2">
-                <Label htmlFor="author" fontSize="$4" fontWeight="600">
+              <View className="gap-2">
+                <Label nativeID="author" className="font-semibold">
                   Author
                 </Label>
                 <Input
-                  id="author"
                   value={author}
                   onChangeText={setAuthor}
                   placeholder="Author name"
                 />
-              </YStack>
+              </View>
 
               {/* Series Info */}
-              <XStack gap="$3">
-                <YStack flex={2} gap="$2">
-                  <Label htmlFor="series" fontSize="$4" fontWeight="600">
+              <View className="flex-row gap-3">
+                <View className="flex-[2] gap-2">
+                  <Label nativeID="series" className="font-semibold">
                     Series
                   </Label>
                   <Input
-                    id="series"
                     value={series}
                     onChangeText={setSeries}
                     placeholder="Series name"
                   />
-                </YStack>
-                <YStack flex={1} gap="$2">
-                  <Label htmlFor="seriesNumber" fontSize="$4" fontWeight="600">
+                </View>
+                <View className="flex-1 gap-2">
+                  <Label nativeID="seriesNumber" className="font-semibold">
                     Book #
                   </Label>
                   <Input
-                    id="seriesNumber"
                     value={seriesNumber}
                     onChangeText={setSeriesNumber}
                     placeholder="1"
                     keyboardType="numeric"
                   />
-                </YStack>
-              </XStack>
+                </View>
+              </View>
 
               {/* Genre */}
-              <YStack gap="$2">
-                <Label htmlFor="genre" fontSize="$4" fontWeight="600">
+              <View className="gap-2">
+                <Label nativeID="genre" className="font-semibold">
                   Genre
                 </Label>
                 <Input
-                  id="genre"
                   value={genre}
                   onChangeText={setGenre}
                   placeholder="Fantasy, Science Fiction, etc."
                 />
-              </YStack>
+              </View>
 
               {/* Description */}
-              <YStack gap="$2">
-                <Label htmlFor="description" fontSize="$4" fontWeight="600">
+              <View className="gap-2">
+                <Label nativeID="description" className="font-semibold">
                   Description
                 </Label>
                 <Input
-                  id="description"
                   value={description}
                   onChangeText={setDescription}
                   placeholder="Book description or synopsis"
                   multiline
                   numberOfLines={3}
                 />
-              </YStack>
+              </View>
 
               {/* Friend Selector */}
-              <YStack gap="$2">
-                <Label htmlFor="borrowedBy" fontSize="$4" fontWeight="600">
+              <View className="gap-2">
+                <Label nativeID="borrowedBy" className="font-semibold">
                   Lending To (Optional)
                 </Label>
-                <Text fontSize="$3" color="$gray11">
+                <Text variant="muted">
                   Leave empty to add to your library without lending it out
                 </Text>
                 {friends.length === 0 ? (
-                  <YStack gap="$2" p="$3" bg="$gray2" rounded="$3">
-                    <Text color="$gray11" fontSize="$3">
+                  <View className="gap-2 p-3 bg-muted rounded-lg">
+                    <Text variant="muted">
                       You haven't added any friends yet. You can add this book
                       to your library now and lend it out later.
                     </Text>
                     <Button
-                      size="$3"
-                      variant="outlined"
+                      variant="outline"
+                      size="sm"
                       onPress={() => router.push("/add-friend" as any)}
                     >
-                      Add a Friend
+                      <Text>Add a Friend</Text>
                     </Button>
-                  </YStack>
+                  </View>
                 ) : (
                   <>
-                    <Select
-                      id="borrowedBy"
-                      value={borrowedBy}
-                      onValueChange={setBorrowedBy}
+                    <Button
+                      variant="outline"
+                      onPress={handleSelectFriend}
+                      disabled={saving}
                     >
-                      <Select.Trigger iconAfter={ChevronDown}>
-                        <Select.Value placeholder="Add to library (don't lend out)" />
-                      </Select.Trigger>
-
-                      <Adapt when="sm" platform="touch">
-                        <Sheet
-                          native={Platform.OS === "ios"}
-                          modal
-                          dismissOnSnapToBottom
-                        >
-                          <Sheet.Frame>
-                            <Sheet.ScrollView>
-                              <Adapt.Contents />
-                            </Sheet.ScrollView>
-                          </Sheet.Frame>
-                          <Sheet.Overlay
-                            animation="lazy"
-                            enterStyle={{ opacity: 0 }}
-                            exitStyle={{ opacity: 0 }}
-                          />
-                        </Sheet>
-                      </Adapt>
-
-                      <Select.Content>
-                        <Select.Viewport minW={200}>
-                          <Select.Group>
-                            <Select.Label>Friends</Select.Label>
-                            {friends.map((friend, idx) => (
-                              <Select.Item
-                                key={friend.id}
-                                index={idx}
-                                value={friend.id}
-                              >
-                                <Select.ItemText>{friend.name}</Select.ItemText>
-                                <Select.ItemIndicator marginLeft="auto">
-                                  <Check size={16} />
-                                </Select.ItemIndicator>
-                              </Select.Item>
-                            ))}
-                          </Select.Group>
-                        </Select.Viewport>
-                      </Select.Content>
-                    </Select>
+                      <Text>
+                        {selectedFriend
+                          ? selectedFriend.name
+                          : "Add to library (don't lend out)"}
+                      </Text>
+                    </Button>
                     {errors.borrowedBy && (
-                      <Text color="$red10" fontSize="$2">
+                      <Text variant="muted" className="text-red-600">
                         {errors.borrowedBy}
                       </Text>
                     )}
                   </>
                 )}
-              </YStack>
+              </View>
 
               {/* Notes */}
-              <YStack gap="$2">
-                <Label htmlFor="notes" fontSize="$4" fontWeight="600">
+              <View className="gap-2">
+                <Label nativeID="notes" className="font-semibold">
                   Notes
                 </Label>
                 <Input
-                  id="notes"
                   value={notes}
                   onChangeText={setNotes}
                   placeholder="Any additional notes..."
                   multiline
                   numberOfLines={2}
                 />
-              </YStack>
+              </View>
 
               {/* Action Buttons */}
-              <XStack gap="$3" pt="$2">
+              <View className="flex-row gap-3 pt-2">
                 <Button
-                  flex={1}
-                  variant="outlined"
+                  variant="outline"
                   onPress={handleCancel}
                   disabled={saving}
+                  className="flex-1"
                 >
-                  Cancel
+                  <Text>Cancel</Text>
                 </Button>
                 <Button
-                  flex={1}
-                  bg="$blue10"
-                  color="white"
                   onPress={handleSubmit}
                   disabled={saving || !title.trim()}
+                  className="flex-1 bg-blue-600"
                 >
-                  {saving
-                    ? "Saving..."
-                    : borrowedBy
-                    ? "Add & Lend Book"
-                    : "Add to Library"}
+                  <Text className="text-white">
+                    {saving
+                      ? "Saving..."
+                      : borrowedBy
+                      ? "Add & Lend Book"
+                      : "Add to Library"}
+                  </Text>
                 </Button>
-              </XStack>
+              </View>
             </>
           )}
-        </YStack>
+        </View>
       </ScrollView>
     </>
   );
