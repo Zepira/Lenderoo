@@ -70,6 +70,17 @@ function RootLayoutContent() {
           />
 
           <Stack.Screen
+            name="add-item"
+            options={{
+              headerShown: false,
+              presentation: "modal",
+              animation: "slide_from_bottom",
+              gestureEnabled: true,
+              gestureDirection: "vertical",
+            }}
+          />
+
+          <Stack.Screen
             name="modal"
             options={{
               title: "Lenderoo",

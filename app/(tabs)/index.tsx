@@ -1,13 +1,15 @@
 import { useEffect, useMemo } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
-import { Plus } from "lucide-react-native";
+import { Construction, Plus } from "lucide-react-native";
 import { ItemList } from "components/ItemList";
 import { useActiveItems } from "hooks/useItems";
 import { useFriends } from "hooks/useFriends";
 import { seedDemoData } from "lib/database";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { THEME } from "@/lib/theme";
+import { useThemeContext } from "@/contexts/ThemeContext";
 
 export default function ItemsScreen() {
   const { items, loading, refresh } = useActiveItems();
@@ -25,6 +27,9 @@ export default function ItemsScreen() {
       return acc;
     }, {} as Record<string, (typeof friends)[0]>);
   }, [friends]);
+  const { activeTheme } = useThemeContext();
+
+  const isDark = activeTheme === "dark";
 
   const handleItemPress = (item: (typeof items)[0]) => {
     router.push(`/item/${item.id}` as any);
@@ -35,31 +40,12 @@ export default function ItemsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      <ItemList
-        items={items}
-        friendsMap={friendsMap}
-        onItemPress={handleItemPress}
-        onRefresh={refresh}
-        loading={loading}
-        emptyState={{
-          title: "No items yet",
-          message: "Start tracking items you've lent to friends",
-          actionLabel: "Add Your First Item",
-          onAction: handleAddItem,
-        }}
+    <View className="flex-1 bg-background items-center justify-center space-y-4">
+      <Construction
+        size={150}
+        color={isDark ? THEME.dark.primary : THEME.light.primary}
       />
-
-      {/* Floating Action Button */}
-      {items.length > 0 && (
-        <Button
-          size="icon"
-          className="absolute bottom-6 right-4 w-14 h-14 rounded-full shadow-lg"
-          onPress={handleAddItem}
-        >
-          <Plus size={24} />
-        </Button>
-      )}
+      <Text className="h1">This page is under construction.</Text>
     </View>
   );
 }

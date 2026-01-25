@@ -4,9 +4,15 @@ import { Plus } from "lucide-react-native";
 import { FriendList } from "components/FriendList";
 import { useFriends } from "hooks/useFriends";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { Construction } from "lucide-react-native";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { THEME } from "@/lib/theme";
 
 export default function FriendsScreen() {
   const { friends, loading, refresh } = useFriends();
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
 
   const handleFriendPress = (friend: (typeof friends)[0]) => {
     router.push(`/friend/${friend.id}` as any);
@@ -17,31 +23,13 @@ export default function FriendsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      <FriendList
-        friends={friends}
-        onFriendPress={handleFriendPress}
-        onRefresh={refresh}
-        loading={loading}
-        detailed
-        emptyState={{
-          title: "No friends yet",
-          message: "Add friends to start lending them items",
-          actionLabel: "Add Your First Friend",
-          onAction: handleAddFriend,
-        }}
+    <View className="flex-1 bg-background items-center justify-center space-y-4">
+      <Construction
+        size={150}
+        color={isDark ? THEME.dark.primary : THEME.light.primary}
       />
 
-      {/* Floating Action Button */}
-      {friends.length > 0 && (
-        <Button
-          size="icon"
-          className="absolute bottom-6 right-4 w-14 h-14 rounded-full shadow-lg"
-          onPress={handleAddFriend}
-        >
-          <Plus size={24} />
-        </Button>
-      )}
+      <Text className="h1">This page is under construction.</Text>
     </View>
   );
 }

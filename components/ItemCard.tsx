@@ -44,8 +44,8 @@ export function ItemCard({
   detailed = false,
 }: ItemCardProps) {
   const status: ItemStatus = calculateItemStatus(item);
-  const isOverdue = status === "overdue";
-  const daysUntil = item.dueDate ? daysUntilDue(item.dueDate) : undefined;
+  // const isOverdue = status === "overdue";
+  // const daysUntil = item.dueDate ? daysUntilDue(item.dueDate) : undefined;
 
   return (
     <Pressable onPress={onPress}>
@@ -127,7 +127,7 @@ export function ItemCard({
           <View className="flex-row justify-between items-center w-full">
             {/* Left side: Status or Date */}
             <View className="gap-1">
-              {item.dueDate && !item.returnedDate && friend && (
+              {/* {item.dueDate && !item.returnedDate && friend && (
                 <View className="flex-row gap-1.5 items-center">
                   <Clock size={14} color={isOverdue ? "red" : "gray"} />
                   <Text
@@ -143,7 +143,7 @@ export function ItemCard({
                       : `Due ${formatRelativeTime(item.dueDate)}`}
                   </Text>
                 </View>
-              )}
+              )} */}
               {!item.dueDate &&
                 !item.returnedDate &&
                 friend &&

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Stack, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import {
   ScrollView,
   View,
@@ -16,6 +16,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Search, X } from "lucide-react-native";
 import { useFriends, useCreateItem } from "hooks";
 import { createItemSchema } from "lib/validation";
+import { FloatingBackButton } from "components/FloatingBackButton";
 import type { BookMetadata } from "lib/types";
 import { cn } from "lib/utils";
 
@@ -208,13 +209,8 @@ export default function AddBookScreen() {
   };
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: "Add Book",
-          presentation: "modal",
-        }}
-      />
+    <View className="flex-1 bg-background">
+      <FloatingBackButton />
 
       <ScrollView className="flex-1 bg-background">
         <View className="p-4 gap-4">
@@ -523,6 +519,6 @@ export default function AddBookScreen() {
           )}
         </View>
       </ScrollView>
-    </>
+    </View>
   );
 }

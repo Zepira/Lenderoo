@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScrollView, View, Alert, Pressable } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import * as LucideIcons from "lucide-react-native";
 import { useFriend, useDeleteFriend, useFriendItems } from "hooks/useFriends";
 import { ItemCard } from "components/ItemCard";
+import { FloatingBackButton } from "components/FloatingBackButton";
 import { getInitials, formatCount } from "lib/utils";
 import type { Item } from "lib/types";
 
@@ -81,17 +82,8 @@ export default function FriendDetailScreen() {
   };
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: friend.name,
-          headerRight: () => (
-            <Pressable onPress={handleEdit} disabled={deleting} className="p-2">
-              <LucideIcons.Edit3 size={20} color="#3b82f6" />
-            </Pressable>
-          ),
-        }}
-      />
+    <View className="flex-1 bg-background">
+      <FloatingBackButton />
 
       <ScrollView className="flex-1 bg-background">
         <View className="gap-4">
@@ -255,6 +247,6 @@ export default function FriendDetailScreen() {
           </View>
         </View>
       </ScrollView>
-    </>
+    </View>
   );
 }

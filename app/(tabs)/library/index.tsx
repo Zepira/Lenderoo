@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
-import { Plus } from "lucide-react-native";
 import { ItemList } from "components/ItemList";
 import { useItems } from "hooks/useItems";
 import { useFriends } from "hooks/useFriends";
@@ -124,17 +123,6 @@ export default function ItemsScreen() {
           onAction: handleAddItem,
         }}
       />
-
-      {/* Floating Action Button */}
-      {items.length > 0 && (
-        <Button
-          size="icon"
-          className="absolute bottom-6 right-4 w-14 h-14 rounded-full shadow-lg"
-          onPress={handleAddItem}
-        >
-          <Plus size={24} />
-        </Button>
-      )}
     </View>
   );
 }

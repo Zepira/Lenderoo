@@ -14,10 +14,13 @@ import { useThemeContext } from "contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
+import { THEME } from "@/lib/theme";
+import { DarkTheme } from "@react-navigation/native";
 
 export default function SettingsScreen() {
-  const { themeMode, setThemeMode } = useThemeContext();
+  const { themeMode, setThemeMode, activeTheme } = useThemeContext();
   const [exporting, setExporting] = useState(false);
+  const isDark = activeTheme === "dark";
 
   const handleExportData = async () => {
     try {
@@ -98,8 +101,11 @@ export default function SettingsScreen() {
               className={cn("flex-1", themeMode === "light" && "bg-blue-600")}
               onPress={() => setThemeMode("light")}
             >
-              <Sun size={16} />
-              <Text className={themeMode === "light" ? "text-white" : ""}>
+              <Sun
+                size={16}
+                color={isDark ? THEME.dark.primary : THEME.light.primary}
+              />
+              <Text className={themeMode === "dark" ? "text-white" : ""}>
                 Light
               </Text>
             </Button>
@@ -138,7 +144,10 @@ export default function SettingsScreen() {
             onPress={handleExportData}
             disabled={exporting}
           >
-            <Download size={20} />
+            <Download
+              size={20}
+              color={themeMode === "dark" ? "#888" : "black"}
+            />
             <Text>Export Data</Text>
           </Button>
 
@@ -147,7 +156,10 @@ export default function SettingsScreen() {
             className="justify-start"
             onPress={handleSeedDemo}
           >
-            <Database size={20} />
+            <Database
+              size={20}
+              color={themeMode === "dark" ? "#888" : "black"}
+            />
             <Text>Add Demo Data</Text>
           </Button>
 

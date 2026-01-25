@@ -1,80 +1,76 @@
-import { useState } from 'react'
-import { View, ScrollView, Pressable } from 'react-native'
-import { Stack, useRouter } from 'expo-router'
-import { useCreateFriend } from 'hooks'
-import { createFriendSchema } from 'lib/validation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Text } from '@/components/ui/text'
-import { cn } from '@/lib/utils'
+import { useState } from "react";
+import { View, ScrollView, Pressable } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { useCreateFriend } from "hooks";
+import { createFriendSchema } from "lib/validation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/utils";
 
 export default function AddFriendScreen() {
-  const router = useRouter()
-  const { createFriend, loading } = useCreateFriend()
+  const router = useRouter();
+  const { createFriend, loading } = useCreateFriend();
 
   // Form state
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
   // Validation errors
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async () => {
     try {
       // Clear previous errors
-      setErrors({})
+      setErrors({});
 
       // Validate with Zod
       const friendData = {
         name: name.trim(),
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
-      }
+      };
 
-      createFriendSchema.parse(friendData)
+      createFriendSchema.parse(friendData);
 
       // Create friend
       await createFriend({
         ...friendData,
-        userId: 'demo-user', // TODO: Replace with real user ID from auth
-      })
+        userId: "demo-user", // TODO: Replace with real user ID from auth
+      });
 
       // Navigate back
-      router.back()
+      router.back();
     } catch (error) {
-      if (error && typeof error === 'object' && 'issues' in error) {
+      if (error && typeof error === "object" && "issues" in error) {
         // Zod validation error
-        const zodError = error as { issues: Array<{ path: Array<string | number>; message: string }> }
-        const fieldErrors: Record<string, string> = {}
+        const zodError = error as {
+          issues: Array<{ path: Array<string | number>; message: string }>;
+        };
+        const fieldErrors: Record<string, string> = {};
         zodError.issues.forEach((err) => {
           if (err.path.length > 0) {
-            fieldErrors[err.path[0] as string] = err.message
+            fieldErrors[err.path[0] as string] = err.message;
           }
-        })
-        setErrors(fieldErrors)
+        });
+        setErrors(fieldErrors);
       } else {
-        console.error('Failed to create friend:', error)
-        setErrors({ general: 'Failed to add friend. Please try again.' })
+        console.error("Failed to create friend:", error);
+        setErrors({ general: "Failed to add friend. Please try again." });
       }
     }
-  }
+  };
 
   const handleCancel = () => {
-    router.back()
-  }
+    router.back();
+  };
 
   return (
     <>
       <Stack.Screen
         options={{
-          title: 'Add Friend',
-          presentation: 'modal',
-          headerLeft: () => (
-            <Pressable onPress={handleCancel} disabled={loading}>
-              <Text className="text-blue-600">Cancel</Text>
-            </Pressable>
-          ),
+          headerShown: false,
         }}
       />
 
@@ -170,11 +166,13 @@ export default function AddFriendScreen() {
               onPress={handleSubmit}
               disabled={loading}
             >
-              <Text className="text-white">{loading ? 'Saving...' : 'Add Friend'}</Text>
+              <Text className="text-white">
+                {loading ? "Saving..." : "Add Friend"}
+              </Text>
             </Button>
           </View>
         </View>
       </ScrollView>
     </>
-  )
+  );
 }

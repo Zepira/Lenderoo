@@ -33,7 +33,7 @@ export default function FriendsScreen() {
       />
 
       {/* Floating Action Button */}
-      {friends.length > 0 && (
+      {/* {friends.length > 0 && (
         <Button
           size="icon"
           className="absolute bottom-6 right-4 w-14 h-14 rounded-full shadow-lg"
@@ -41,7 +41,7 @@ export default function FriendsScreen() {
         >
           <Plus size={24} />
         </Button>
-      )}
+      )} */}
     </View>
   );
 }

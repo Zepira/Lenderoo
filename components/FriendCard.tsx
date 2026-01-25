@@ -30,7 +30,10 @@ export function FriendCard({
   const hasActiveItems = friend.currentItemsBorrowed > 0;
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+    >
       <Card>
         <CardHeader>
           <View className="flex-row gap-3 items-center">
@@ -39,8 +42,8 @@ export function FriendCard({
               {friend.avatarUrl ? (
                 <AvatarImage source={{ uri: friend.avatarUrl }} />
               ) : (
-                <AvatarFallback className="bg-blue-100">
-                  <Text variant="large" className="text-blue-600 font-semibold">
+                <AvatarFallback className="">
+                  <Text variant="large" className=" font-semibold">
                     {getInitials(friend.name)}
                   </Text>
                 </AvatarFallback>
@@ -59,7 +62,7 @@ export function FriendCard({
                 <View className="gap-1">
                   {friend.email && (
                     <View className="flex-row gap-1.5 items-center">
-                      <Mail size={14} color="#888" />
+                      <Mail size={14} />
                       <Text
                         variant="small"
                         className="text-muted-foreground"
@@ -87,8 +90,8 @@ export function FriendCard({
 
             {/* Active Items Indicator */}
             {hasActiveItems && (
-              <View className="bg-blue-100 px-2.5 py-1.5 rounded-full min-w-[32px] items-center">
-                <Text variant="large" className="font-bold text-blue-600">
+              <View className="bg-muted-foreground px-2.5 py-1.5 rounded-full min-w-[32px] items-center">
+                <Text variant="large" className="font-bold ">
                   {friend.currentItemsBorrowed}
                 </Text>
               </View>

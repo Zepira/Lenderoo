@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Stack, useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScrollView, View, Alert } from "react-native";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useFriends, useCreateItem } from "hooks";
 import { CATEGORY_CONFIG, type ItemCategory } from "lib/constants";
 import { createItemSchema } from "lib/validation";
+import { FloatingBackButton } from "components/FloatingBackButton";
 import { cn } from "lib/utils";
 
 export default function AddGenericItemScreen() {
@@ -100,13 +101,8 @@ export default function AddGenericItemScreen() {
   };
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: `Add ${categoryLabel}`,
-          presentation: "modal",
-        }}
-      />
+    <View className="flex-1 bg-background">
+      <FloatingBackButton />
 
       <ScrollView className="flex-1 bg-background">
         <View className="p-4 gap-4">
@@ -254,6 +250,6 @@ export default function AddGenericItemScreen() {
           </View>
         </View>
       </ScrollView>
-    </>
+    </View>
   );
 }

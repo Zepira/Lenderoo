@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScrollView, View, Image, Alert, Pressable } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -10,6 +10,7 @@ import { useItem, useDeleteItem, useMarkItemReturned } from "hooks/useItems";
 import { useFriend } from "hooks/useFriends";
 import { CategoryBadge } from "components/CategoryBadge";
 import { StatusBadge } from "components/StatusBadge";
+import { FloatingBackButton } from "components/FloatingBackButton";
 import {
   formatDate,
   formatRelativeTime,
@@ -89,21 +90,8 @@ export default function ItemDetailScreen() {
   };
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: item.name,
-          headerRight: () => (
-            <Pressable
-              onPress={handleEdit}
-              disabled={deleting || returning}
-              className="p-2"
-            >
-              <LucideIcons.Edit3 size={20} color="#3b82f6" />
-            </Pressable>
-          ),
-        }}
-      />
+    <View className="flex-1 bg-background">
+      <FloatingBackButton />
 
       <ScrollView className="flex-1 bg-background">
         <View className="gap-4">
@@ -389,6 +377,6 @@ export default function ItemDetailScreen() {
           </View>
         </View>
       </ScrollView>
-    </>
+    </View>
   );
 }

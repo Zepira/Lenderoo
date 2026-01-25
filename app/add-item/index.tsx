@@ -1,7 +1,8 @@
-import { Stack, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { ScrollView, View, Pressable } from "react-native";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
+import { FloatingBackButton } from "components/FloatingBackButton";
 import * as LucideIcons from "lucide-react-native";
 import { CATEGORY_CONFIG, type ItemCategory } from "lib/constants";
 
@@ -30,13 +31,8 @@ export default function SelectCategoryScreen() {
   };
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: "Add Item",
-          presentation: "modal",
-        }}
-      />
+    <View className="flex-1 bg-background">
+      <FloatingBackButton />
 
       <ScrollView className="flex-1 bg-background">
         <View className="p-4 gap-4">
@@ -44,15 +40,15 @@ export default function SelectCategoryScreen() {
             <Text variant="h1" className="font-bold">
               What are you lending?
             </Text>
-            <Text variant="muted">
-              Select the type of item to get started
-            </Text>
+            <Text variant="muted">Select the type of item to get started</Text>
           </View>
 
           <View className="gap-3 pt-2">
             {Object.entries(CATEGORY_CONFIG).map(([key, config]) => {
               const category = key as ItemCategory;
-              const IconComponent = (LucideIcons as any)[CATEGORY_ICONS_MAP[category]];
+              const IconComponent = (LucideIcons as any)[
+                CATEGORY_ICONS_MAP[category]
+              ];
 
               return (
                 <Pressable
@@ -71,7 +67,10 @@ export default function SelectCategoryScreen() {
                             {config.label}
                           </Text>
                           {category === "book" && (
-                            <Text variant="small" className="text-blue-600 font-medium">
+                            <Text
+                              variant="small"
+                              className="text-blue-600 font-medium"
+                            >
                               Auto-fill from Open Library
                             </Text>
                           )}
@@ -87,6 +86,6 @@ export default function SelectCategoryScreen() {
           </View>
         </View>
       </ScrollView>
-    </>
+    </View>
   );
 }
