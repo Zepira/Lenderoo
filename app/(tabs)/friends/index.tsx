@@ -9,7 +9,7 @@ export default function FriendsScreen() {
   const { friends, loading, refresh } = useFriends();
 
   const handleFriendPress = (friend: (typeof friends)[0]) => {
-    router.push(`/friend/${friend.id}` as any);
+    router.push(`/friends/${friend.id}` as any);
   };
 
   const handleAddFriend = () => {

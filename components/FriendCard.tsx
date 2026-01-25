@@ -4,34 +4,38 @@
  * Displays a summary of a friend in a card format
  */
 
-import { View, Pressable } from 'react-native'
-import { Mail, Phone, Package } from 'lucide-react-native'
-import type { Friend } from 'lib/types'
-import { getInitials, formatCount } from 'lib/utils'
-import { Card, CardHeader, CardFooter } from '@/components/ui/card'
-import { Text } from '@/components/ui/text'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { cn } from '@/lib/utils'
+import { View, Pressable } from "react-native";
+import { Mail, Phone, Package } from "lucide-react-native";
+import type { Friend } from "lib/types";
+import { getInitials, formatCount } from "lib/utils";
+import { Card, CardHeader, CardFooter } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 interface FriendCardProps {
   /** The friend to display */
-  friend: Friend
+  friend: Friend;
   /** Press handler for the card */
-  onPress?: () => void
+  onPress?: () => void;
   /** Whether to show detailed information */
-  detailed?: boolean
+  detailed?: boolean;
 }
 
-export function FriendCard({ friend, onPress, detailed = false }: FriendCardProps) {
-  const hasActiveItems = friend.currentItemsBorrowed > 0
+export function FriendCard({
+  friend,
+  onPress,
+  detailed = false,
+}: FriendCardProps) {
+  const hasActiveItems = friend.currentItemsBorrowed > 0;
 
   return (
-    <Pressable onPress={onPress}>
-      <Card className="active:scale-95 transition-transform">
+    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+      <Card>
         <CardHeader>
           <View className="flex-row gap-3 items-center">
             {/* Friend Avatar */}
-            <Avatar className="w-12 h-12">
+            <Avatar className="w-12 h-12" alt={friend.name}>
               {friend.avatarUrl ? (
                 <AvatarImage source={{ uri: friend.avatarUrl }} />
               ) : (
@@ -51,24 +55,32 @@ export function FriendCard({ friend, onPress, detailed = false }: FriendCardProp
               </Text>
 
               {/* Contact Info */}
-              {detailed && (friend.email || friend.phone) && (
+              {detailed && friend.email && (
                 <View className="gap-1">
                   {friend.email && (
                     <View className="flex-row gap-1.5 items-center">
                       <Mail size={14} color="#888" />
-                      <Text variant="small" className="text-muted-foreground" numberOfLines={1}>
+                      <Text
+                        variant="small"
+                        className="text-muted-foreground"
+                        numberOfLines={1}
+                      >
                         {friend.email}
                       </Text>
                     </View>
                   )}
-                  {friend.phone && (
+                  {/* {friend.phone && (
                     <View className="flex-row gap-1.5 items-center">
                       <Phone size={14} color="#888" />
-                      <Text variant="small" className="text-muted-foreground" numberOfLines={1}>
+                      <Text
+                        variant="small"
+                        className="text-muted-foreground"
+                        numberOfLines={1}
+                      >
                         {friend.phone}
                       </Text>
                     </View>
-                  )}
+                  )} */}
                 </View>
               )}
             </View>
@@ -87,27 +99,29 @@ export function FriendCard({ friend, onPress, detailed = false }: FriendCardProp
         <CardFooter className="justify-between items-center w-full">
           {/* Current Items */}
           <View className="flex-row gap-1.5 items-center">
-            <Package size={16} color={hasActiveItems ? '#3b82f6' : '#888'} />
+            <Package size={16} color={hasActiveItems ? "#3b82f6" : "#888"} />
             <Text
               variant="small"
               className={cn(
-                hasActiveItems ? 'text-blue-600 font-semibold' : 'text-muted-foreground'
+                hasActiveItems
+                  ? "text-blue-600 font-semibold"
+                  : "text-muted-foreground"
               )}
             >
               {hasActiveItems
-                ? formatCount(friend.currentItemsBorrowed, 'item')
-                : 'No active items'}
+                ? formatCount(friend.currentItemsBorrowed, "item")
+                : "No active items"}
             </Text>
           </View>
 
           {/* Total Items Borrowed */}
           {detailed && friend.totalItemsBorrowed > 0 && (
             <Text variant="muted">
-              {formatCount(friend.totalItemsBorrowed, 'item')} total
+              {formatCount(friend.totalItemsBorrowed, "item")} total
             </Text>
           )}
         </CardFooter>
       </Card>
     </Pressable>
-  )
+  );
 }

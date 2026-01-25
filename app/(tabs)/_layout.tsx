@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Tabs } from "expo-router";
 import { BookText, Users, Search, Home, UserCog } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 import { useThemeContext } from "../../contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
@@ -8,6 +9,10 @@ import { THEME } from "@/lib/theme";
 export default function TabLayout() {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
+  const insets = useSafeAreaInsets();
+
+  // Memoize the header right component to prevent recreation
+  const HeaderRight = React.useCallback(() => <ThemeSwitcher />, []);
 
   const screenOptions = React.useMemo(
     () => ({
@@ -17,9 +22,8 @@ export default function TabLayout() {
         : THEME.light.mutedForeground,
       tabBarStyle: {
         paddingTop: 8,
-        paddingBottom: 8,
-        marginBottom: 4,
-        height: 60,
+        paddingBottom: insets.bottom,
+        height: 60 + insets.bottom,
         backgroundColor: isDark
           ? THEME.dark.background
           : THEME.light.background,
@@ -32,9 +36,9 @@ export default function TabLayout() {
           : THEME.light.background,
       },
       headerTintColor: isDark ? THEME.dark.foreground : THEME.light.foreground,
-      headerRight: () => <ThemeSwitcher />,
+      headerRight: HeaderRight,
     }),
-    [isDark]
+    [isDark, insets.bottom]
   );
 
   return (

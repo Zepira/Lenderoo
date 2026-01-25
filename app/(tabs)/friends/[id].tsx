@@ -47,7 +47,9 @@ export default function FriendDetailScreen() {
         "Cannot Delete Friend",
         `Cannot delete ${friend.name} because they still have ${
           activeItems.length
-        } unreturned item${activeItems.length !== 1 ? "s" : ""}.\n\nPlease mark items as returned before deleting this friend.`,
+        } unreturned item${
+          activeItems.length !== 1 ? "s" : ""
+        }.\n\nPlease mark items as returned before deleting this friend.`,
         [{ text: "OK" }]
       );
       return;
@@ -84,11 +86,7 @@ export default function FriendDetailScreen() {
         options={{
           title: friend.name,
           headerRight: () => (
-            <Pressable
-              onPress={handleEdit}
-              disabled={deleting}
-              className="p-2"
-            >
+            <Pressable onPress={handleEdit} disabled={deleting} className="p-2">
               <LucideIcons.Edit3 size={20} color="#3b82f6" />
             </Pressable>
           ),
@@ -99,7 +97,7 @@ export default function FriendDetailScreen() {
         <View className="gap-4">
           {/* Friend Header */}
           <View className="items-center gap-4 p-6 bg-muted">
-            <Avatar className="w-24 h-24">
+            <Avatar className="w-24 h-24" alt={friend.name}>
               {friend.avatarUrl ? (
                 <AvatarImage source={{ uri: friend.avatarUrl }} />
               ) : (
@@ -117,21 +115,13 @@ export default function FriendDetailScreen() {
               </Text>
 
               {/* Contact Info */}
-              {(friend.email || friend.phone) && (
+              {friend.email && (
                 <View className="items-center gap-1">
                   {friend.email && (
                     <View className="flex-row gap-2 items-center">
                       <LucideIcons.Mail size={16} color="#9ca3af" />
                       <Text variant="small" className="text-muted-foreground">
                         {friend.email}
-                      </Text>
-                    </View>
-                  )}
-                  {friend.phone && (
-                    <View className="flex-row gap-2 items-center">
-                      <LucideIcons.Phone size={16} color="#9ca3af" />
-                      <Text variant="small" className="text-muted-foreground">
-                        {friend.phone}
                       </Text>
                     </View>
                   )}
@@ -152,7 +142,10 @@ export default function FriendDetailScreen() {
                   <Text className="text-4xl font-bold text-blue-600">
                     {friend.currentItemsBorrowed}
                   </Text>
-                  <Text variant="small" className="text-muted-foreground text-center">
+                  <Text
+                    variant="small"
+                    className="text-muted-foreground text-center"
+                  >
                     Currently Borrowed
                   </Text>
                 </View>
@@ -161,7 +154,10 @@ export default function FriendDetailScreen() {
                   <Text className="text-4xl font-bold">
                     {friend.totalItemsBorrowed}
                   </Text>
-                  <Text variant="small" className="text-muted-foreground text-center">
+                  <Text
+                    variant="small"
+                    className="text-muted-foreground text-center"
+                  >
                     Total Borrowed
                   </Text>
                 </View>
@@ -184,7 +180,10 @@ export default function FriendDetailScreen() {
               {activeItems.length === 0 ? (
                 <View className="p-4 items-center gap-2">
                   <LucideIcons.CheckCircle size={40} color="#22c55e" />
-                  <Text variant="default" className="text-muted-foreground text-center">
+                  <Text
+                    variant="default"
+                    className="text-muted-foreground text-center"
+                  >
                     {friend.name.split(" ")[0]} doesn't have any of your items
                     right now
                   </Text>

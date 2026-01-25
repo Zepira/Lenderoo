@@ -44,7 +44,7 @@ export default function ItemsScreen() {
   }, [friends]);
 
   const handleItemPress = (item: (typeof items)[0]) => {
-    router.push(`/item/${item.id}` as any);
+    router.push(`/library/${item.id}` as any);
   };
 
   const handleAddItem = () => {
@@ -80,7 +80,10 @@ export default function ItemsScreen() {
         </Button>
         <Button
           variant={activeFilter === "available" ? "default" : "outline"}
-          className={cn("flex-1", activeFilter === "available" && "bg-green-600")}
+          className={cn(
+            "flex-1",
+            activeFilter === "available" && "bg-green-600"
+          )}
           onPress={() => setActiveFilter("available")}
         >
           <Text className={activeFilter === "available" ? "text-white" : ""}>

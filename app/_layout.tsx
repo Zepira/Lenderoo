@@ -7,6 +7,7 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { StatusBar } from "expo-status-bar";
 import { SplashScreen, Stack } from "expo-router";
@@ -86,8 +87,10 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   return (
-    <Provider>
-      <RootLayoutContent />
-    </Provider>
+    <SafeAreaProvider>
+      <Provider>
+        <RootLayoutContent />
+      </Provider>
+    </SafeAreaProvider>
   );
 }
