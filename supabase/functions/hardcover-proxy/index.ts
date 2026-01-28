@@ -7,7 +7,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-const HARDCOVER_API_URL = 'https://hardcover.app/api/v1';
+const HARDCOVER_API_URL = 'https://api.hardcover.app/v1';
 
 serve(async (req) => {
   // Handle CORS preflight

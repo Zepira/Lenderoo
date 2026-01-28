@@ -12,6 +12,26 @@ interface HardcoverQueryOptions {
 const token = process.env.EXPO_PUBLIC_HARDCOVER_API_TOKEN;
 
 /**
+ * Get the appropriate Hardcover API endpoint based on platform
+ * Web uses Supabase Edge Function proxy to avoid CORS
+ * Native uses direct API call
+ */
+function getHardcoverEndpoint(): string {
+  const isWeb = Platform.OS === "web";
+
+  if (isWeb) {
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) {
+      console.error("❌ EXPO_PUBLIC_SUPABASE_URL not configured");
+      throw new Error("Supabase URL not configured");
+    }
+    return `${supabaseUrl}/functions/v1/hardcover-proxy`;
+  }
+
+  return "https://api.hardcover.app/v1/graphql";
+}
+
+/**
  * Make a GraphQL query to Hardcover API
  * Uses Supabase Edge Function proxy on web to avoid CORS
  * Uses direct API call on native platforms
@@ -20,8 +40,8 @@ export async function queryHardcover({
   query,
   variables = {},
 }: HardcoverQueryOptions) {
-  const endpoint = "https://api.hardcover.app/v1/graphql";
   const isWeb = Platform.OS === "web";
+  const endpoint = getHardcoverEndpoint();
 
   try {
     console.log("🔍 Making Hardcover API request:", {
@@ -38,10 +58,23 @@ export async function queryHardcover({
     };
 
     // For web (using Supabase proxy), add Supabase auth headers
-
+    if (isWeb) {
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      if (!supabaseAnonKey) {
+        console.error("❌ EXPO_PUBLIC_SUPABASE_ANON_KEY not configured");
+        throw new Error("Supabase anon key not configured");
+      }
+      headers["apikey"] = supabaseAnonKey;
+      headers["Authorization"] = `Bearer ${supabaseAnonKey}`;
+    }
     // For native, add Hardcover token directly
-
-    headers["Authorization"] = `Bearer ${token}`;
+    else {
+      if (!token) {
+        console.error("❌ EXPO_PUBLIC_HARDCOVER_API_TOKEN not configured");
+        throw new Error("Hardcover API token not configured");
+      }
+      headers["Authorization"] = `Bearer ${token}`;
+    }
 
     const response = await fetch(endpoint, {
       method: "POST",
