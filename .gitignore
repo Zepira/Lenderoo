@@ -58,3 +58,4 @@ secrets.json
 *.p12
 *.mobileprovision
 .env
+supabase/.temp/
