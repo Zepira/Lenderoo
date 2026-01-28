@@ -3,6 +3,8 @@
  * Handles API calls with fallback for CORS issues
  */
 
+import { Platform } from 'react-native';
+
 interface HardcoverQueryOptions {
   query: string;
   variables?: Record<string, any>;
@@ -10,29 +12,71 @@ interface HardcoverQueryOptions {
 }
 
 /**
+ * Get the appropriate endpoint based on platform
+ * Web uses Supabase Edge Function proxy to avoid CORS
+ * Native uses direct API call
+ */
+function getHardcoverEndpoint(): string {
+  const isWeb = Platform.OS === 'web';
+
+  if (isWeb) {
+    // Use Supabase Edge Function proxy for web to avoid CORS
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) {
+      console.warn('⚠️ SUPABASE_URL not configured, falling back to direct API (may have CORS issues)');
+      return 'https://api.hardcover.app/v1/graphql';
+    }
+    return `${supabaseUrl}/functions/v1/hardcover-proxy`;
+  }
+
+  // Native apps can call API directly (no CORS)
+  return 'https://api.hardcover.app/v1/graphql';
+}
+
+/**
  * Make a GraphQL query to Hardcover API
- * Uses native fetch which bypasses CORS on native platforms
+ * Uses Supabase Edge Function proxy on web to avoid CORS
+ * Uses direct API call on native platforms
  */
 export async function queryHardcover({
   query,
   variables = {},
   token,
 }: HardcoverQueryOptions) {
-  const endpoint = "https://api.hardcover.app/v1/graphql";
+  const endpoint = getHardcoverEndpoint();
+  const isWeb = Platform.OS === 'web';
 
   try {
     console.log("🔍 Making Hardcover API request:", {
       endpoint,
+      platform: Platform.OS,
+      isWeb,
       hasToken: !!token,
       variables,
     });
 
+    // Prepare headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // For web (using Supabase proxy), add Supabase auth headers
+    if (isWeb) {
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      if (supabaseAnonKey) {
+        headers['apikey'] = supabaseAnonKey;
+        headers['Authorization'] = `Bearer ${supabaseAnonKey}`;
+      }
+    } else {
+      // For native, add Hardcover token directly
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers,
       body: JSON.stringify({
         query,
         variables,
@@ -64,11 +108,16 @@ export async function queryHardcover({
     // Check if it's a network/CORS error
     if (
       error instanceof TypeError &&
-      error.message.includes("Network request failed")
+      (error.message.includes("Network request failed") ||
+       error.message.includes("Failed to fetch"))
     ) {
-      console.error(
-        "🌐 This might be a CORS issue. Try running on native instead of web."
-      );
+      if (isWeb) {
+        console.error(
+          "🌐 CORS/Network error on web. Make sure Supabase Edge Function is deployed."
+        );
+      } else {
+        console.error("🌐 Network error. Check your internet connection.");
+      }
     }
     throw error;
   }
