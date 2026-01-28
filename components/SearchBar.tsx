@@ -4,43 +4,49 @@
  * Reusable search input component with clear button
  */
 
-import { View, type TextInputProps, Pressable } from 'react-native'
-import { Search, X } from 'lucide-react-native'
-import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
+import {
+  View,
+  type TextInputProps,
+  Pressable,
+  TouchableOpacity,
+} from "react-native";
+import { Search, X } from "lucide-react-native";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
-interface SearchBarProps extends Omit<TextInputProps, 'value' | 'onChangeText'> {
+interface SearchBarProps
+  extends Omit<TextInputProps, "value" | "onChangeText"> {
   /** Current search value */
-  value: string
+  value: string;
   /** Handler when search value changes */
-  onChangeText: (text: string) => void
+  onChangeText: (text: string) => void;
   /** Handler when clear button is pressed */
-  onClear?: () => void
+  onClear?: () => void;
   /** Placeholder text */
-  placeholder?: string
+  placeholder?: string;
   /** Additional class names */
-  className?: string
+  className?: string;
 }
 
 export function SearchBar({
   value,
   onChangeText,
   onClear,
-  placeholder = 'Search...',
+  placeholder = "Search...",
   className,
   ...props
 }: SearchBarProps) {
   const handleClear = () => {
-    onChangeText('')
-    onClear?.()
-  }
+    onChangeText("");
+    onClear?.();
+  };
 
   return (
-    <View className={cn('relative', className)}>
+    <View className={cn("relative", className)}>
       <Search
         size={20}
         color="#888"
-        style={{ position: 'absolute', left: 12, top: 10, zIndex: 1 }}
+        style={{ position: "absolute", left: 12, top: 10, zIndex: 1 }}
       />
 
       <Input
@@ -52,14 +58,14 @@ export function SearchBar({
       />
 
       {value.length > 0 && (
-        <Pressable
+        <TouchableOpacity
           onPress={handleClear}
           className="absolute right-3 top-2.5 p-1"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
           <X size={18} color="#888" />
-        </Pressable>
+        </TouchableOpacity>
       )}
     </View>
-  )
+  );
 }

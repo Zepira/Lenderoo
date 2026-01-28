@@ -9,6 +9,7 @@ import type { ItemStatus } from "lib/types";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
+import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 
 type FilterTab = "all" | "available" | "lent";
 
@@ -65,38 +66,32 @@ export default function ItemsScreen() {
   }, [allItems]);
 
   return (
-    <View className="flex-1 bg-background">
+    <SafeAreaWrapper>
       {/* Filter Tabs */}
       <View className="flex-row p-3 gap-2 bg-background border-b border-border">
         <Button
           variant={activeFilter === "all" ? "default" : "outline"}
-          className={cn("flex-1", activeFilter === "all" && "bg-blue-600")}
+          isSelected={activeFilter === "all"}
+          className="flex-auto"
           onPress={() => setActiveFilter("all")}
         >
-          <Text className={activeFilter === "all" ? "text-white" : ""}>
-            All ({allCount})
-          </Text>
+          <Text>All ({allCount})</Text>
         </Button>
         <Button
           variant={activeFilter === "available" ? "default" : "outline"}
-          className={cn(
-            "flex-1",
-            activeFilter === "available" && "bg-green-600"
-          )}
+          isSelected={activeFilter === "available"}
+          className="flex-auto"
           onPress={() => setActiveFilter("available")}
         >
-          <Text className={activeFilter === "available" ? "text-white" : ""}>
-            Available ({availableCount})
-          </Text>
+          <Text>Available ({availableCount})</Text>
         </Button>
         <Button
           variant={activeFilter === "lent" ? "default" : "outline"}
-          className={cn("flex-1", activeFilter === "lent" && "bg-orange-600")}
+          isSelected={activeFilter === "lent"}
+          className="flex-auto"
           onPress={() => setActiveFilter("lent")}
         >
-          <Text className={activeFilter === "lent" ? "text-white" : ""}>
-            Lent Out ({lentCount})
-          </Text>
+          <Text>Lent Out ({lentCount})</Text>
         </Button>
       </View>
 
@@ -123,6 +118,6 @@ export default function ItemsScreen() {
           onAction: handleAddItem,
         }}
       />
-    </View>
+    </SafeAreaWrapper>
   );
 }

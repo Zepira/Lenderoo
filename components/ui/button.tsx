@@ -1,7 +1,7 @@
 import { TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Platform, Pressable } from "react-native";
+import { Platform, Pressable, TouchableOpacity } from "react-native";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 
@@ -75,7 +75,7 @@ const buttonTextVariants = cva(
         default: "text-primary-foreground",
         destructive: "text-white",
         outline: cn(
-          "group-active:text-accent-foreground",
+          "group-active:text-primary-foreground",
           Platform.select({ web: "group-hover:text-accent-foreground" })
         ),
         secondary: "text-secondary-foreground",
@@ -103,34 +103,47 @@ const buttonTextVariants = cva(
 
 type ButtonProps = React.ComponentProps<typeof Pressable> &
   React.RefAttributes<typeof Pressable> &
-  VariantProps<typeof buttonVariants>;
+  VariantProps<typeof buttonVariants> & {
+    isSelected?: boolean;
+  };
 
-function Button({ className, variant, size, style, ...props }: ButtonProps) {
+function Button({
+  className,
+  variant,
+  size,
+  style,
+  isSelected,
+  ...props
+}: ButtonProps) {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
 
   // Get background color based on variant
   const getBackgroundColor = () => {
-    if (variant === 'default') return theme.accent;
-    if (variant === 'secondary') return theme.secondary;
-    if (variant === 'destructive') return theme.destructive;
+    if (variant === "default") return theme.accent;
+    if (variant === "secondary") return theme.secondary;
+    if (variant === "destructive") return theme.destructive;
     return undefined;
   };
 
   const backgroundColor = getBackgroundColor();
 
   // Combine our background color with user-provided style
-  const combinedStyle = backgroundColor
-    ? [{ backgroundColor }, style]
-    : style;
+  const combinedStyle = backgroundColor ? [{ backgroundColor }, style] : style;
 
   return (
-    <TextClassContext.Provider value={buttonTextVariants({ variant, size })}>
-      <Pressable
+    <TextClassContext.Provider
+      value={cn(
+        buttonTextVariants({ variant, size }),
+        isSelected && "text-primary-foreground"
+      )}
+    >
+      <TouchableOpacity
         className={cn(
           props.disabled && "opacity-50",
           buttonVariants({ variant, size }),
+          isSelected && "border-2 border-primary-foreground",
           className
         )}
         style={combinedStyle}

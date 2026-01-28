@@ -4,7 +4,7 @@
  * Displays a summary of a friend in a card format
  */
 
-import { View, Pressable } from "react-native";
+import { View, Pressable, TouchableOpacity } from "react-native";
 import { Mail, Phone, Package } from "lucide-react-native";
 import type { Friend } from "lib/types";
 import { getInitials, formatCount } from "lib/utils";
@@ -12,6 +12,7 @@ import { Card, CardHeader, CardFooter } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 interface FriendCardProps {
   /** The friend to display */
@@ -27,12 +28,14 @@ export function FriendCard({
   onPress,
   detailed = false,
 }: FriendCardProps) {
+  const [opacity, setOpacity] = useState(1);
   const hasActiveItems = friend.currentItemsBorrowed > 0;
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+    <TouchableOpacity
+      onPressIn={() => setOpacity(0.7)}
+      onPressOut={() => setOpacity(1)}
+      style={{ opacity }}
     >
       <Card>
         <CardHeader>
@@ -125,6 +128,6 @@ export function FriendCard({
           )}
         </CardFooter>
       </Card>
-    </Pressable>
+    </TouchableOpacity>
   );
 }

@@ -4,34 +4,41 @@
  * Scrollable list of friends with pull-to-refresh and empty state
  */
 
-import { FlatList, type ListRenderItemInfo, RefreshControl, View, ActivityIndicator } from 'react-native'
-import type { Friend } from 'lib/types'
-import { FriendCard } from './FriendCard'
-import { EmptyState } from './EmptyState'
-import { EMPTY_STATES } from 'lib/constants'
+import {
+  FlatList,
+  type ListRenderItemInfo,
+  RefreshControl,
+  View,
+  ActivityIndicator,
+} from "react-native";
+import type { Friend } from "lib/types";
+import { FriendCard } from "./FriendCard";
+import { EmptyState } from "./EmptyState";
+import { EMPTY_STATES } from "lib/constants";
 
 interface FriendListProps {
   /** Array of friends to display */
-  friends: Friend[]
+  friends: Friend[];
   /** Handler when a friend is pressed */
-  onFriendPress?: (friend: Friend) => void
+  onFriendPress?: (friend: Friend) => void;
   /** Handler for pull to refresh */
-  onRefresh?: () => void
+  onRefresh?: () => void;
   /** Whether the list is refreshing */
-  refreshing?: boolean
+  refreshing?: boolean;
   /** Whether the list is loading */
-  loading?: boolean
+  loading?: boolean;
   /** Custom empty state */
   emptyState?: {
-    title: string
-    message: string
-    actionLabel?: string
-    onAction?: () => void
-  }
+    title: string;
+    message: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  };
   /** Content padding */
-  contentPadding?: number
+  contentPadding?: number;
+
   /** Show detailed friend cards */
-  detailed?: boolean
+  detailed?: boolean;
 }
 
 export function FriendList({
@@ -42,6 +49,7 @@ export function FriendList({
   loading = false,
   emptyState,
   contentPadding = 16,
+
   detailed = false,
 }: FriendListProps) {
   const renderItem = ({ item }: ListRenderItemInfo<Friend>) => {
@@ -53,8 +61,8 @@ export function FriendList({
           detailed={detailed}
         />
       </View>
-    )
-  }
+    );
+  };
 
   const renderEmpty = () => {
     if (loading) {
@@ -62,10 +70,10 @@ export function FriendList({
         <View className="flex-1 items-center justify-center p-6">
           <ActivityIndicator size="large" color="#3b82f6" />
         </View>
-      )
+      );
     }
 
-    const emptyConfig = emptyState || EMPTY_STATES.NO_FRIENDS
+    const emptyConfig = emptyState || EMPTY_STATES.NO_FRIENDS;
 
     return (
       <EmptyState
@@ -73,12 +81,12 @@ export function FriendList({
         title={emptyConfig.title}
         message={emptyConfig.message}
         actionLabel={emptyConfig.actionLabel}
-        onAction={'onAction' in emptyConfig ? emptyConfig.onAction : undefined}
+        onAction={"onAction" in emptyConfig ? emptyConfig.onAction : undefined}
       />
-    )
-  }
+    );
+  };
 
-  const keyExtractor = (item: Friend) => item.id
+  const keyExtractor = (item: Friend) => item.id;
 
   return (
     <FlatList
@@ -99,5 +107,5 @@ export function FriendList({
       }
       showsVerticalScrollIndicator={false}
     />
-  )
+  );
 }

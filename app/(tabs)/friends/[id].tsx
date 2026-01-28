@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { ScrollView, View, Alert, Pressable } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -11,20 +11,26 @@ import { ItemCard } from "components/ItemCard";
 import { FloatingBackButton } from "components/FloatingBackButton";
 import { getInitials, formatCount } from "lib/utils";
 import type { Item } from "lib/types";
+import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const { friend, loading } = useFriend(id!);
   const { items, loading: itemsLoading } = useFriendItems(id!);
   const { deleteFriend, loading: deleting } = useDeleteFriend();
 
   useEffect(() => {
     if (!loading && !friend) {
-      // Friend not found, go back
-      router.back();
+      // Friend not found, go back to friends list
+      if (navigation.canGoBack()) {
+        router.back();
+      } else {
+        router.push("/friends" as any);
+      }
     }
-  }, [loading, friend, router]);
+  }, [loading, friend, router, navigation]);
 
   if (loading || !friend) {
     return (
@@ -67,7 +73,11 @@ export default function FriendDetailScreen() {
           onPress: async () => {
             try {
               await deleteFriend(friend.id);
-              router.back();
+              if (navigation.canGoBack()) {
+                router.back();
+              } else {
+                router.push("/friends" as any);
+              }
             } catch (error) {
               console.error("Failed to delete friend:", error);
             }
@@ -78,11 +88,11 @@ export default function FriendDetailScreen() {
   };
 
   const handleItemPress = (item: Item) => {
-    router.push(`/item/${item.id}` as any);
+    router.push(`/library/${item.id}` as any);
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <SafeAreaWrapper>
       <FloatingBackButton />
 
       <ScrollView className="flex-1 bg-background">
@@ -247,6 +257,6 @@ export default function FriendDetailScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaWrapper>
   );
 }

@@ -8,6 +8,7 @@ import { Text } from "@/components/ui/text";
 import { Construction } from "lucide-react-native";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
+import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 
 export default function FriendsScreen() {
   const { friends, loading, refresh } = useFriends();
@@ -23,13 +24,13 @@ export default function FriendsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-background items-center justify-center space-y-4">
+    <SafeAreaWrapper>
       <Construction
         size={150}
         color={isDark ? THEME.dark.primary : THEME.light.primary}
       />
 
       <Text className="h1">This page is under construction.</Text>
-    </View>
+    </SafeAreaWrapper>
   );
 }

@@ -1,13 +1,25 @@
-import { useState, useEffect } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { ScrollView, View, Image, Alert, Pressable } from "react-native";
+import { useState, useEffect, useMemo } from "react";
+import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
+import {
+  ScrollView,
+  View,
+  Image,
+  Alert,
+  Pressable,
+  TouchableOpacity,
+} from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import * as LucideIcons from "lucide-react-native";
-import { useItem, useDeleteItem, useMarkItemReturned } from "hooks/useItems";
-import { useFriend } from "hooks/useFriends";
+import {
+  useItem,
+  useDeleteItem,
+  useMarkItemReturned,
+  useItems,
+} from "hooks/useItems";
+import { useFriend, useFriends } from "hooks/useFriends";
 import { CategoryBadge } from "components/CategoryBadge";
 import { StatusBadge } from "components/StatusBadge";
 import { FloatingBackButton } from "components/FloatingBackButton";
@@ -24,17 +36,54 @@ import type { ItemStatus, BookMetadata } from "lib/types";
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const { item, loading } = useItem(id!);
   const { friend } = useFriend(item?.borrowedBy ?? null);
   const { deleteItem, loading: deleting } = useDeleteItem();
   const { markReturned, loading: returning } = useMarkItemReturned();
+  const { items: allItems } = useItems();
+  const { friends } = useFriends();
+
+  // Find other users who own the same book (for books only)
+  const communityOwners = useMemo(() => {
+    if (!item || item.category !== "book" || !item.metadata) return [];
+
+    const bookMetadata = item.metadata as BookMetadata;
+    if (!bookMetadata.author) return [];
+
+    // Find other books with same title and author
+    return allItems
+      .filter((otherItem) => {
+        if (otherItem.id === item.id) return false; // Exclude current item
+        if (otherItem.category !== "book") return false;
+        if (!otherItem.metadata) return false;
+
+        const otherMeta = otherItem.metadata as BookMetadata;
+        return (
+          otherItem.name.toLowerCase() === item.name.toLowerCase() &&
+          otherMeta.author?.toLowerCase() === bookMetadata.author?.toLowerCase()
+        );
+      })
+      .map((otherItem) => {
+        const owner = friends.find((f) => otherItem.userId === "demo-user");
+        return {
+          item: otherItem,
+          owner: owner || null,
+        };
+      })
+      .filter((o) => o.owner !== null); // Only show if we found the owner
+  }, [item, allItems, friends]);
 
   useEffect(() => {
     if (!loading && !item) {
-      // Item not found, go back
-      router.back();
+      // Item not found, go back to library or home
+      if (navigation.canGoBack()) {
+        router.back();
+      } else {
+        router.push("/library" as any);
+      }
     }
-  }, [loading, item, router]);
+  }, [loading, item, router, navigation]);
 
   // Show loading if still loading or if item is borrowed but friend data isn't loaded yet
   if (loading || !item || (item.borrowedBy && !friend)) {
@@ -56,15 +105,18 @@ export default function ItemDetailScreen() {
   const handleMarkReturned = async () => {
     try {
       await markReturned(item.id);
-      router.back();
+      if (navigation.canGoBack()) {
+        router.back();
+      } else {
+        router.push("/library" as any);
+      }
     } catch (error) {
       console.error("Failed to mark item as returned:", error);
     }
   };
 
   const handleEdit = () => {
-    // TODO: Navigate to edit screen
-    console.log("Edit item:", item.id);
+    router.push(`/edit-item/${item.id}` as any);
   };
 
   const handleDelete = () => {
@@ -79,7 +131,11 @@ export default function ItemDetailScreen() {
           onPress: async () => {
             try {
               await deleteItem(item.id);
-              router.back();
+              if (navigation.canGoBack()) {
+                router.back();
+              } else {
+                router.push("/library" as any);
+              }
             } catch (error) {
               console.error("Failed to delete item:", error);
             }
@@ -123,12 +179,6 @@ export default function ItemDetailScreen() {
                 </View>
               </View>
 
-              {item.description && (
-                <Text variant="default" className="text-muted-foreground">
-                  {item.description}
-                </Text>
-              )}
-
               {/* Book Metadata */}
               {item.category === "book" && item.metadata && (
                 <View className="gap-2">
@@ -141,12 +191,12 @@ export default function ItemDetailScreen() {
                       </Text>
                     </View>
                   )}
-                  {(item.metadata as BookMetadata).series && (
+                  {(item.metadata as BookMetadata).seriesName && (
                     <View className="flex-row gap-2 items-center">
                       <LucideIcons.BookOpen size={16} color="#9ca3af" />
                       <Text variant="default" className="text-muted-foreground">
                         <Text className="font-semibold">Series:</Text>{" "}
-                        {(item.metadata as BookMetadata).series}
+                        {(item.metadata as BookMetadata).seriesName}
                         {(item.metadata as BookMetadata).seriesNumber &&
                           ` (Book ${
                             (item.metadata as BookMetadata).seriesNumber
@@ -155,22 +205,150 @@ export default function ItemDetailScreen() {
                     </View>
                   )}
                   {(item.metadata as BookMetadata).genre && (
-                    <View className="flex-row gap-2 items-start">
-                      <LucideIcons.Tag size={16} color="#9ca3af" />
+                    <View className="gap-2">
+                      <View className="flex-row gap-2 items-center">
+                        <LucideIcons.Tag size={16} color="#9ca3af" />
+                        <Text variant="default" className="font-semibold">
+                          Genres
+                        </Text>
+                      </View>
+                      <View className="flex-row flex-wrap gap-2 pl-6">
+                        {(Array.isArray((item.metadata as BookMetadata).genre)
+                          ? (item.metadata as BookMetadata).genre
+                          : typeof (item.metadata as BookMetadata).genre ===
+                            "string"
+                          ? (item.metadata as BookMetadata).genre.split(",")
+                          : (item.metadata as BookMetadata).genre
+                        )?.map((genre: string, index: number) => (
+                          <TouchableOpacity
+                            key={index}
+                            className="px-3 py-1 bg-blue-50 rounded-full active:bg-blue-100"
+                          >
+                            <Text variant="small" className="text-blue-600">
+                              {genre.trim()}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                  {(item.metadata as BookMetadata).averageRating && (
+                    <View className="flex-row gap-2 items-center">
                       <Text
                         variant="default"
-                        className="text-muted-foreground flex-1"
+                        className="text-yellow-500 text-lg"
                       >
-                        <Text className="font-semibold">Genre:</Text>{" "}
-                        {Array.isArray((item.metadata as BookMetadata).genre)
-                          ? (item.metadata as BookMetadata).genre?.join(", ")
-                          : (item.metadata as BookMetadata).genre}
+                        ★★★★★
+                      </Text>
+                      <Text variant="default" className="text-muted-foreground">
+                        {(
+                          (item.metadata as BookMetadata).averageRating ?? 0
+                        ).toFixed(2)}{" "}
+                        / 5.00
+                      </Text>
+                    </View>
+                  )}
+                  {((item.metadata as BookMetadata).pageCount ||
+                    (item.metadata as BookMetadata).publicationYear) && (
+                    <View className="flex-row gap-2 items-center">
+                      <LucideIcons.Info size={16} color="#9ca3af" />
+                      <Text variant="default" className="text-muted-foreground">
+                        {(item.metadata as BookMetadata).publicationYear && (
+                          <Text>
+                            Published{" "}
+                            {(item.metadata as BookMetadata).publicationYear}
+                          </Text>
+                        )}
+                        {(item.metadata as BookMetadata).publicationYear &&
+                          (item.metadata as BookMetadata).pageCount &&
+                          " • "}
+                        {(item.metadata as BookMetadata).pageCount && (
+                          <Text>
+                            {(item.metadata as BookMetadata).pageCount} pages
+                          </Text>
+                        )}
                       </Text>
                     </View>
                   )}
                 </View>
               )}
             </View>
+
+            {/* Book Synopsis */}
+            {item.category === "book" &&
+              item.metadata &&
+              (item.metadata as BookMetadata).synopsis && (
+                <>
+                  <Separator />
+                  <View className="gap-3">
+                    <Text variant="h3" className="font-semibold">
+                      Synopsis
+                    </Text>
+                    <Text
+                      variant="default"
+                      className="text-muted-foreground leading-6"
+                    >
+                      {(item.metadata as BookMetadata).synopsis}
+                    </Text>
+                  </View>
+                </>
+              )}
+
+            {/* Community Ownership */}
+            {item.category === "book" && communityOwners.length > 0 && (
+              <>
+                <Separator />
+                <View className="gap-3">
+                  <Text variant="h3" className="font-semibold">
+                    Also in the Community
+                  </Text>
+                  <Text variant="small" className="text-muted-foreground">
+                    {communityOwners.length}{" "}
+                    {communityOwners.length === 1 ? "person" : "people"} in your
+                    network {communityOwners.length === 1 ? "owns" : "own"} this
+                    book
+                  </Text>
+                  <View className="gap-2">
+                    {communityOwners.map(({ item: otherItem, owner }) => (
+                      <View
+                        key={otherItem.id}
+                        className="flex-row gap-3 items-center p-3 bg-muted rounded-lg"
+                      >
+                        <Avatar className="w-10 h-10">
+                          {owner?.avatarUrl ? (
+                            <AvatarImage source={{ uri: owner.avatarUrl }} />
+                          ) : (
+                            <AvatarFallback className="bg-blue-100">
+                              <Text
+                                variant="small"
+                                className="text-blue-600 font-semibold"
+                              >
+                                {owner ? getInitials(owner.name) : "?"}
+                              </Text>
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <View className="flex-1 gap-1">
+                          <Text variant="default" className="font-semibold">
+                            {owner?.name || "Unknown"}
+                          </Text>
+                          {!otherItem.borrowedBy && !otherItem.returnedDate && (
+                            <Text variant="small" className="text-green-600">
+                              Available
+                            </Text>
+                          )}
+                          {otherItem.borrowedBy && !otherItem.returnedDate && (
+                            <Text variant="small" className="text-orange-600">
+                              Currently lent out
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </>
+            )}
 
             <Separator />
 
@@ -180,7 +358,7 @@ export default function ItemDetailScreen() {
                 {friend ? "Borrowed By" : "Status"}
               </Text>
               {friend ? (
-                <Pressable
+                <TouchableOpacity
                   onPress={() => router.push(`/friend/${friend.id}` as any)}
                 >
                   <View className="flex-row gap-3 items-center p-3 bg-muted rounded-lg active:bg-muted/80">
@@ -210,7 +388,7 @@ export default function ItemDetailScreen() {
                     </View>
                     <LucideIcons.ChevronRight size={20} color="#9ca3af" />
                   </View>
-                </Pressable>
+                </TouchableOpacity>
               ) : (
                 <View className="flex-row gap-3 items-center p-3 bg-green-50 rounded-lg">
                   <LucideIcons.Package size={24} color="#22c55e" />
@@ -363,6 +541,16 @@ export default function ItemDetailScreen() {
                   </Text>
                 </Button>
               )}
+
+              <Button
+                variant="outline"
+                onPress={handleEdit}
+                disabled={deleting || returning}
+                className="border-blue-200"
+              >
+                <LucideIcons.Edit size={16} color="#3b82f6" />
+                <Text className="text-blue-600">Edit Item</Text>
+              </Button>
 
               <Button
                 variant="outline"

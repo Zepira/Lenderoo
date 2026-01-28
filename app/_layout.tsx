@@ -48,7 +48,10 @@ function RootLayoutContent() {
   // Hide splash screen once theme is loaded
   React.useEffect(() => {
     if (!isLoading) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch((error) => {
+        // Splash screen may already be hidden or not registered
+        console.log("Splash screen hide error (safe to ignore):", error.message);
+      });
     }
   }, [isLoading]);
 
@@ -59,39 +62,37 @@ function RootLayoutContent() {
 
   return (
     <View className={isDark ? "dark flex-1" : "flex-1"}>
-      <ThemeProvider value={navigationTheme}>
-        <StatusBar style={isDark ? "light" : "dark"} />
-        <Stack screenOptions={stackScreenOptions}>
-          <Stack.Screen
-            name="(tabs)"
-            options={{
-              headerShown: false,
-            }}
-          />
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <Stack screenOptions={stackScreenOptions}>
+        <Stack.Screen
+          name="(tabs)"
+          options={{
+            headerShown: false,
+          }}
+        />
 
-          <Stack.Screen
-            name="add-item"
-            options={{
-              headerShown: false,
-              presentation: "modal",
-              animation: "slide_from_bottom",
-              gestureEnabled: true,
-              gestureDirection: "vertical",
-            }}
-          />
+        <Stack.Screen
+          name="add-item"
+          options={{
+            headerShown: false,
+            presentation: "modal",
+            animation: "slide_from_bottom",
+            gestureEnabled: true,
+            gestureDirection: "vertical",
+          }}
+        />
 
-          <Stack.Screen
-            name="modal"
-            options={{
-              title: "Lenderoo",
-              presentation: "modal",
-              animation: "slide_from_right",
-              gestureEnabled: true,
-              gestureDirection: "horizontal",
-            }}
-          />
-        </Stack>
-      </ThemeProvider>
+        <Stack.Screen
+          name="modal"
+          options={{
+            title: "Lenderoo",
+            presentation: "modal",
+            animation: "slide_from_right",
+            gestureEnabled: true,
+            gestureDirection: "horizontal",
+          }}
+        />
+      </Stack>
     </View>
   );
 }

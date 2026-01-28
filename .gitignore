@@ -57,3 +57,4 @@ secrets.json
 *.cer
 *.p12
 *.mobileprovision
+.env

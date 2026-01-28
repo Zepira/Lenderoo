@@ -118,6 +118,7 @@ export const STATUS_LABELS = {
   borrowed: "Borrowed",
   returned: "Returned",
   overdue: "Overdue",
+  available: "Available",
 } as const;
 
 /**

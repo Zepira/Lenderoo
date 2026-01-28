@@ -147,11 +147,14 @@ export interface BookMetadata {
   /** Book author(s) */
   author?: string;
   /** Series name if part of a series */
-  series?: string;
+  seriesName?: string;
   /** Position in series (e.g., "Book 3") */
   seriesNumber?: string | number;
   /** Book genre(s) */
+  seriesId?: number;
   genre?: string | string[];
+  /** Book synopsis/description */
+  synopsis?: string;
   /** ISBN-10 or ISBN-13 */
   isbn?: string;
   /** Publisher name */
@@ -160,8 +163,10 @@ export interface BookMetadata {
   publicationYear?: number;
   /** Number of pages */
   pageCount?: number;
-  /** Goodreads or Open Library URL */
-  goodreadsUrl?: string;
+  /** Average rating (e.g., 4.5 out of 5) */
+  averageRating?: number;
+  /** Hardcover book ID */
+  hardcoverId?: string;
 }
 
 /**

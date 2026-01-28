@@ -1,5 +1,5 @@
-import { Pressable, View } from "react-native";
-import { useRouter } from "expo-router";
+import { Pressable, TouchableOpacity, View } from "react-native";
+import { useRouter, useNavigation } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
@@ -11,6 +11,7 @@ interface FloatingBackButtonProps {
 
 export function FloatingBackButton({ onPress }: FloatingBackButtonProps) {
   const router = useRouter();
+  const navigation = useNavigation();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const insets = useSafeAreaInsets();
@@ -19,7 +20,13 @@ export function FloatingBackButton({ onPress }: FloatingBackButtonProps) {
     if (onPress) {
       onPress();
     } else {
-      router.back();
+      // Check if we can go back in navigation history
+      if (navigation.canGoBack()) {
+        router.back();
+      } else {
+        // Fallback to home if no history
+        router.push("/(tabs)" as any);
+      }
     }
   };
 
@@ -32,9 +39,9 @@ export function FloatingBackButton({ onPress }: FloatingBackButtonProps) {
         zIndex: 50,
       }}
     >
-      <Pressable
+      <TouchableOpacity
         onPress={handlePress}
-        style={({ pressed }) => ({
+        style={{
           width: 40,
           height: 40,
           borderRadius: 20,
@@ -43,7 +50,6 @@ export function FloatingBackButton({ onPress }: FloatingBackButtonProps) {
             : THEME.light.background,
           alignItems: "center",
           justifyContent: "center",
-          opacity: pressed ? 0.8 : 1,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.25,
@@ -51,13 +57,15 @@ export function FloatingBackButton({ onPress }: FloatingBackButtonProps) {
           elevation: 5,
           borderWidth: 1,
           borderColor: isDark ? THEME.dark.border : THEME.light.border,
-        })}
+          opacity: 1,
+        }}
+        activeOpacity={0.8}
       >
         <ChevronLeft
           size={24}
           color={isDark ? THEME.dark.foreground : THEME.light.foreground}
         />
-      </Pressable>
+      </TouchableOpacity>
     </View>
   );
 }

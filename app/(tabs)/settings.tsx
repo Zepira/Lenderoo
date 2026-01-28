@@ -16,6 +16,7 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { THEME } from "@/lib/theme";
 import { DarkTheme } from "@react-navigation/native";
+import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 
 export default function SettingsScreen() {
   const { themeMode, setThemeMode, activeTheme } = useThemeContext();
@@ -75,7 +76,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView className="flex-1 bg-background">
-      <View className="p-4 gap-4">
+      <SafeAreaWrapper>
         {/* App Info */}
         <View className="gap-2">
           <Text variant="h3">Lenderoo</Text>
@@ -196,7 +197,7 @@ export default function SettingsScreen() {
             Made with ❤️ to help friends keep track of their stuff
           </Text>
         </View>
-      </View>
+      </SafeAreaWrapper>
     </ScrollView>
   );
 }

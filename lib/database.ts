@@ -510,6 +510,64 @@ export async function seedDemoData(): Promise<void> {
     borrowedBy: john.id,
     borrowedDate: weekAgo,
     dueDate: yesterday, // Overdue!
+    metadata: {
+      author: "F. Scott Fitzgerald",
+      genre: ["Classic", "Fiction", "Historical"],
+      synopsis: "Set in the Jazz Age on Long Island, The Great Gatsby explores themes of wealth, love, and the American Dream through the mysterious millionaire Jay Gatsby and his obsession with Daisy Buchanan.",
+      publicationYear: 1925,
+      pageCount: 180,
+    },
+  });
+
+  await createItem({
+    userId: "demo-user",
+    name: "Harry Potter and the Philosopher's Stone",
+    description: "The first book in the Harry Potter series",
+    category: "book",
+    metadata: {
+      author: "J.K. Rowling",
+      series: "Harry Potter",
+      seriesNumber: 1,
+      genre: ["Fantasy", "Young Adult", "Adventure"],
+      synopsis: "Harry Potter has never been the star of a Quidditch team, scoring points while riding a broom far above the ground. He knows no spells, has never helped to hatch a dragon, and has never worn a cloak of invisibility.",
+      publicationYear: 1997,
+      pageCount: 223,
+    },
+  });
+
+  await createItem({
+    userId: "demo-user",
+    name: "1984",
+    description: "Dystopian social science fiction novel",
+    category: "book",
+    borrowedBy: jane.id,
+    borrowedDate: threeDaysAgo,
+    dueDate: twoWeeksFromNow,
+    metadata: {
+      author: "George Orwell",
+      genre: ["Dystopian", "Science Fiction", "Political Fiction"],
+      synopsis: "A haunting tale of a totalitarian regime where Big Brother watches everything and everyone, and independent thinking is punishable. Winston Smith struggles to rebel in a world where love is forbidden and truth is constantly rewritten.",
+      publicationYear: 1949,
+      pageCount: 328,
+    },
+  });
+
+  await createItem({
+    userId: "demo-user",
+    name: "The Fellowship of the Ring",
+    description: "Epic fantasy adventure",
+    category: "book",
+    borrowedBy: bob.id,
+    borrowedDate: weekAgo,
+    metadata: {
+      author: "J.R.R. Tolkien",
+      series: "The Lord of the Rings",
+      seriesNumber: 1,
+      genre: ["Fantasy", "Adventure", "Epic"],
+      synopsis: "Frodo Baggins inherits a mysterious ring from his uncle Bilbo, only to discover it's the One Ring of power that could doom all of Middle-earth. He must leave the safety of the Shire and embark on a perilous quest to destroy it.",
+      publicationYear: 1954,
+      pageCount: 423,
+    },
   });
 
   await createItem({
@@ -520,6 +578,10 @@ export async function seedDemoData(): Promise<void> {
     borrowedBy: jane.id,
     borrowedDate: threeDaysAgo,
     dueDate: twoWeeksFromNow,
+    metadata: {
+      brand: "DeWalt",
+      modelNumber: "DCD771C2",
+    },
   });
 
   await createItem({
@@ -527,8 +589,6 @@ export async function seedDemoData(): Promise<void> {
     name: "Blue Jacket",
     description: "Winter jacket, size M",
     category: "clothing",
-    borrowedBy: bob.id,
-    borrowedDate: weekAgo,
   });
 
   await createItem({

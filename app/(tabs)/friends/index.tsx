@@ -4,6 +4,7 @@ import { Plus } from "lucide-react-native";
 import { FriendList } from "components/FriendList";
 import { useFriends } from "hooks/useFriends";
 import { Button } from "@/components/ui/button";
+import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 
 export default function FriendsScreen() {
   const { friends, loading, refresh } = useFriends();
@@ -17,7 +18,7 @@ export default function FriendsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <SafeAreaWrapper>
       <FriendList
         friends={friends}
         onFriendPress={handleFriendPress}
@@ -42,6 +43,6 @@ export default function FriendsScreen() {
           <Plus size={24} />
         </Button>
       )} */}
-    </View>
+    </SafeAreaWrapper>
   );
 }

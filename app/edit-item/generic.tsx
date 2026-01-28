@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { Label } from "@/components/ui/label";
-import { useFriends, useCreateItem, useItems } from "hooks";
+import { useFriends, useUpdateItem } from "hooks";
 import { CATEGORY_CONFIG, type ItemCategory } from "lib/constants";
 import { createItemSchema } from "lib/validation";
 import { FloatingBackButton } from "components/FloatingBackButton";
@@ -14,22 +14,27 @@ import { ImagePicker } from "components/ImagePicker";
 import { cn } from "lib/utils";
 import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 
-export default function AddGenericItemScreen() {
-  const { category: categoryParam } = useLocalSearchParams<{
+export default function EditGenericItemScreen() {
+  const params = useLocalSearchParams<{
+    itemId: string;
     category: string;
+    name?: string;
+    description?: string;
+    imageUrl?: string;
+    notes?: string;
+    borrowedBy?: string;
   }>();
-  const category = (categoryParam || "other") as ItemCategory;
+  const category = (params.category || "other") as ItemCategory;
   const router = useRouter();
   const { friends } = useFriends();
-  const { createItem, loading } = useCreateItem();
-  const { items: existingItems } = useItems();
+  const { updateItem, loading } = useUpdateItem();
 
   // Form state
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [borrowedBy, setBorrowedBy] = useState("");
-  const [notes, setNotes] = useState("");
+  const [name, setName] = useState(params.name || "");
+  const [description, setDescription] = useState(params.description || "");
+  const [imageUrl, setImageUrl] = useState(params.imageUrl || "");
+  const [borrowedBy, setBorrowedBy] = useState(params.borrowedBy || "");
+  const [notes, setNotes] = useState(params.notes || "");
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -38,60 +43,23 @@ export default function AddGenericItemScreen() {
     try {
       setErrors({});
 
-      // Check for duplicates
-      const duplicates = existingItems.filter((item) => {
-        return (
-          item.category === category &&
-          item.name.toLowerCase().trim() === name.toLowerCase().trim()
-        );
-      });
-
-      if (duplicates.length > 0) {
-        const duplicate = duplicates[0];
-
-        const shouldContinue = await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            "Duplicate Item Found",
-            `"${duplicate.name}" is already in your library.\n\nDo you still want to add it?`,
-            [
-              {
-                text: "Cancel",
-                style: "cancel",
-                onPress: () => resolve(false),
-              },
-              {
-                text: "Add Anyway",
-                onPress: () => resolve(true),
-              },
-            ],
-            { cancelable: false }
-          );
-        });
-
-        if (!shouldContinue) {
-          return;
-        }
-      }
-
-      const itemData = {
+      const updates = {
         name: name.trim(),
         description: description.trim() || undefined,
-        category,
         imageUrl: imageUrl.trim() || undefined,
         borrowedBy: borrowedBy || undefined,
-        borrowedDate: borrowedBy ? new Date() : undefined,
         notes: notes.trim() || undefined,
       };
 
-      createItemSchema.parse(itemData);
-
-      await createItem({
-        ...itemData,
-        userId: "demo-user",
+      createItemSchema.parse({
+        ...updates,
+        category,
+        borrowedDate: borrowedBy ? new Date() : undefined,
       });
 
+      await updateItem(params.itemId!, updates);
+
       router.back();
-      router.back(); // Go back twice to return to items list
     } catch (error) {
       if (error && typeof error === "object" && "issues" in error) {
         const zodError = error as {
@@ -293,11 +261,7 @@ export default function AddGenericItemScreen() {
               className="flex-1 bg-blue-600"
             >
               <Text className="text-white">
-                {loading
-                  ? "Saving..."
-                  : borrowedBy
-                  ? `Add & Lend ${categoryLabel}`
-                  : `Add to Library`}
+                {loading ? "Updating..." : `Update ${categoryLabel}`}
               </Text>
             </Button>
           </View>

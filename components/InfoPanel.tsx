@@ -31,7 +31,7 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
-interface ItemCardProps {
+interface InfoPanelProps {
   /** The item to display */
   item: Item;
   /** Friend information for the borrower (optional for available items) */
@@ -42,12 +42,12 @@ interface ItemCardProps {
   detailed?: boolean;
 }
 
-export function ItemCard({
+export function InfoPanelCard({
   item,
   friend,
   onPress,
   detailed = false,
-}: ItemCardProps) {
+}: InfoPanelProps) {
   const status: ItemStatus = calculateItemStatus(item);
   // const isOverdue = status === "overdue";
   // const daysUntil = item.dueDate ? daysUntilDue(item.dueDate) : undefined;
@@ -89,9 +89,9 @@ export function ItemCard({
                       by {(item.metadata as BookMetadata).author}
                     </Text>
                   )}
-                  {(item.metadata as BookMetadata).seriesName && (
+                  {(item.metadata as BookMetadata).series && (
                     <Text variant="muted" numberOfLines={1}>
-                      {(item.metadata as BookMetadata).seriesName}
+                      {(item.metadata as BookMetadata).series}
                       {(item.metadata as BookMetadata).seriesNumber &&
                         ` #${(item.metadata as BookMetadata).seriesNumber}`}
                     </Text>

@@ -15,16 +15,18 @@ import { Text } from "@/components/ui/text";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Book } from "lucide-react-native";
-import { useFriends, useCreateItem, useItems } from "hooks";
+import { useFriends, useUpdateItem } from "hooks";
 import { createItemSchema } from "lib/validation";
 import { FloatingBackButton } from "components/FloatingBackButton";
 import { ImagePicker } from "components/ImagePicker";
 import type { BookMetadata } from "lib/types";
 import { cn } from "lib/utils";
 import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
-export default function AddBookScreen() {
+
+export default function EditBookScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
+    itemId: string;
     title?: string;
     author?: string;
     seriesName?: string;
@@ -32,16 +34,18 @@ export default function AddBookScreen() {
     seriesId?: string;
     genre?: string;
     description?: string;
+    synopsis?: string;
     coverUrl?: string;
     isbn?: string;
     pageCount?: string;
     publicationYear?: string;
     averageRating?: string;
     hardcoverId?: string;
+    notes?: string;
+    borrowedBy?: string;
   }>();
   const { friends } = useFriends();
-  const { createItem, loading: saving } = useCreateItem();
-  const { items: existingItems } = useItems();
+  const { updateItem, loading: saving } = useUpdateItem();
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Form state
@@ -73,18 +77,16 @@ export default function AddBookScreen() {
     if (params.seriesNumber) setSeriesNumber(params.seriesNumber);
     if (params.seriesId) setSeriesId(params.seriesId);
     if (params.genre) setGenre(params.genre);
-    if (params.description) {
-      setSynopsis(params.description);
-      // Use first sentence as short description
-      const shortDesc = params.description.split(".")[0] + ".";
-      setDescription(shortDesc.length < 100 ? shortDesc : "");
-    }
+    if (params.synopsis) setSynopsis(params.synopsis);
+    if (params.description) setDescription(params.description);
     if (params.coverUrl) setCoverUrl(params.coverUrl);
     if (params.isbn) setIsbn(params.isbn);
     if (params.pageCount) setPageCount(params.pageCount);
     if (params.publicationYear) setPublicationYear(params.publicationYear);
     if (params.averageRating) setAverageRating(params.averageRating);
     if (params.hardcoverId) setHardcoverId(params.hardcoverId);
+    if (params.notes) setNotes(params.notes);
+    if (params.borrowedBy) setBorrowedBy(params.borrowedBy);
   }, [params]);
 
   const handleSubmit = async () => {
@@ -125,95 +127,37 @@ export default function AddBookScreen() {
         hardcoverId: hardcoverId || undefined,
       };
 
-      // Check for duplicates
-      console.log("🔍 Checking for duplicates...");
-      const duplicates = existingItems.filter((item) => {
-        if (item.category !== "book") return false;
-
-        const itemTitle = item.name.toLowerCase().trim();
-        const newTitle = title.toLowerCase().trim();
-
-        // Check title match
-        if (itemTitle !== newTitle) return false;
-
-        // If we have author info, check that too
-        if (author.trim() && item.metadata) {
-          const itemAuthor = (item.metadata as BookMetadata).author
-            ?.toLowerCase()
-            .trim();
-          const newAuthor = author.toLowerCase().trim();
-
-          if (itemAuthor && itemAuthor !== newAuthor) return false;
-        }
-
-        return true;
-      });
-
-      if (duplicates.length > 0) {
-        const duplicate = duplicates[0];
-        const duplicateAuthor = (duplicate.metadata as BookMetadata)?.author;
-
-        console.warn("⚠️ Duplicate book found:", duplicate.name);
-
-        const shouldContinue = await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            "Duplicate Book Found",
-            `"${duplicate.name}"${
-              duplicateAuthor ? ` by ${duplicateAuthor}` : ""
-            } is already in your library.\n\nDo you still want to add it?`,
-            [
-              {
-                text: "Cancel",
-                style: "cancel",
-                onPress: () => resolve(false),
-              },
-              {
-                text: "Add Anyway",
-                onPress: () => resolve(true),
-              },
-            ],
-            { cancelable: false }
-          );
-        });
-
-        if (!shouldContinue) {
-          console.log("❌ User cancelled due to duplicate");
-          return;
-        }
-      }
-
-      console.log("📦 Building item data...");
-      const itemData = {
+      console.log("📦 Building update data...");
+      const updates = {
         name: title.trim(),
         description: description.trim() || undefined,
-        category: "book" as const,
         imageUrl: coverUrl.trim() || undefined,
         borrowedBy: borrowedBy || undefined,
-        borrowedDate: borrowedBy ? new Date() : undefined,
         notes: notes.trim() || undefined,
         metadata,
       };
 
       console.log("✅ Validating with schema...");
-      createItemSchema.parse(itemData);
-
-      console.log("💾 Creating item in database...");
-      console.log("Item data:", JSON.stringify(itemData, null, 2));
-
-      const result = await createItem({
-        ...itemData,
-        userId: "demo-user",
+      createItemSchema.parse({
+        ...updates,
+        category: "book" as const,
+        borrowedDate: borrowedBy ? new Date() : undefined,
       });
+
+      console.log("💾 Updating item in database...");
+      console.log("Update data:", JSON.stringify(updates, null, 2));
+
+      const result = await updateItem(params.itemId!, updates);
 
       if (!result) {
         throw new Error(
-          "Failed to create item - no result returned from database"
+          "Failed to update item - no result returned from database"
         );
       }
 
-      console.log("✅ Book added successfully! ID:", result.id);
+      console.log("✅ Book updated successfully! ID:", result.id);
 
-      router.push("/library" as any);
+      router.back();
     } catch (error) {
       console.error("❌ Error adding book:", error);
 
@@ -294,11 +238,9 @@ export default function AddBookScreen() {
           {/* Book Form */}
           <View className="gap-4">
             {/* Header */}
-            <View className="gap-2 items-center">
-              <Label className="text-xl font-semibold px-8">
-                Add Book Details
-              </Label>
-              <Text variant="muted">Fill in the book information below</Text>
+            <View className="gap-2">
+              <Label className="text-xl font-semibold">Edit Book Details</Label>
+              <Text variant="muted">Update the book information below</Text>
             </View>
 
             {/* Cover Image */}
@@ -438,11 +380,7 @@ export default function AddBookScreen() {
               >
                 {saving && <ActivityIndicator size="small" color="white" />}
                 <Text className="text-white">
-                  {saving
-                    ? "Saving..."
-                    : borrowedBy
-                    ? "Add & Lend Book"
-                    : "Add to Library"}
+                  {saving ? "Updating..." : "Update Book"}
                 </Text>
               </Button>
             </View>

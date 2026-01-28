@@ -113,13 +113,14 @@ export default function TabLayout() {
       {/* Floating Action Button - Appears over all tabs */}
       <Button
         size="icon"
-        className="absolute bottom-20 right-6 w-16 h-16 rounded-full shadow-2xl  bg-primary items-center justify-center"
+        className="absolute  right-4 w-16 h-16 rounded-full shadow-2xl  bg-primary items-center justify-center"
         style={{
           elevation: 8,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.3,
           shadowRadius: 8,
+          bottom: insets.bottom + 80,
         }}
         onPress={handleAddItem}
       >
