@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import * as toast from '@/lib/toast';
+import { getAuthErrorMessage, isValidEmail } from '@/lib/auth-errors';
 import { LogIn } from 'lucide-react-native';
 
 export default function SignInScreen() {
@@ -20,21 +21,39 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   async function handleSignIn() {
-    if (!email || !password) {
-      toast.error('Please fill in all fields');
+    // Clear previous errors
+    setErrors({});
+
+    // Validation
+    const newErrors: { email?: string; password?: string } = {};
+
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!isValidEmail(email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!password) {
+      newErrors.password = 'Password is required';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
       setLoading(true);
-      await signIn(email, password);
+      await signIn(email.trim(), password);
       toast.success('Welcome back!');
-      router.replace('/(tabs)');
+      // Navigation is handled by auth state change in _layout.tsx
     } catch (error: any) {
       console.error('Sign in error:', error);
-      toast.error(error.message || 'Failed to sign in. Please check your credentials.');
+      const errorMessage = getAuthErrorMessage(error);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -67,13 +86,22 @@ export default function SignInScreen() {
               <Input
                 placeholder="you@example.com"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (errors.email) {
+                    setErrors((prev) => ({ ...prev, email: undefined }));
+                  }
+                }}
                 autoCapitalize="none"
                 autoComplete="email"
                 keyboardType="email-address"
                 textContentType="emailAddress"
                 editable={!loading}
+                className={errors.email ? 'border-red-500' : ''}
               />
+              {errors.email && (
+                <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>
+              )}
             </View>
 
             <View>
@@ -83,13 +111,22 @@ export default function SignInScreen() {
               <Input
                 placeholder="••••••••"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) {
+                    setErrors((prev) => ({ ...prev, password: undefined }));
+                  }
+                }}
                 secureTextEntry
                 autoCapitalize="none"
                 autoComplete="password"
                 textContentType="password"
                 editable={!loading}
+                className={errors.password ? 'border-red-500' : ''}
               />
+              {errors.password && (
+                <Text className="text-red-500 text-sm mt-1">{errors.password}</Text>
+              )}
             </View>
 
             <Link href="/(auth)/forgot-password" asChild>

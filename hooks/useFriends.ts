@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { Friend, FriendFilters } from 'lib/types'
-import * as db from 'lib/database'
+import * as db from 'lib/database-supabase'
 
 export function useFriends(filters?: FriendFilters) {
   const [friends, setFriends] = useState<Friend[]>([])

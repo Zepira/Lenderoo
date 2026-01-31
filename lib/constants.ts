@@ -309,6 +309,7 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: "@lenderoo:auth_token",
   ONBOARDING_COMPLETED: "@lenderoo:onboarding_completed",
   LAST_SYNC: "@lenderoo:last_sync",
+  MIGRATION_COMPLETE: "@lenderoo:migration_complete",
 } as const;
 
 // ============================================================================
@@ -340,7 +341,7 @@ export const FEATURES = {
   ENABLE_ITEM_VALUE_TRACKING: true,
   ENABLE_MULTIPLE_IMAGES: true,
   ENABLE_BARCODE_SCANNING: false,
-  ENABLE_CLOUD_SYNC: false, // Enable when backend is ready
+  ENABLE_CLOUD_SYNC: true, // Enabled with Supabase backend
   ENABLE_PUSH_NOTIFICATIONS: false, // Enable when configured
 } as const;
 

@@ -1,36 +1,99 @@
 import { useState, useEffect } from "react";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
-import { ScrollView, View, Alert, Pressable } from "react-native";
+import { ScrollView, View, Alert, Pressable, Platform } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import * as LucideIcons from "lucide-react-native";
-import { useFriend, useDeleteFriend, useFriendItems } from "hooks/useFriends";
 import { ItemCard } from "components/ItemCard";
 import { FloatingBackButton } from "components/FloatingBackButton";
 import { getInitials, formatCount } from "lib/utils";
 import type { Item } from "lib/types";
 import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
+import { getFriendUserById, getItemsBorrowedByFriend, removeFriend, type FriendUser } from "@/lib/friends-service";
+import * as toast from "@/lib/toast";
+
+// Convert item data from DB to Item type
+function convertItemFromDb(data: any): Item {
+  return {
+    id: data.id,
+    userId: data.user_id,
+    name: data.name,
+    description: data.description,
+    category: data.category,
+    images: data.images,
+    borrowedBy: data.borrowed_by,
+    borrowedDate: data.borrowed_date ? new Date(data.borrowed_date) : undefined,
+    dueDate: data.due_date ? new Date(data.due_date) : undefined,
+    returnedDate: data.returned_date ? new Date(data.returned_date) : undefined,
+    notes: data.notes,
+    metadata: data.metadata,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
+  };
+}
 
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const { friend, loading } = useFriend(id!);
-  const { items, loading: itemsLoading } = useFriendItems(id!);
-  const { deleteFriend, loading: deleting } = useDeleteFriend();
+  const [friend, setFriend] = useState<FriendUser | null>(null);
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
+  // Load friend data
   useEffect(() => {
-    if (!loading && !friend) {
-      // Friend not found, go back to friends list
-      if (navigation.canGoBack()) {
-        router.back();
-      } else {
-        router.push("/friends" as any);
+    async function loadFriend() {
+      if (!id) return;
+
+      try {
+        setLoading(true);
+        const friendData = await getFriendUserById(id);
+
+        if (!friendData) {
+          // Friend not found, go back
+          if (navigation.canGoBack()) {
+            router.back();
+          } else {
+            router.push("/(tabs)/friends" as any);
+          }
+          return;
+        }
+
+        setFriend(friendData);
+      } catch (error) {
+        console.error("Error loading friend:", error);
+        toast.error("Failed to load friend details");
+      } finally {
+        setLoading(false);
       }
     }
-  }, [loading, friend, router, navigation]);
+
+    loadFriend();
+  }, [id, router, navigation]);
+
+  // Load items borrowed by friend
+  useEffect(() => {
+    async function loadItems() {
+      if (!id) return;
+
+      try {
+        setItemsLoading(true);
+        const itemsData = await getItemsBorrowedByFriend(id);
+        const convertedItems = itemsData.map(convertItemFromDb);
+        setItems(convertedItems);
+      } catch (error) {
+        console.error("Error loading items:", error);
+      } finally {
+        setItemsLoading(false);
+      }
+    }
+
+    loadItems();
+  }, [id]);
 
   if (loading || !friend) {
     return (
@@ -42,49 +105,68 @@ export default function FriendDetailScreen() {
 
   const activeItems = items.filter((item) => !item.returnedDate);
   const returnedItems = items.filter((item) => item.returnedDate);
+  const totalItemsBorrowed = items.length;
+  const currentItemsBorrowed = activeItems.length;
 
-  const handleEdit = () => {
-    // TODO: Navigate to edit screen
-    console.log("Edit friend:", friend.id);
-  };
+  const handleDelete = async () => {
+    if (!friend) return;
 
-  const handleDelete = () => {
     if (activeItems.length > 0) {
-      Alert.alert(
-        "Cannot Delete Friend",
-        `Cannot delete ${friend.name} because they still have ${
-          activeItems.length
-        } unreturned item${
-          activeItems.length !== 1 ? "s" : ""
-        }.\n\nPlease mark items as returned before deleting this friend.`,
-        [{ text: "OK" }]
-      );
+      const message = `Cannot delete ${friend.name} because they still have ${
+        activeItems.length
+      } unreturned item${
+        activeItems.length !== 1 ? "s" : ""
+      }.\n\nPlease mark items as returned before deleting this friend.`;
+
+      if (Platform.OS === "web") {
+        alert(message);
+      } else {
+        Alert.alert("Cannot Delete Friend", message, [{ text: "OK" }]);
+      }
       return;
     }
 
-    Alert.alert(
-      "Delete Friend",
-      `Are you sure you want to delete ${friend.name}? This action cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteFriend(friend.id);
-              if (navigation.canGoBack()) {
-                router.back();
-              } else {
-                router.push("/friends" as any);
-              }
-            } catch (error) {
-              console.error("Failed to delete friend:", error);
-            }
-          },
-        },
-      ]
-    );
+    const confirmMessage = `Are you sure you want to remove ${friend.name} from your friends? This action cannot be undone.`;
+
+    const confirmed = await (async () => {
+      if (Platform.OS === "web") {
+        return confirm(confirmMessage);
+      } else {
+        return new Promise<boolean>((resolve) => {
+          Alert.alert(
+            "Remove Friend",
+            confirmMessage,
+            [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              {
+                text: "Remove",
+                style: "destructive",
+                onPress: () => resolve(true),
+              },
+            ]
+          );
+        });
+      }
+    })();
+
+    if (!confirmed) return;
+
+    try {
+      setDeleting(true);
+      await removeFriend(friend.id);
+      toast.success(`Removed ${friend.name} from friends`);
+
+      if (navigation.canGoBack()) {
+        router.back();
+      } else {
+        router.push("/(tabs)/friends" as any);
+      }
+    } catch (error) {
+      console.error("Failed to remove friend:", error);
+      toast.error("Failed to remove friend");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleItemPress = (item: Item) => {
@@ -142,7 +224,7 @@ export default function FriendDetailScreen() {
               <View className="flex-row gap-3">
                 <View className="flex-1 gap-2 p-4 bg-blue-50 border border-blue-200 rounded-lg items-center">
                   <Text className="text-4xl font-bold text-blue-600">
-                    {friend.currentItemsBorrowed}
+                    {currentItemsBorrowed}
                   </Text>
                   <Text
                     variant="small"
@@ -154,7 +236,7 @@ export default function FriendDetailScreen() {
 
                 <View className="flex-1 gap-2 p-4 bg-muted border border-border rounded-lg items-center">
                   <Text className="text-4xl font-bold">
-                    {friend.totalItemsBorrowed}
+                    {totalItemsBorrowed}
                   </Text>
                   <Text
                     variant="small"

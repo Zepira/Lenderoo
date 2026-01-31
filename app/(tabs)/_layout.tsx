@@ -2,12 +2,12 @@ import * as React from "react";
 import { View } from "react-native";
 import { router, Tabs } from "expo-router";
 import {
-  BookText,
   Users,
   Search,
   Home,
   UserCog,
   Plus,
+  BookText,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";

@@ -2,13 +2,20 @@
  * Unified Toast API
  *
  * Platform-specific toast implementation:
- * - Mobile (iOS/Android): uses burnt (native toasts)
+ * - Mobile (iOS/Android): uses burnt (native toasts) or Alert fallback in Expo Go
  * - Web: uses sonner (React-based toasts)
  */
 
-import { Platform } from "react-native";
+import { Platform, Alert } from "react-native";
 import { toast as sonnerToast } from "sonner";
-import * as Burnt from "burnt";
+
+// Try to import burnt, but gracefully handle if it's not available (Expo Go)
+let Burnt: any = null;
+try {
+  Burnt = require("burnt");
+} catch (e) {
+  console.log("Burnt module not available, using Alert fallback");
+}
 
 export type ToastOptions = {
   title?: string;
@@ -26,12 +33,17 @@ export function show(message: string, options?: ToastOptions) {
       duration: options?.duration || 3000,
     });
   } else {
-    Burnt.toast({
-      title: options?.title || message,
-      preset: "none",
-      haptic: "none",
-      duration: (options?.duration || 3000) / 1000,
-    });
+    if (Burnt) {
+      Burnt.toast({
+        title: options?.title || message,
+        preset: "none",
+        haptic: "none",
+        duration: (options?.duration || 3000) / 1000,
+      });
+    } else {
+      // Fallback to Alert for Expo Go
+      Alert.alert(options?.title || "Info", message);
+    }
   }
 }
 
@@ -45,12 +57,17 @@ export function success(message: string, options?: ToastOptions) {
       duration: options?.duration || 3000,
     });
   } else {
-    Burnt.toast({
-      title: options?.title || message,
-      preset: "done",
-      haptic: "success",
-      duration: (options?.duration || 3000) / 1000,
-    });
+    if (Burnt) {
+      Burnt.toast({
+        title: options?.title || message,
+        preset: "done",
+        haptic: "success",
+        duration: (options?.duration || 3000) / 1000,
+      });
+    } else {
+      // Fallback to Alert for Expo Go
+      Alert.alert("✓ " + (options?.title || "Success"), message);
+    }
   }
 }
 
@@ -64,11 +81,16 @@ export function error(message: string, options?: ToastOptions) {
       duration: options?.duration || 3000,
     });
   } else {
-    Burnt.alert({
-      title: options?.title || message,
-      preset: "error",
-      duration: (options?.duration || 3000) / 1000,
-    });
+    if (Burnt) {
+      Burnt.alert({
+        title: options?.title || message,
+        preset: "error",
+        duration: (options?.duration || 3000) / 1000,
+      });
+    } else {
+      // Fallback to Alert for Expo Go
+      Alert.alert("✗ " + (options?.title || "Error"), message);
+    }
   }
 }
 
@@ -82,12 +104,17 @@ export function warning(message: string, options?: ToastOptions) {
       duration: options?.duration || 3000,
     });
   } else {
-    Burnt.toast({
-      title: options?.title || message,
-      preset: "none",
-      haptic: "warning",
-      duration: (options?.duration || 3000) / 1000,
-    });
+    if (Burnt) {
+      Burnt.toast({
+        title: options?.title || message,
+        preset: "none",
+        haptic: "warning",
+        duration: (options?.duration || 3000) / 1000,
+      });
+    } else {
+      // Fallback to Alert for Expo Go
+      Alert.alert("⚠ " + (options?.title || "Warning"), message);
+    }
   }
 }
 
@@ -101,12 +128,17 @@ export function info(message: string, options?: ToastOptions) {
       duration: options?.duration || 3000,
     });
   } else {
-    Burnt.toast({
-      title: options?.title || message,
-      preset: "none",
-      haptic: "none",
-      duration: (options?.duration || 3000) / 1000,
-    });
+    if (Burnt) {
+      Burnt.toast({
+        title: options?.title || message,
+        preset: "none",
+        haptic: "none",
+        duration: (options?.duration || 3000) / 1000,
+      });
+    } else {
+      // Fallback to Alert for Expo Go
+      Alert.alert("ℹ " + (options?.title || "Info"), message);
+    }
   }
 }
 

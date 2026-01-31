@@ -33,6 +33,7 @@
     "clsx": "^2.1.1",
     "expo": "^54.0.23",
     "expo-build-properties": "~1.0.9",
+    "expo-clipboard": "^8.0.8",
     "expo-font": "~14.0.10",
     "expo-image-picker": "^17.0.10",
     "expo-linking": "~8.0.8",
@@ -67,5 +68,9 @@
     "@types/react": "~19.1.10",
     "@types/react-native": "^0.73.0",
     "typescript": "~5.9.2"
+  },
+  "resolutions": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   }
 }

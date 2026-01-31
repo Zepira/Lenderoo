@@ -11,8 +11,28 @@ interface HardcoverQueryOptions {
 }
 const token = process.env.EXPO_PUBLIC_HARDCOVER_API_TOKEN;
 
+// /**
+//  * Get the appropriate Hardcover API endpoint based on platform
+//  * Web uses Supabase Edge Function proxy to avoid CORS
+//  * Native uses direct API call
+//  */
+// function getHardcoverEndpoint(): string {
+//   const isWeb = Platform.OS === "web";
+
+//   if (isWeb) {
+//     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+//     if (!supabaseUrl) {
+//       console.error("❌ EXPO_PUBLIC_SUPABASE_URL not configured");
+//       throw new Error("Supabase URL not configured");
+//     }
+//     return `${supabaseUrl}/functions/v1/hardcover-proxy`;
+//   }
+
+//   return "https://api.hardcover.app/v1/graphql";
+// }
+
 /**
- * Get the appropriate Hardcover API endpoint based on platform
+ * Get the appropriate endpoint based on platform
  * Web uses Supabase Edge Function proxy to avoid CORS
  * Native uses direct API call
  */
@@ -20,14 +40,18 @@ function getHardcoverEndpoint(): string {
   const isWeb = Platform.OS === "web";
 
   if (isWeb) {
+    // Use Supabase Edge Function proxy for web to avoid CORS
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) {
-      console.error("❌ EXPO_PUBLIC_SUPABASE_URL not configured");
-      throw new Error("Supabase URL not configured");
+      console.warn(
+        "⚠️ SUPABASE_URL not configured, falling back to direct API (may have CORS issues)"
+      );
+      return "https://api.hardcover.app/v1/graphql";
     }
     return `${supabaseUrl}/functions/v1/hardcover-proxy`;
   }
 
+  // Native apps can call API directly (no CORS)
   return "https://api.hardcover.app/v1/graphql";
 }
 

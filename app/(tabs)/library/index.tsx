@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import { ItemList } from "components/ItemList";
 import { useItems } from "hooks/useItems";
 import { useFriends } from "hooks/useFriends";
-import { seedDemoData } from "lib/database";
 import type { ItemStatus } from "lib/types";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -29,11 +28,6 @@ export default function ItemsScreen() {
 
   const { items, loading, refresh } = useItems(filter);
   const { friends } = useFriends();
-
-  // Seed demo data on first load
-  useEffect(() => {
-    seedDemoData();
-  }, []);
 
   // Create a map of friend IDs to Friend objects for ItemList
   const friendsMap = useMemo(() => {

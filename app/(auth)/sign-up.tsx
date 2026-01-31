@@ -13,6 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import * as toast from '@/lib/toast';
+import {
+  getAuthErrorMessage,
+  isValidEmail,
+  validatePassword,
+  validateName
+} from '@/lib/auth-errors';
 import { UserPlus } from 'lucide-react-native';
 
 export default function SignUpScreen() {
@@ -22,32 +28,69 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
 
   async function handleSignUp() {
+    // Clear previous errors
+    setErrors({});
+
     // Validation
-    if (!name || !email || !password || !confirmPassword) {
-      toast.error('Please fill in all fields');
-      return;
+    const newErrors: {
+      name?: string;
+      email?: string;
+      password?: string;
+      confirmPassword?: string;
+    } = {};
+
+    // Name validation
+    const nameValidation = validateName(name);
+    if (!nameValidation.valid) {
+      newErrors.name = nameValidation.message!;
     }
 
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
+    // Email validation
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!isValidEmail(email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+    // Password validation
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.valid) {
+        newErrors.password = passwordValidation.message!;
+      }
+    }
+
+    // Confirm password validation
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
       setLoading(true);
-      await signUp(email, password, name);
-      toast.success('Account created! Please check your email to verify your account.');
-      router.replace('/(auth)/sign-in');
+      await signUp(email.trim(), password, name.trim());
+      toast.success('Account created successfully!');
+      // Navigation is handled by auth state change in _layout.tsx
     } catch (error: any) {
       console.error('Sign up error:', error);
-      toast.error(error.message || 'Failed to create account. Please try again.');
+      const errorMessage = getAuthErrorMessage(error);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -80,12 +123,21 @@ export default function SignUpScreen() {
               <Input
                 placeholder="Your name"
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => {
+                  setName(text);
+                  if (errors.name) {
+                    setErrors((prev) => ({ ...prev, name: undefined }));
+                  }
+                }}
                 autoCapitalize="words"
                 autoComplete="name"
                 textContentType="name"
                 editable={!loading}
+                className={errors.name ? 'border-red-500' : ''}
               />
+              {errors.name && (
+                <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>
+              )}
             </View>
 
             <View>
@@ -95,13 +147,22 @@ export default function SignUpScreen() {
               <Input
                 placeholder="you@example.com"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (errors.email) {
+                    setErrors((prev) => ({ ...prev, email: undefined }));
+                  }
+                }}
                 autoCapitalize="none"
                 autoComplete="email"
                 keyboardType="email-address"
                 textContentType="emailAddress"
                 editable={!loading}
+                className={errors.email ? 'border-red-500' : ''}
               />
+              {errors.email && (
+                <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>
+              )}
             </View>
 
             <View>
@@ -111,16 +172,26 @@ export default function SignUpScreen() {
               <Input
                 placeholder="••••••••"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) {
+                    setErrors((prev) => ({ ...prev, password: undefined }));
+                  }
+                }}
                 secureTextEntry
                 autoCapitalize="none"
                 autoComplete="password-new"
                 textContentType="newPassword"
                 editable={!loading}
+                className={errors.password ? 'border-red-500' : ''}
               />
-              <Text className="text-muted-foreground text-xs mt-1">
-                Must be at least 6 characters
-              </Text>
+              {errors.password ? (
+                <Text className="text-red-500 text-sm mt-1">{errors.password}</Text>
+              ) : (
+                <Text className="text-muted-foreground text-xs mt-1">
+                  Must be at least 6 characters
+                </Text>
+              )}
             </View>
 
             <View>
@@ -130,13 +201,24 @@ export default function SignUpScreen() {
               <Input
                 placeholder="••••••••"
                 value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  if (errors.confirmPassword) {
+                    setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                  }
+                }}
                 secureTextEntry
                 autoCapitalize="none"
                 autoComplete="password-new"
                 textContentType="newPassword"
                 editable={!loading}
+                className={errors.confirmPassword ? 'border-red-500' : ''}
               />
+              {errors.confirmPassword && (
+                <Text className="text-red-500 text-sm mt-1">
+                  {errors.confirmPassword}
+                </Text>
+              )}
             </View>
           </View>
 

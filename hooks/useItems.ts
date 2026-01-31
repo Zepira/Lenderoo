@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { Item, ItemFilters } from 'lib/types'
-import * as db from 'lib/database'
+import * as db from 'lib/database-supabase'
 
 export function useItems(filters?: ItemFilters) {
   const [items, setItems] = useState<Item[]>([])

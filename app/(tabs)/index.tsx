@@ -10,7 +10,6 @@ import { Package, Heart } from "lucide-react-native";
 import { ItemCard } from "components/ItemCard";
 import { useActiveItems } from "hooks/useItems";
 import { useFriends } from "hooks/useFriends";
-import { seedDemoData } from "lib/database";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { THEME } from "@/lib/theme";
@@ -21,11 +20,6 @@ import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 export default function ItemsScreen() {
   const { items, loading, refresh } = useActiveItems();
   const { friends } = useFriends();
-
-  // Seed demo data on first load
-  useEffect(() => {
-    seedDemoData();
-  }, []);
 
   // Create a map of friend IDs to Friend objects
   const friendsMap = useMemo(() => {

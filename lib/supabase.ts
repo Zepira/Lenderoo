@@ -1,12 +1,13 @@
 /**
  * Supabase Client Configuration
  *
- * Configures the Supabase client with AsyncStorage persistence for React Native
+ * Configures the Supabase client with cross-platform storage persistence
+ * Uses localStorage on web, AsyncStorage on native
  */
 
 import "react-native-url-polyfill/auto";
 import { createClient } from "@supabase/supabase-js";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { customStorage } from "./async-storage-wrapper";
 
 // Environment variables for Supabase configuration
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -19,16 +20,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /**
- * Supabase client with AsyncStorage persistence
+ * Supabase client with cross-platform storage persistence
  *
  * This client automatically:
- * - Persists auth session to AsyncStorage
+ * - Persists auth session (localStorage on web, AsyncStorage on native)
  * - Restores session on app restart
  * - Handles token refresh automatically
  */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage,
+    storage: customStorage as any,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

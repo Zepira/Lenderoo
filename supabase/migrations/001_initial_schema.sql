@@ -25,17 +25,17 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- Enable RLS on users table
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
--- Users can read their own profile
-CREATE POLICY "Users can read own profile"
-  ON public.users
-  FOR SELECT
-  USING (auth.uid() = id);
+-- -- Users can read their own profile
+-- CREATE POLICY "Users can read own profile"
+--   ON public.users
+--   FOR SELECT
+--   USING (auth.uid() = id);
 
--- Users can update their own profile
-CREATE POLICY "Users can update own profile"
-  ON public.users
-  FOR UPDATE
-  USING (auth.uid() = id);
+-- -- Users can update their own profile
+-- CREATE POLICY "Users can update own profile"
+--   ON public.users
+--   FOR UPDATE
+--   USING (auth.uid() = id);
 
 -- ============================================================================
 -- Friends Table
@@ -57,29 +57,29 @@ CREATE TABLE IF NOT EXISTS public.friends (
 -- Enable RLS on friends table
 ALTER TABLE public.friends ENABLE ROW LEVEL SECURITY;
 
--- Users can only see their own friends
-CREATE POLICY "Users can view own friends"
-  ON public.friends
-  FOR SELECT
-  USING (auth.uid() = user_id);
+-- -- Users can only see their own friends
+-- CREATE POLICY "Users can view own friends"
+--   ON public.friends
+--   FOR SELECT
+--   USING (auth.uid() = user_id);
 
--- Users can insert their own friends
-CREATE POLICY "Users can insert own friends"
-  ON public.friends
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+-- -- Users can insert their own friends
+-- CREATE POLICY "Users can insert own friends"
+--   ON public.friends
+--   FOR INSERT
+--   WITH CHECK (auth.uid() = user_id);
 
--- Users can update their own friends
-CREATE POLICY "Users can update own friends"
-  ON public.friends
-  FOR UPDATE
-  USING (auth.uid() = user_id);
+-- -- Users can update their own friends
+-- CREATE POLICY "Users can update own friends"
+--   ON public.friends
+--   FOR UPDATE
+--   USING (auth.uid() = user_id);
 
--- Users can delete their own friends
-CREATE POLICY "Users can delete own friends"
-  ON public.friends
-  FOR DELETE
-  USING (auth.uid() = user_id);
+-- -- Users can delete their own friends
+-- CREATE POLICY "Users can delete own friends"
+--   ON public.friends
+--   FOR DELETE
+--   USING (auth.uid() = user_id);
 
 -- Create index on user_id for faster queries
 CREATE INDEX IF NOT EXISTS idx_friends_user_id ON public.friends(user_id);
@@ -108,29 +108,29 @@ CREATE TABLE IF NOT EXISTS public.items (
 -- Enable RLS on items table
 ALTER TABLE public.items ENABLE ROW LEVEL SECURITY;
 
--- Users can only see their own items
-CREATE POLICY "Users can view own items"
-  ON public.items
-  FOR SELECT
-  USING (auth.uid() = user_id);
+-- -- Users can only see their own items
+-- CREATE POLICY "Users can view own items"
+--   ON public.items
+--   FOR SELECT
+--   USING (auth.uid() = user_id);
 
--- Users can insert their own items
-CREATE POLICY "Users can insert own items"
-  ON public.items
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+-- -- Users can insert their own items
+-- CREATE POLICY "Users can insert own items"
+--   ON public.items
+--   FOR INSERT
+--   WITH CHECK (auth.uid() = user_id);
 
--- Users can update their own items
-CREATE POLICY "Users can update own items"
-  ON public.items
-  FOR UPDATE
-  USING (auth.uid() = user_id);
+-- -- Users can update their own items
+-- CREATE POLICY "Users can update own items"
+--   ON public.items
+--   FOR UPDATE
+--   USING (auth.uid() = user_id);
 
--- Users can delete their own items
-CREATE POLICY "Users can delete own items"
-  ON public.items
-  FOR DELETE
-  USING (auth.uid() = user_id);
+-- -- Users can delete their own items
+-- CREATE POLICY "Users can delete own items"
+--   ON public.items
+--   FOR DELETE
+--   USING (auth.uid() = user_id);
 
 -- Create indexes for faster queries
 CREATE INDEX IF NOT EXISTS idx_items_user_id ON public.items(user_id);
@@ -156,29 +156,29 @@ CREATE TABLE IF NOT EXISTS public.borrow_history (
 -- Enable RLS on borrow_history table
 ALTER TABLE public.borrow_history ENABLE ROW LEVEL SECURITY;
 
--- Users can view history for their own items
-CREATE POLICY "Users can view own borrow history"
-  ON public.borrow_history
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.items
-      WHERE items.id = borrow_history.item_id
-      AND items.user_id = auth.uid()
-    )
-  );
+-- -- Users can view history for their own items
+-- CREATE POLICY "Users can view own borrow history"
+--   ON public.borrow_history
+--   FOR SELECT
+--   USING (
+--     EXISTS (
+--       SELECT 1 FROM public.items
+--       WHERE items.id = borrow_history.item_id
+--       AND items.user_id = auth.uid()
+--     )
+--   );
 
--- Users can insert history for their own items
-CREATE POLICY "Users can insert own borrow history"
-  ON public.borrow_history
-  FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.items
-      WHERE items.id = borrow_history.item_id
-      AND items.user_id = auth.uid()
-    )
-  );
+-- -- Users can insert history for their own items
+-- CREATE POLICY "Users can insert own borrow history"
+--   ON public.borrow_history
+--   FOR INSERT
+--   WITH CHECK (
+--     EXISTS (
+--       SELECT 1 FROM public.items
+--       WHERE items.id = borrow_history.item_id
+--       AND items.user_id = auth.uid()
+--     )
+--   );
 
 -- Create indexes for faster queries
 CREATE INDEX IF NOT EXISTS idx_borrow_history_item_id ON public.borrow_history(item_id);
@@ -197,23 +197,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for users table
-CREATE TRIGGER update_users_updated_at
-  BEFORE UPDATE ON public.users
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+-- -- Trigger for users table
+-- CREATE TRIGGER update_users_updated_at
+--   BEFORE UPDATE ON public.users
+--   FOR EACH ROW
+--   EXECUTE FUNCTION update_updated_at_column();
 
--- Trigger for friends table
-CREATE TRIGGER update_friends_updated_at
-  BEFORE UPDATE ON public.friends
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+-- -- Trigger for friends table
+-- CREATE TRIGGER update_friends_updated_at
+--   BEFORE UPDATE ON public.friends
+--   FOR EACH ROW
+--   EXECUTE FUNCTION update_updated_at_column();
 
--- Trigger for items table
-CREATE TRIGGER update_items_updated_at
-  BEFORE UPDATE ON public.items
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+-- -- Trigger for items table
+-- CREATE TRIGGER update_items_updated_at
+--   BEFORE UPDATE ON public.items
+--   FOR EACH ROW
+--   EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
 -- Auto-create User Profile on Signup
@@ -234,11 +234,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger to auto-create user profile on signup
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+-- -- Trigger to auto-create user profile on signup
+-- CREATE TRIGGER on_auth_user_created
+--   AFTER INSERT ON auth.users
+--   FOR EACH ROW
+--   EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================================
 -- Helpful Views (Optional)

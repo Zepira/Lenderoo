@@ -8,7 +8,7 @@ export function SafeAreaWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <View
-      className="flex-1 bg-background"
+      className="flex-1 bg-background px-4"
       style={{
         paddingTop: insets.top,
         paddingBottom: insets.bottom,

@@ -1,7 +1,7 @@
 import "../global.css";
 
 import * as React from "react";
-import { View } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 import {
   DarkTheme,
   DefaultTheme,
@@ -10,9 +10,10 @@ import {
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { StatusBar } from "expo-status-bar";
-import { SplashScreen, Stack } from "expo-router";
+import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
 import { Provider } from "components/Provider";
 import { useThemeContext } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -28,8 +29,11 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutContent() {
-  const { activeTheme, isLoading } = useThemeContext();
+  const { activeTheme, isLoading: themeLoading } = useThemeContext();
+  const { user, loading: authLoading } = useAuth();
   const isDark = activeTheme === "dark";
+  const router = useRouter();
+  const segments = useSegments();
 
   // Memoize the navigation theme to prevent context disruption
   const navigationTheme = React.useMemo(
@@ -45,25 +49,53 @@ function RootLayoutContent() {
     [isDark]
   );
 
-  // Hide splash screen once theme is loaded
+  // Auth-based navigation
   React.useEffect(() => {
-    if (!isLoading) {
+    if (themeLoading || authLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!user && !inAuthGroup) {
+      // User is not authenticated and not in auth group, redirect to sign-in
+      console.log('🔒 No user detected, redirecting to sign-in');
+      router.replace('/(auth)/sign-in');
+    } else if (user && inAuthGroup) {
+      // User is authenticated but still in auth group, redirect to tabs
+      console.log('✅ User authenticated, redirecting to main app');
+      router.replace('/(tabs)');
+    }
+  }, [user, segments, themeLoading, authLoading, router]);
+
+  // Hide splash screen once both theme and auth are loaded
+  React.useEffect(() => {
+    if (!themeLoading && !authLoading) {
       SplashScreen.hideAsync().catch((error) => {
         // Splash screen may already be hidden or not registered
         console.log("Splash screen hide error (safe to ignore):", error.message);
       });
     }
-  }, [isLoading]);
+  }, [themeLoading, authLoading]);
 
-  // Don't render anything until theme is loaded
-  if (isLoading) {
-    return null;
+  // Show loading indicator while theme or auth is loading
+  if (themeLoading || authLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
   return (
     <View className={isDark ? "dark flex-1" : "flex-1"}>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack screenOptions={stackScreenOptions}>
+        <Stack.Screen
+          name="(auth)"
+          options={{
+            headerShown: false,
+          }}
+        />
+
         <Stack.Screen
           name="(tabs)"
           options={{

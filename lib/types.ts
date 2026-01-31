@@ -81,7 +81,8 @@ export interface Friend {
   name: string;
   /** Friend's email address (optional) */
   email?: string;
-
+  /** Friend's phone number (optional) */
+  phone?: string;
   /** URL to friend's avatar image */
   avatarUrl?: string;
   /** Total number of items this friend has ever borrowed */
@@ -112,6 +113,8 @@ export interface Item {
   imageUrl?: string;
   /** Array of image URLs for multiple photos */
   imageUrls?: string[];
+  /** Array of image URLs (Supabase storage) */
+  images?: string[];
   /** ID of the friend who borrowed this item (null if available) */
   borrowedBy?: string;
   /** Date when item was borrowed (null if never borrowed) */
