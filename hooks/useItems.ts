@@ -209,3 +209,32 @@ export function useOverdueItems() {
 
   return { items, loading, error, refresh }
 }
+
+export function useBorrowedByMeItems() {
+  const [items, setItems] = useState<Item[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  const loadItems = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await db.getBorrowedByMeItems()
+      setItems(data)
+    } catch (err) {
+      setError(err as Error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadItems()
+  }, [loadItems])
+
+  const refresh = useCallback(() => {
+    return loadItems()
+  }, [loadItems])
+
+  return { items, loading, error, refresh }
+}

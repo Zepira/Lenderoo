@@ -44,6 +44,7 @@ export default function AddBookScreen() {
   const { createItem, loading: saving } = useCreateItem();
   const { items: existingItems } = useItems();
   const scrollViewRef = useRef<ScrollView>(null);
+  const isSubmitting = useRef(false);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -65,6 +66,9 @@ export default function AddBookScreen() {
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Local loading state for immediate UI feedback
+  const [isLoading, setIsLoading] = useState(false);
 
   // Pre-fill form from URL parameters
   useEffect(() => {
@@ -92,10 +96,13 @@ export default function AddBookScreen() {
     console.log("📝 Starting book submission...");
 
     // Prevent double submission
-    if (saving) {
+    if (saving || isSubmitting.current || isLoading) {
       console.log("⚠️ Already saving, ignoring duplicate submission");
       return;
     }
+
+    isSubmitting.current = true;
+    setIsLoading(true);
 
     try {
       setErrors({});
@@ -168,6 +175,8 @@ export default function AddBookScreen() {
 
         setErrors({ name: "This book is already in your library" });
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        isSubmitting.current = false;
+        setIsLoading(false);
         return;
       }
 
@@ -179,18 +188,35 @@ export default function AddBookScreen() {
         throw new Error("Not authenticated");
       }
 
-      // Upload/download cover image if one was provided
-      let uploadedImageUrl: string | undefined;
-      if (coverUrl && coverUrl.trim()) {
-        try {
-          console.log("📤 Uploading/downloading cover image...");
-          const { uploadItemImage } = await import("@/lib/storage-service");
-          uploadedImageUrl = await uploadItemImage(coverUrl.trim(), user.id);
-          console.log("✅ Cover image saved:", uploadedImageUrl);
-        } catch (error: any) {
-          console.error("❌ Image upload failed:", error);
-          console.warn("⚠️ Book will be added without cover image");
-          // Continue without image - book will still be added
+      // For external URLs (book covers), use them directly - no need to re-upload
+      // Only upload if it's a local file URI (from image picker)
+      let imageUrl: string | undefined;
+      const trimmedCoverUrl = coverUrl.trim();
+
+      if (trimmedCoverUrl) {
+        const isExternalUrl = trimmedCoverUrl.startsWith('http://') ||
+                             trimmedCoverUrl.startsWith('https://');
+        const isSupabaseUrl = trimmedCoverUrl.includes('supabase.co/storage');
+
+        if (isExternalUrl && !isSupabaseUrl) {
+          // External URL (e.g., book cover API) - use directly
+          console.log("🔗 Using external URL directly (no upload needed)");
+          imageUrl = trimmedCoverUrl;
+        } else if (!isExternalUrl) {
+          // Local file - upload to storage
+          try {
+            console.log("📤 Uploading local image...");
+            const { uploadItemImage } = await import("@/lib/storage-service");
+            imageUrl = await uploadItemImage(trimmedCoverUrl, user.id);
+            console.log("✅ Image uploaded:", imageUrl);
+          } catch (error: any) {
+            console.error("❌ Image upload failed:", error);
+            console.warn("⚠️ Book will be added without cover image");
+            // Continue without image
+          }
+        } else {
+          // Already a Supabase URL
+          imageUrl = trimmedCoverUrl;
         }
       }
 
@@ -198,7 +224,7 @@ export default function AddBookScreen() {
         name: title.trim(),
         description: description.trim() || undefined,
         category: "book" as const,
-        images: uploadedImageUrl ? [uploadedImageUrl] : undefined,
+        images: imageUrl ? [imageUrl] : undefined,
         borrowedBy: borrowedBy || undefined,
         borrowedDate: borrowedBy ? new Date() : undefined,
         notes: notes.trim() || undefined,
@@ -226,6 +252,8 @@ export default function AddBookScreen() {
 
       router.push("/library" as any);
     } catch (error) {
+      isSubmitting.current = false;
+      setIsLoading(false);
       console.error("❌ Error adding book:", error);
 
       // Handle Zod validation errors
@@ -437,19 +465,19 @@ export default function AddBookScreen() {
               <Button
                 variant="outline"
                 onPress={handleCancel}
-                disabled={saving}
+                disabled={isLoading}
                 className="flex-1"
               >
                 <Text>Cancel</Text>
               </Button>
               <Button
                 onPress={handleSubmit}
-                disabled={saving || !title.trim()}
+                disabled={isLoading || !title.trim()}
                 className="flex-1 bg-blue-600"
               >
-                {saving && <ActivityIndicator size="small" color="white" />}
+                {isLoading && <ActivityIndicator size="small" color="white" />}
                 <Text className="text-white">
-                  {saving
+                  {isLoading
                     ? "Saving..."
                     : borrowedBy
                     ? "Add & Lend Book"

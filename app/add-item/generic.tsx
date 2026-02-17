@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScrollView, View, Alert, ActivityIndicator } from "react-native";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ export default function AddGenericItemScreen() {
   const { friends } = useFriends();
   const { createItem, loading } = useCreateItem();
   const { items: existingItems } = useItems();
+  const isSubmitting = useRef<boolean>(false);
 
   // Form state
   const [name, setName] = useState("");
@@ -39,6 +40,14 @@ export default function AddGenericItemScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async () => {
+    // Prevent double submission
+    if (loading || uploading || isSubmitting.current) {
+      console.log("⚠️ Already submitting, ignoring duplicate submission");
+      return;
+    }
+
+    isSubmitting.current = true;
+
     try {
       setErrors({});
       setUploading(true);
@@ -68,6 +77,7 @@ export default function AddGenericItemScreen() {
 
         setErrors({ name: "This item is already in your library" });
         setUploading(false);
+        isSubmitting.current = false;
         return;
       }
 
@@ -84,6 +94,7 @@ export default function AddGenericItemScreen() {
           console.error("❌ Image upload failed:", error);
           toast.error(error.message || "Failed to upload image");
           setUploading(false);
+          isSubmitting.current = false;
           return;
         }
       } else {
@@ -111,6 +122,7 @@ export default function AddGenericItemScreen() {
       router.back();
       router.back(); // Go back twice to return to items list
     } catch (error) {
+      isSubmitting.current = false;
       if (error && typeof error === "object" && "issues" in error) {
         const zodError = error as {
           issues: Array<{ path: Array<string | number>; message: string }>;
@@ -131,6 +143,7 @@ export default function AddGenericItemScreen() {
       }
     } finally {
       setUploading(false);
+      isSubmitting.current = false;
     }
   };
 

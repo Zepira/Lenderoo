@@ -137,9 +137,13 @@ export async function createItem(
 
   if (error) throw error;
 
-  // Update friend's borrow count if item is being lent
+  // Update friend's borrow count if item is being lent (non-blocking)
   if (itemData.borrowedBy) {
-    await incrementFriendBorrowCount(itemData.borrowedBy);
+    // Don't await - let it update in the background
+    incrementFriendBorrowCount(itemData.borrowedBy).catch((err) => {
+      console.error('Failed to update friend borrow count:', err);
+      // Non-critical error - don't fail the item creation
+    });
   }
 
   return convertItemFromDb(data);
@@ -227,9 +231,12 @@ export async function getItemsByFriend(friendId: string): Promise<Item[]> {
 }
 
 export async function getActiveItems(): Promise<Item[]> {
+  const userId = await getCurrentUserId();
+
   const { data, error } = await supabase
     .from("items")
     .select("*")
+    .eq("user_id", userId)
     .not("borrowed_by", "is", null)
     .is("returned_date", null);
 
@@ -258,6 +265,24 @@ export async function getOverdueItems(): Promise<Item[]> {
     .is("returned_date", null)
     .not("due_date", "is", null)
     .lt("due_date", now);
+
+  if (error) throw error;
+  return (data || []).map(convertItemFromDb);
+}
+
+/**
+ * Get items the current user has borrowed from others
+ * (via borrow requests - where borrowed_by equals user's ID)
+ */
+export async function getBorrowedByMeItems(): Promise<Item[]> {
+  const userId = await getCurrentUserId();
+
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("borrowed_by", userId)
+    .is("returned_date", null)
+    .neq("user_id", userId); // Exclude items we own
 
   if (error) throw error;
   return (data || []).map(convertItemFromDb);

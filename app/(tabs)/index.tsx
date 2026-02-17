@@ -8,7 +8,7 @@ import {
 import { router } from "expo-router";
 import { Package, Heart } from "lucide-react-native";
 import { ItemCard } from "components/ItemCard";
-import { useActiveItems } from "hooks/useItems";
+import { useActiveItems, useBorrowedByMeItems } from "hooks/useItems";
 import { useFriends } from "hooks/useFriends";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -18,8 +18,11 @@ import type { Item } from "lib/types";
 import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 
 export default function ItemsScreen() {
-  const { items, loading, refresh } = useActiveItems();
+  const { items: lentOutItems, loading: lentOutLoading, refresh: refreshLentOut } = useActiveItems();
+  const { items: borrowedByMeItems, loading: borrowedLoading, refresh: refreshBorrowed } = useBorrowedByMeItems();
   const { friends } = useFriends();
+
+  const loading = lentOutLoading || borrowedLoading;
 
   // Create a map of friend IDs to Friend objects
   const friendsMap = useMemo(() => {
@@ -40,6 +43,21 @@ export default function ItemsScreen() {
     router.push("/add-item");
   };
 
+  const refresh = async () => {
+    await Promise.all([refreshLentOut(), refreshBorrowed()]);
+  };
+
+  const renderBorrowedByMeItem = ({ item }: { item: Item }) => {
+    return (
+      <View className="pb-3">
+        <ItemCard
+          item={item}
+          onPress={() => handleItemPress(item)}
+        />
+      </View>
+    );
+  };
+
   const renderHeader = () => (
     <SafeAreaWrapper>
       {/* Items I've Borrowed Section */}
@@ -48,20 +66,34 @@ export default function ItemsScreen() {
           <Text variant="h2" className="font-bold">
             Borrowed by Me
           </Text>
+          {borrowedByMeItems.length > 0 && (
+            <Text variant="small" className="text-muted-foreground">
+              {borrowedByMeItems.length} {borrowedByMeItems.length === 1 ? "item" : "items"}
+            </Text>
+          )}
         </View>
 
-        {/* Empty state - we don't track items user borrows from others yet */}
-        <View className="p-8 items-center gap-3 bg-muted rounded-lg">
-          <Package
-            size={48}
-            color={
-              isDark ? THEME.dark.mutedForeground : THEME.light.mutedForeground
-            }
-          />
-          <Text variant="default" className="text-muted-foreground text-center">
-            quiet in here
-          </Text>
-        </View>
+        {borrowedLoading ? (
+          <View className="p-8 items-center">
+            <ActivityIndicator size="small" color="#3b82f6" />
+          </View>
+        ) : borrowedByMeItems.length > 0 ? (
+          <View className="gap-3">
+            {borrowedByMeItems.map((item) => renderBorrowedByMeItem({ item }))}
+          </View>
+        ) : (
+          <View className="p-8 items-center gap-3 bg-muted rounded-lg">
+            <Package
+              size={48}
+              color={
+                isDark ? THEME.dark.mutedForeground : THEME.light.mutedForeground
+              }
+            />
+            <Text variant="default" className="text-muted-foreground text-center">
+              quiet in here
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Items I've Lent Out Section Header */}
@@ -70,9 +102,9 @@ export default function ItemsScreen() {
           <Text variant="h2" className="font-bold">
             Lent Out
           </Text>
-          {items.length > 0 && (
+          {lentOutItems.length > 0 && (
             <Text variant="small" className="text-muted-foreground">
-              {items.length} {items.length === 1 ? "item" : "items"}
+              {lentOutItems.length} {lentOutItems.length === 1 ? "item" : "items"}
             </Text>
           )}
         </View>
@@ -123,7 +155,7 @@ export default function ItemsScreen() {
   return (
     <View className="flex-1 bg-background">
       <FlatList
-        data={items}
+        data={lentOutItems}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={renderHeader}

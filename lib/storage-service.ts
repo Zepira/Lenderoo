@@ -6,23 +6,29 @@
 
 import { supabase } from './supabase';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { decode } from 'base64-arraybuffer';
 
 const BUCKET_NAME = 'item-images';
+const MAX_IMAGE_WIDTH = 1200; // Max width in pixels
+const MAX_IMAGE_HEIGHT = 1200; // Max height in pixels
+const COMPRESSION_QUALITY = 0.8; // 80% quality
 
 /**
  * Upload an image to Supabase Storage
  *
  * @param uri - Local file URI from image picker or HTTP(S) URL
  * @param userId - ID of the user uploading the image
+ * @param uploadExternalUrls - If false, external URLs are used directly without re-uploading (faster)
  * @returns Public URL of the uploaded image
  */
 export async function uploadItemImage(
   uri: string,
-  userId: string
+  userId: string,
+  uploadExternalUrls: boolean = false
 ): Promise<string> {
   try {
-    console.log('📤 Uploading image:', uri);
+    console.log('📤 Processing image:', uri);
 
     // If it's already a Supabase Storage URL, return as-is
     if (uri.includes('supabase.co/storage')) {
@@ -30,20 +36,25 @@ export async function uploadItemImage(
       return uri;
     }
 
-    // If it's an HTTP(S) URL, try to download it
+    // If it's an HTTP(S) URL
     if (uri.startsWith('http://') || uri.startsWith('https://')) {
-      console.log('🌐 Attempting to download image from URL...');
-      try {
-        return await downloadAndUploadImage(uri, userId);
-      } catch (error: any) {
-        // If download fails (likely CORS on web), fall back to using the URL directly
-        console.warn('⚠️ Failed to download image (likely CORS restriction):', error.message);
-        console.warn('⚠️ Using external URL directly. Note: This URL may break if the source removes it.');
+      if (uploadExternalUrls) {
+        // Download and re-upload (slower but ensures we control the image)
+        console.log('🌐 Downloading and re-uploading external URL...');
+        try {
+          return await downloadAndUploadImage(uri, userId);
+        } catch (error: any) {
+          console.warn('⚠️ Failed to download/upload, using URL directly:', error.message);
+          return uri;
+        }
+      } else {
+        // Use external URL directly (faster, recommended for book covers)
+        console.log('🔗 Using external URL directly (no upload needed)');
         return uri;
       }
     }
 
-    // It's a local file URI
+    // It's a local file URI - upload it
     return await uploadLocalImage(uri, userId);
   } catch (error) {
     console.error('❌ Error uploading image:', error);
@@ -52,16 +63,51 @@ export async function uploadItemImage(
 }
 
 /**
+ * Compress and resize image before upload
+ */
+async function compressImage(uri: string): Promise<string> {
+  try {
+    console.log('🗜️ Compressing image...');
+
+    const manipResult = await ImageManipulator.manipulateAsync(
+      uri,
+      [
+        // Resize to max dimensions while maintaining aspect ratio
+        {
+          resize: {
+            width: MAX_IMAGE_WIDTH,
+            height: MAX_IMAGE_HEIGHT,
+          },
+        },
+      ],
+      {
+        compress: COMPRESSION_QUALITY,
+        format: ImageManipulator.SaveFormat.JPEG,
+      }
+    );
+
+    console.log('✅ Image compressed:', manipResult.uri);
+    return manipResult.uri;
+  } catch (error) {
+    console.warn('⚠️ Image compression failed, using original:', error);
+    return uri; // Fallback to original if compression fails
+  }
+}
+
+/**
  * Upload a local file to Supabase Storage
  */
 async function uploadLocalImage(uri: string, userId: string): Promise<string> {
+  // Compress image first to improve upload speed
+  const compressedUri = await compressImage(uri);
+
   // Generate unique filename
-  const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+  const fileExt = 'jpg'; // Always use jpg after compression
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
   const filePath = `${userId}/${fileName}`;
 
   // Read the file as base64
-  const base64 = await FileSystem.readAsStringAsync(uri, {
+  const base64 = await FileSystem.readAsStringAsync(compressedUri, {
     encoding: FileSystem.EncodingType.Base64,
   });
 
@@ -69,7 +115,7 @@ async function uploadLocalImage(uri: string, userId: string): Promise<string> {
   const arrayBuffer = decode(base64);
 
   // Determine content type
-  const contentType = getContentType(fileExt);
+  const contentType = 'image/jpeg';
 
   // Upload to Supabase Storage
   const { data, error } = await supabase.storage
