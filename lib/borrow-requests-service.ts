@@ -327,6 +327,7 @@ export async function approveBorrowRequest(
       borrowed_by: request.requester_id,
       borrowed_date: borrowedDate.toISOString(),
       due_date: finalDueDate?.toISOString(),
+      returned_date: null, // Clear any previous return date
     })
     .eq('id', request.item_id)
     .is('borrowed_by', null) // Ensure still available

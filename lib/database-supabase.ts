@@ -179,16 +179,17 @@ export async function updateItem(
     updateData.images = updates.imageUrl ? [updates.imageUrl] : null;
   }
 
-  if (updates.borrowedBy !== undefined)
-    updateData.borrowed_by = updates.borrowedBy;
-  if (updates.borrowedDate !== undefined)
-    updateData.borrowed_date = updates.borrowedDate?.toISOString();
-  if (updates.dueDate !== undefined)
-    updateData.due_date = updates.dueDate?.toISOString();
-  if (updates.returnedDate !== undefined)
-    updateData.returned_date = updates.returnedDate?.toISOString();
-  if (updates.notes !== undefined) updateData.notes = updates.notes;
-  if (updates.metadata !== undefined) updateData.metadata = updates.metadata;
+  // Use 'in' operator to check if property exists, allowing undefined/null values to clear fields
+  if ('borrowedBy' in updates)
+    updateData.borrowed_by = updates.borrowedBy ?? null;
+  if ('borrowedDate' in updates)
+    updateData.borrowed_date = updates.borrowedDate?.toISOString() ?? null;
+  if ('dueDate' in updates)
+    updateData.due_date = updates.dueDate?.toISOString() ?? null;
+  if ('returnedDate' in updates)
+    updateData.returned_date = updates.returnedDate?.toISOString() ?? null;
+  if ('notes' in updates) updateData.notes = updates.notes ?? null;
+  if ('metadata' in updates) updateData.metadata = updates.metadata ?? null;
 
   const { data, error } = await supabase
     .from("items")
@@ -323,6 +324,8 @@ export async function markItemReturned(
 ): Promise<Item | null> {
   return updateItem(id, {
     borrowedBy: undefined, // Clear the borrower
+    borrowedDate: undefined, // Clear borrowed date
+    dueDate: undefined, // Clear due date
     returnedDate: returnedDate || new Date(),
   });
 }

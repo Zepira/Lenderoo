@@ -24,6 +24,7 @@ import {
 } from "@/lib/borrow-requests-service";
 import type { BorrowRequestWithDetails } from "@/lib/types";
 import * as toast from "@/lib/toast";
+import { supabase } from "@/lib/supabase";
 
 // Convert item data from DB to Item type
 function convertItemFromDb(data: any): Item {
@@ -106,6 +107,29 @@ export default function FriendDetailScreen() {
     }
 
     loadItems();
+
+    if (!id) return;
+
+    // Subscribe to realtime updates for items
+    const channel = supabase
+      .channel(`friend-${id}-borrowed-items`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'items',
+        },
+        (payload) => {
+          console.log('📡 Friend borrowed items realtime update:', payload);
+          loadItems();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id]);
 
   // Load items owned by friend
@@ -143,6 +167,46 @@ export default function FriendDetailScreen() {
     }
 
     loadOwnedItems();
+
+    if (!id) return;
+
+    // Subscribe to realtime updates for items and borrow requests
+    const itemsChannel = supabase
+      .channel(`friend-${id}-owned-items`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'items',
+        },
+        (payload) => {
+          console.log('📡 Friend owned items realtime update:', payload);
+          loadOwnedItems();
+        }
+      )
+      .subscribe();
+
+    const requestsChannel = supabase
+      .channel(`friend-${id}-borrow-requests`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'borrow_requests',
+        },
+        (payload) => {
+          console.log('📡 Borrow requests realtime update:', payload);
+          loadOwnedItems(); // Reload to update borrow requests
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(itemsChannel);
+      supabase.removeChannel(requestsChannel);
+    };
   }, [id]);
 
   if (loading || !friend) {

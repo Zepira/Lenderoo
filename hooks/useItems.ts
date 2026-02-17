@@ -1,12 +1,13 @@
 /**
  * useItems Hook
  *
- * React hooks for managing items data
+ * React hooks for managing items data with realtime updates
  */
 
 import { useState, useEffect, useCallback } from 'react'
 import type { Item, ItemFilters } from 'lib/types'
 import * as db from 'lib/database-supabase'
+import { supabase } from 'lib/supabase'
 
 export function useItems(filters?: ItemFilters) {
   const [items, setItems] = useState<Item[]>([])
@@ -28,6 +29,28 @@ export function useItems(filters?: ItemFilters) {
 
   useEffect(() => {
     loadItems()
+
+    // Subscribe to realtime updates for items table
+    const channel = supabase
+      .channel('items-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'items',
+        },
+        (payload) => {
+          console.log('📡 Items realtime update:', payload)
+          // Refresh items when any change occurs
+          loadItems()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [loadItems])
 
   const refresh = useCallback(() => {
@@ -63,7 +86,31 @@ export function useItem(id: string | null) {
 
   useEffect(() => {
     loadItem()
-  }, [loadItem])
+
+    if (!id) return
+
+    // Subscribe to realtime updates for this specific item
+    const channel = supabase
+      .channel(`item-${id}-changes`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'items',
+          filter: `id=eq.${id}`,
+        },
+        (payload) => {
+          console.log('📡 Item realtime update:', payload)
+          loadItem()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [loadItem, id])
 
   const refresh = useCallback(() => {
     return loadItem()
@@ -176,6 +223,27 @@ export function useActiveItems() {
 
   useEffect(() => {
     loadItems()
+
+    // Subscribe to realtime updates for items
+    const channel = supabase
+      .channel('active-items-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'items',
+        },
+        (payload) => {
+          console.log('📡 Active items realtime update:', payload)
+          loadItems()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [loadItems])
 
   const refresh = useCallback(() => {
@@ -234,6 +302,27 @@ export function useBorrowedByMeItems() {
 
   useEffect(() => {
     loadItems()
+
+    // Subscribe to realtime updates for items borrowed by me
+    const channel = supabase
+      .channel('borrowed-by-me-items-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'items',
+        },
+        (payload) => {
+          console.log('📡 Borrowed by me items realtime update:', payload)
+          loadItems()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [loadItems])
 
   const refresh = useCallback(() => {

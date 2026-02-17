@@ -167,11 +167,7 @@ export default function AddBookScreen() {
           duplicateAuthor ? ` by ${duplicateAuthor}` : ""
         } is already in your library.`;
 
-        Alert.alert(
-          "Duplicate Book",
-          duplicateMessage,
-          [{ text: "OK" }]
-        );
+        Alert.alert("Duplicate Book", duplicateMessage, [{ text: "OK" }]);
 
         setErrors({ name: "This book is already in your library" });
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
@@ -183,7 +179,9 @@ export default function AddBookScreen() {
       console.log("📦 Building item data...");
 
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         throw new Error("Not authenticated");
       }
@@ -194,9 +192,10 @@ export default function AddBookScreen() {
       const trimmedCoverUrl = coverUrl.trim();
 
       if (trimmedCoverUrl) {
-        const isExternalUrl = trimmedCoverUrl.startsWith('http://') ||
-                             trimmedCoverUrl.startsWith('https://');
-        const isSupabaseUrl = trimmedCoverUrl.includes('supabase.co/storage');
+        const isExternalUrl =
+          trimmedCoverUrl.startsWith("http://") ||
+          trimmedCoverUrl.startsWith("https://");
+        const isSupabaseUrl = trimmedCoverUrl.includes("supabase.co/storage");
 
         if (isExternalUrl && !isSupabaseUrl) {
           // External URL (e.g., book cover API) - use directly
@@ -250,7 +249,7 @@ export default function AddBookScreen() {
 
       console.log("✅ Book added successfully! ID:", result.id);
 
-      router.back();
+      router.push("/library");
     } catch (error) {
       isSubmitting.current = false;
       setIsLoading(false);
