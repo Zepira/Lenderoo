@@ -38,6 +38,8 @@ interface ItemListProps {
   };
   /** Content padding */
   contentPadding?: number;
+  /** Optional header component to render above the list */
+  headerComponent?: React.ReactElement;
 }
 
 export function ItemList({
@@ -49,6 +51,7 @@ export function ItemList({
   loading = false,
   emptyState,
   contentPadding = 16,
+  headerComponent,
 }: ItemListProps) {
   const renderItem = ({ item }: ListRenderItemInfo<Item>) => {
     // Get friend if item is borrowed (borrowedBy will be undefined for available items)
@@ -100,10 +103,11 @@ export function ItemList({
       keyExtractor={keyExtractor}
       contentContainerStyle={{
         paddingHorizontal: contentPadding,
-        paddingTop: contentPadding,
+        paddingTop: headerComponent ? 0 : contentPadding,
         paddingBottom: contentPadding + 80, // Extra padding for FAB
         flexGrow: 1,
       }}
+      ListHeaderComponent={headerComponent}
       ListEmptyComponent={renderEmpty}
       refreshControl={
         onRefresh ? (

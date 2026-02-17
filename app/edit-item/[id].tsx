@@ -17,7 +17,9 @@ export default function EditItemRouter() {
         const params = new URLSearchParams({
           itemId: item.id,
           title: item.name,
-          ...(item.imageUrl && { coverUrl: item.imageUrl }),
+          ...((item.images?.[0] || item.imageUrls?.[0] || item.imageUrl) && {
+            coverUrl: item.images?.[0] || item.imageUrls?.[0] || item.imageUrl
+          }),
           ...(item.description && { description: item.description }),
           ...(item.notes && { notes: item.notes }),
           ...(item.borrowedBy && { borrowedBy: item.borrowedBy }),
@@ -53,7 +55,9 @@ export default function EditItemRouter() {
           category: item.category,
           name: item.name,
           ...(item.description && { description: item.description }),
-          ...(item.imageUrl && { imageUrl: item.imageUrl }),
+          ...((item.images?.[0] || item.imageUrls?.[0] || item.imageUrl) && {
+            imageUrl: item.images?.[0] || item.imageUrls?.[0] || item.imageUrl
+          }),
           ...(item.notes && { notes: item.notes }),
           ...(item.borrowedBy && { borrowedBy: item.borrowedBy }),
         });

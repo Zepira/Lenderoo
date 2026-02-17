@@ -59,9 +59,9 @@ export function ItemCard({
           <View>
             {/* Item Image or Placeholder */}
             <View className="w-20 h-20 rounded-lg overflow-hidden items-center justify-center bg-muted">
-              {item.imageUrl ? (
+              {(item.images?.[0] || item.imageUrls?.[0] || item.imageUrl) ? (
                 <RNImage
-                  source={{ uri: item.imageUrl }}
+                  source={{ uri: item.images?.[0] || item.imageUrls?.[0] || item.imageUrl }}
                   style={{ width: 80, height: 80 }}
                   resizeMode="cover"
                 />

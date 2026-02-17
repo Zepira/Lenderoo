@@ -4,15 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a React Native starter project using Expo Router with Tamagui for UI components. The project uses Yarn 4.5.0 as the package manager and is configured with React Native's New Architecture enabled for both iOS and Android.
+This is a React Native app using Expo Router with NativeWind for styling. The project uses Yarn 4.5.0 as the package manager and is configured with React Native's New Architecture enabled for both iOS and Android.
 
 **Key Technologies:**
 - **Expo Router** (v6) for file-based routing
-- **Tamagui** (v1.138) for cross-platform UI components and styling
+- **NativeWind** (v4.2.1) for Tailwind CSS styling
 - **React Native** 0.81.5 with React 19.1.0
 - **TypeScript** with strict mode enabled
 - **Biome** for linting and formatting
 - **Jest** for testing
+- **Supabase** for backend (auth, database, storage)
+- **Lucide React Native** for icons
 
 ## Common Commands
 
@@ -34,18 +36,6 @@ yarn web
 yarn test
 ```
 
-### Tamagui Management
-```bash
-# Upgrade Tamagui packages to latest
-yarn upgrade:tamagui
-
-# Upgrade Tamagui packages to canary
-yarn upgrade:tamagui:canary
-
-# Check Tamagui configuration
-yarn check:tamagui
-```
-
 ### Linting and Formatting
 Use Biome for code quality:
 ```bash
@@ -65,45 +55,68 @@ npx @biomejs/biome check .
 
 The app uses Expo Router v6 with typed routes enabled. Routes are defined by the file structure in the `app/` directory:
 
-- **`app/_layout.tsx`**: Root layout that wraps the entire app with providers (Tamagui, Toast, React Navigation themes)
-- **`app/(tabs)/_layout.tsx`**: Tab navigator layout with two tabs
-- **`app/(tabs)/index.tsx`**: First tab (Tab One)
-- **`app/(tabs)/two.tsx`**: Second tab (Tab Two)
-- **`app/modal.tsx`**: Modal screen accessible via `/modal` route
+- **`app/_layout.tsx`**: Root layout that handles authentication and navigation
+- **`app/(auth)/`**: Authentication screens (sign-in, sign-up)
+- **`app/(tabs)/_layout.tsx`**: Main tab navigator layout
+- **`app/(tabs)/index.tsx`**: Home tab
+- **`app/(tabs)/library/`**: Library tab with item management
+- **`app/(tabs)/explore/`**: Explore tab for discovering books
+- **`app/(tabs)/friends/`**: Friends tab
+- **`app/(tabs)/settings/`**: Settings/profile tab
+- **`app/add-item.tsx`**: Modal screen for adding items
 - **`app/+not-found.tsx`**: 404 error screen
-- **`app/+html.tsx`**: Custom HTML template for web
 
 ### Provider Hierarchy
 
-The app is wrapped in multiple providers in this order (see `app/_layout.tsx` and `components/Provider.tsx`):
+The app is wrapped in multiple providers:
 
-1. **TamaguiProvider**: Provides Tamagui theme configuration and responds to system color scheme
-2. **ToastProvider**: Enables toast notifications (native toasts disabled by default in Expo Go)
-3. **React Navigation ThemeProvider**: Applies dark/light theme to navigation
-4. **StatusBar**: Configured based on color scheme
+1. **SafeAreaProvider**: Handles safe area insets
+2. **ThemeProvider**: Custom theme context for dark/light mode
+3. **AuthProvider**: Handles user authentication state
+4. **React Navigation ThemeProvider**: Applies theme to navigation
+5. **StatusBar**: Configured based on color scheme
 
-### Tamagui Configuration
+### Styling with NativeWind
 
-- Configuration lives in `tamagui.config.ts` (uses default config from `@tamagui/config/v4`)
-- Web styles are extracted to `tamagui-web.css` via Metro plugin
-- Babel plugin is configured to optimize Tamagui components (extraction disabled in development)
-- The Tamagui babel plugin MUST come before `react-native-reanimated/plugin` in `babel.config.js`
+This project uses **NativeWind v4**, which brings Tailwind CSS to React Native:
+
+- Use `className` prop for styling (e.g., `className="flex-1 bg-background"`)
+- Configuration in `tailwind.config.js`
+- Global styles in `global.css`
+- Custom UI components in `components/ui/` (button, text, card, avatar, etc.)
+- Dark mode support via `dark:` prefix (e.g., `className="bg-white dark:bg-black"`)
+
+**Important**: Always use NativeWind's `className` for styling. Do NOT use Tamagui components or styling patterns.
+
+### UI Component Library
+
+Custom UI components are located in `components/ui/`:
+- `Button` - Styled button with variants
+- `Text` - Typography with variants (h1, h2, h3, small, muted, etc.)
+- `Card` - Card components (Card, CardHeader, CardContent, CardFooter)
+- `Avatar` - User avatar with fallback
+- `Separator` - Visual divider
+- `Label` - Form labels
+- `Select` - Dropdown selector
+
+Always use these components instead of creating custom styled components.
 
 ### Import Path Resolution
 
 The project uses baseUrl `"."` in `tsconfig.base.json`, allowing imports like:
 ```typescript
-import { Provider } from 'components/Provider'
+import { Button } from '@/components/ui/button'
+import { supabase } from '@/lib/supabase'
 ```
 
-Components are in the `components/` directory, app routes in `app/`.
+Components are in `components/`, utilities in `lib/`, hooks in `hooks/`.
 
 ### Metro Configuration
 
-- Custom Metro config in `metro.config.js` wraps Expo's default config with `withTamagui`
+- Custom Metro config in `metro.config.js`
 - `.mjs` files are supported via `sourceExts`
 - CSS is enabled for web builds
-- Tamagui Metro plugin extracts CSS for web
+- NativeWind CSS output configured
 
 ### New Architecture Enabled
 
@@ -133,24 +146,103 @@ Many common linting rules are disabled to allow flexibility. Organize imports is
 - Target: ES2020
 - JSX: `react-jsx` (automatic runtime)
 
+### Styling Guidelines
+
+**Use NativeWind classes for all styling:**
+
+```tsx
+// ✅ CORRECT - Use NativeWind className
+<View className="flex-1 bg-background p-4">
+  <Text className="text-lg font-bold text-foreground">Hello</Text>
+</View>
+
+// ❌ WRONG - Don't use inline styles or Tamagui
+<View style={{ flex: 1, padding: 16 }}>
+  <Text>Hello</Text>
+</View>
+```
+
+**Use custom UI components:**
+
+```tsx
+// ✅ CORRECT - Use existing UI components
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+
+<Button onPress={handlePress}>
+  <Text>Click me</Text>
+</Button>
+
+// ❌ WRONG - Don't create custom styled components
+<Pressable style={styles.button}>
+  <Text style={styles.text}>Click me</Text>
+</Pressable>
+```
+
 ## Important Notes
 
-### Monorepo Consideration
+### Authentication
 
-Per the README, this project was adapted for a monorepo and had to remove `react`, `react-dom`, and `react-native-web` dependencies with metro.config.js adjustments. If extending this starter, be aware of potential dependency hoisting issues.
+The app uses Supabase for authentication:
+- Sign up/sign in flows in `app/(auth)/`
+- Auth context in `contexts/AuthContext.tsx`
+- Protected routes redirect to sign-in if not authenticated
+- User session persisted with AsyncStorage
+
+### Database
+
+Supabase PostgreSQL database with:
+- `users` - User profiles
+- `items` - Items in user's library
+- `friend_connections` - User friendships
+- `borrow_requests` - Borrow request system
+
+Migrations located in `supabase/migrations/`. See `SUPABASE_SETUP.md` for setup instructions.
 
 ### Toast Notifications
 
-Native toasts require a development build and won't work in Expo Go. To enable native toasts on mobile, uncomment `'mobile'` in the `native` array in `components/Provider.tsx:23`.
+Toast notifications use the `burnt` library:
+- Import from `@/lib/toast`
+- Usage: `toast.success("Message")`, `toast.error("Error")`
+- Native toasts work on iOS and Android
 
-### Reanimated Plugin Order
+### Icons
 
-The `react-native-reanimated/plugin` MUST be the last plugin in `babel.config.js` as noted in the comment.
+Use Lucide React Native for all icons:
 
-### Font Loading
+```tsx
+import * as LucideIcons from 'lucide-react-native';
 
-The app loads Inter fonts (Medium and Bold variants) and prevents splash screen auto-hide until fonts are loaded or an error occurs (see `app/_layout.tsx`).
+<LucideIcons.Home size={24} color="#000" />
+```
 
 ### Theme Handling
 
-The app automatically responds to system color scheme changes. Tamagui theme is synchronized with React Navigation's theme provider.
+The app supports dark/light mode:
+- Theme context in `contexts/ThemeContext.tsx`
+- System theme detection automatic
+- Manual theme switcher in settings
+- Use dark: prefix for dark mode styles: `className="bg-white dark:bg-black"`
+
+### Safe Area
+
+Always wrap screens in `SafeAreaWrapper`:
+
+```tsx
+import { SafeAreaWrapper } from '@/components/SafeAreaWrapper';
+
+export default function Screen() {
+  return (
+    <SafeAreaWrapper>
+      {/* Your content */}
+    </SafeAreaWrapper>
+  );
+}
+```
+
+### Type Safety
+
+All database types defined in `lib/types.ts`:
+- `User`, `Item`, `Friend`, `BorrowRequest`, etc.
+- Service functions have proper TypeScript types
+- Use type imports: `import type { Item } from 'lib/types'`

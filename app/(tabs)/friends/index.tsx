@@ -1,17 +1,25 @@
-import { View, ScrollView, RefreshControl } from "react-native";
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react-native";
 import { FriendList } from "components/FriendList";
 import { FriendRequests } from "components/FriendRequests";
-import { getMyFriends, getPendingFriendRequests, type FriendRequest, type FriendUser } from "@/lib/friends-service";
+import {
+  getMyFriends,
+  getPendingFriendRequests,
+  getFriendItemCounts,
+  type FriendRequest,
+  type FriendUser,
+} from "@/lib/friends-service";
 import { Button } from "@/components/ui/button";
 import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 import type { Friend } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
 // Convert FriendUser to Friend format for FriendList component
-function convertToFriendFormat(friendUser: FriendUser): Friend {
+function convertToFriendFormat(
+  friendUser: FriendUser,
+  counts?: { ownedCount: number; borrowedCount: number }
+): Friend {
   return {
     id: friendUser.id,
     userId: "", // Not applicable for user-to-user friends
@@ -19,8 +27,9 @@ function convertToFriendFormat(friendUser: FriendUser): Friend {
     email: friendUser.email,
     phone: undefined,
     avatarUrl: friendUser.avatarUrl,
-    totalItemsBorrowed: 0,
-    currentItemsBorrowed: 0,
+    totalItemsBorrowed: 0, // Historical count not currently tracked
+    currentItemsBorrowed: counts?.borrowedCount || 0,
+    ownedItemsCount: counts?.ownedCount || 0,
     createdAt: friendUser.friendsSince,
     updatedAt: friendUser.friendsSince,
   };
@@ -43,20 +52,22 @@ export default function FriendsScreen() {
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
     async function setupRealtimeSubscription() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       console.log("🔴 Setting up realtime subscription for user:", user.id);
 
       // Subscribe to changes in friend_connections table
       channel = supabase
-        .channel('friend-connections-changes')
+        .channel("friend-connections-changes")
         .on(
-          'postgres_changes',
+          "postgres_changes",
           {
-            event: '*', // Listen to INSERT, UPDATE, DELETE
-            schema: 'public',
-            table: 'friend_connections',
+            event: "*", // Listen to INSERT, UPDATE, DELETE
+            schema: "public",
+            table: "friend_connections",
             filter: `friend_user_id=eq.${user.id}`, // Incoming requests
           },
           (payload) => {
@@ -66,11 +77,11 @@ export default function FriendsScreen() {
           }
         )
         .on(
-          'postgres_changes',
+          "postgres_changes",
           {
-            event: '*',
-            schema: 'public',
-            table: 'friend_connections',
+            event: "*",
+            schema: "public",
+            table: "friend_connections",
             filter: `user_id=eq.${user.id}`, // Outgoing requests & my friendships
           },
           (payload) => {
@@ -100,8 +111,21 @@ export default function FriendsScreen() {
       console.log("🔄 Loading friends...");
       const friendsData = await getMyFriends();
       console.log("✅ Friends loaded:", friendsData.length);
-      const convertedFriends = friendsData.map(convertToFriendFormat);
-      setFriends(convertedFriends);
+
+      // Fetch item counts for each friend
+      const friendsWithCounts = await Promise.all(
+        friendsData.map(async (friendUser) => {
+          try {
+            const counts = await getFriendItemCounts(friendUser.id);
+            return convertToFriendFormat(friendUser, counts);
+          } catch (error) {
+            console.error(`Error loading counts for friend ${friendUser.id}:`, error);
+            return convertToFriendFormat(friendUser);
+          }
+        })
+      );
+
+      setFriends(friendsWithCounts);
     } catch (error: any) {
       console.error("❌ Error loading friends:", error);
       console.error("Error details:", error.message, error.details);
@@ -139,35 +163,24 @@ export default function FriendsScreen() {
 
   return (
     <SafeAreaWrapper>
-      <ScrollView
-        refreshControl={
-          <RefreshControl
-            refreshing={loading || loadingRequests}
-            onRefresh={handleRefresh}
-          />
+      <FriendList
+        friends={friends}
+        onFriendPress={handleFriendPress}
+        onRefresh={handleRefresh}
+        refreshing={loading || loadingRequests}
+        loading={loading}
+        detailed
+        emptyState={{
+          title: "No friends yet",
+          message: "Add friends to start lending them items",
+          actionLabel: "Add Your First Friend",
+          onAction: handleAddFriend,
+        }}
+        ListHeaderComponent={
+          <FriendRequests requests={friendRequests} onUpdate={handleRefresh} />
         }
-      >
-        {/* Friend Requests */}
-        <FriendRequests
-          requests={friendRequests}
-          onUpdate={handleRefresh}
-        />
-
-        {/* Friends List */}
-        <FriendList
-          friends={friends}
-          onFriendPress={handleFriendPress}
-          onRefresh={handleRefresh}
-          loading={loading}
-          detailed
-          emptyState={{
-            title: "No friends yet",
-            message: "Add friends to start lending them items",
-            actionLabel: "Add Your First Friend",
-            onAction: handleAddFriend,
-          }}
-        />
-      </ScrollView>
+        onAddFriend={handleAddFriend}
+      />
     </SafeAreaWrapper>
   );
 }

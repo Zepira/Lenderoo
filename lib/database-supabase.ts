@@ -273,7 +273,9 @@ export async function markItemReturned(
 }
 
 export async function queryItems(filters?: ItemFilters): Promise<Item[]> {
-  let query = supabase.from("items").select("*");
+  const userId = await getCurrentUserId();
+
+  let query = supabase.from("items").select("*").eq("user_id", userId);
 
   // Filter by category
   if (filters?.category) {

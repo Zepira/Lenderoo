@@ -153,9 +153,9 @@ export default function ItemDetailScreen() {
         <View className="gap-4">
           {/* Item Image */}
           <View className="w-full h-[300px] bg-muted items-center justify-center">
-            {item.imageUrl ? (
+            {(item.images?.[0] || item.imageUrls?.[0] || item.imageUrl) ? (
               <Image
-                source={{ uri: item.imageUrl }}
+                source={{ uri: item.images?.[0] || item.imageUrls?.[0] || item.imageUrl }}
                 style={{ width: "100%", height: 300 }}
                 resizeMode="cover"
               />

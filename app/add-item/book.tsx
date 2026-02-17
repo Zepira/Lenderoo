@@ -18,6 +18,7 @@ import { Book } from "lucide-react-native";
 import { useFriends, useCreateItem, useItems } from "hooks";
 import { createItemSchema } from "lib/validation";
 import { FloatingBackButton } from "components/FloatingBackButton";
+import { supabase } from "@/lib/supabase";
 import { ImagePicker } from "components/ImagePicker";
 import type { BookMetadata } from "lib/types";
 import { cn } from "lib/utils";
@@ -155,39 +156,49 @@ export default function AddBookScreen() {
 
         console.warn("⚠️ Duplicate book found:", duplicate.name);
 
-        const shouldContinue = await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            "Duplicate Book Found",
-            `"${duplicate.name}"${
-              duplicateAuthor ? ` by ${duplicateAuthor}` : ""
-            } is already in your library.\n\nDo you still want to add it?`,
-            [
-              {
-                text: "Cancel",
-                style: "cancel",
-                onPress: () => resolve(false),
-              },
-              {
-                text: "Add Anyway",
-                onPress: () => resolve(true),
-              },
-            ],
-            { cancelable: false }
-          );
-        });
+        const duplicateMessage = `"${duplicate.name}"${
+          duplicateAuthor ? ` by ${duplicateAuthor}` : ""
+        } is already in your library.`;
 
-        if (!shouldContinue) {
-          console.log("❌ User cancelled due to duplicate");
-          return;
-        }
+        Alert.alert(
+          "Duplicate Book",
+          duplicateMessage,
+          [{ text: "OK" }]
+        );
+
+        setErrors({ name: "This book is already in your library" });
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        return;
       }
 
       console.log("📦 Building item data...");
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Not authenticated");
+      }
+
+      // Upload/download cover image if one was provided
+      let uploadedImageUrl: string | undefined;
+      if (coverUrl && coverUrl.trim()) {
+        try {
+          console.log("📤 Uploading/downloading cover image...");
+          const { uploadItemImage } = await import("@/lib/storage-service");
+          uploadedImageUrl = await uploadItemImage(coverUrl.trim(), user.id);
+          console.log("✅ Cover image saved:", uploadedImageUrl);
+        } catch (error: any) {
+          console.error("❌ Image upload failed:", error);
+          console.warn("⚠️ Book will be added without cover image");
+          // Continue without image - book will still be added
+        }
+      }
+
       const itemData = {
         name: title.trim(),
         description: description.trim() || undefined,
         category: "book" as const,
-        imageUrl: coverUrl.trim() || undefined,
+        images: uploadedImageUrl ? [uploadedImageUrl] : undefined,
         borrowedBy: borrowedBy || undefined,
         borrowedDate: borrowedBy ? new Date() : undefined,
         notes: notes.trim() || undefined,
@@ -202,7 +213,7 @@ export default function AddBookScreen() {
 
       const result = await createItem({
         ...itemData,
-        userId: "demo-user",
+        userId: user.id,
       });
 
       if (!result) {

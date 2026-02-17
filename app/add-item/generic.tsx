@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ScrollView, View, Alert } from "react-native";
+import { ScrollView, View, Alert, ActivityIndicator } from "react-native";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,9 @@ import { FloatingBackButton } from "components/FloatingBackButton";
 import { ImagePicker } from "components/ImagePicker";
 import { cn } from "lib/utils";
 import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
+import { uploadItemImage, validateImage } from "@/lib/storage-service";
+import { supabase } from "@/lib/supabase";
+import * as toast from "@/lib/toast";
 
 export default function AddGenericItemScreen() {
   const { category: categoryParam } = useLocalSearchParams<{
@@ -30,6 +33,7 @@ export default function AddGenericItemScreen() {
   const [imageUrl, setImageUrl] = useState("");
   const [borrowedBy, setBorrowedBy] = useState("");
   const [notes, setNotes] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -37,6 +41,13 @@ export default function AddGenericItemScreen() {
   const handleSubmit = async () => {
     try {
       setErrors({});
+      setUploading(true);
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Not authenticated");
+      }
 
       // Check for duplicates
       const duplicates = existingItems.filter((item) => {
@@ -49,35 +60,41 @@ export default function AddGenericItemScreen() {
       if (duplicates.length > 0) {
         const duplicate = duplicates[0];
 
-        const shouldContinue = await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            "Duplicate Item Found",
-            `"${duplicate.name}" is already in your library.\n\nDo you still want to add it?`,
-            [
-              {
-                text: "Cancel",
-                style: "cancel",
-                onPress: () => resolve(false),
-              },
-              {
-                text: "Add Anyway",
-                onPress: () => resolve(true),
-              },
-            ],
-            { cancelable: false }
-          );
-        });
+        Alert.alert(
+          "Duplicate Item",
+          `"${duplicate.name}" is already in your library. You cannot add the same item twice.`,
+          [{ text: "OK" }]
+        );
 
-        if (!shouldContinue) {
+        setErrors({ name: "This item is already in your library" });
+        setUploading(false);
+        return;
+      }
+
+      // Upload image if one was selected
+      let uploadedImageUrl: string | undefined;
+      if (imageUrl && !imageUrl.startsWith('http')) {
+        // It's a local file URI, need to upload
+        try {
+          toast.success("Uploading image...");
+          await validateImage(imageUrl);
+          uploadedImageUrl = await uploadItemImage(imageUrl, user.id);
+          console.log("✅ Image uploaded:", uploadedImageUrl);
+        } catch (error: any) {
+          console.error("❌ Image upload failed:", error);
+          toast.error(error.message || "Failed to upload image");
+          setUploading(false);
           return;
         }
+      } else {
+        uploadedImageUrl = imageUrl.trim() || undefined;
       }
 
       const itemData = {
         name: name.trim(),
         description: description.trim() || undefined,
         category,
-        imageUrl: imageUrl.trim() || undefined,
+        images: uploadedImageUrl ? [uploadedImageUrl] : undefined,
         borrowedBy: borrowedBy || undefined,
         borrowedDate: borrowedBy ? new Date() : undefined,
         notes: notes.trim() || undefined,
@@ -87,9 +104,10 @@ export default function AddGenericItemScreen() {
 
       await createItem({
         ...itemData,
-        userId: "demo-user",
+        userId: user.id,
       });
 
+      toast.success("Item added successfully!");
       router.back();
       router.back(); // Go back twice to return to items list
     } catch (error) {
@@ -104,10 +122,15 @@ export default function AddGenericItemScreen() {
           }
         });
         setErrors(fieldErrors);
+        toast.error("Please fix the errors");
       } else {
         console.error("Failed to create item:", error);
-        setErrors({ general: "Failed to add item. Please try again." });
+        const errorMessage = error instanceof Error ? error.message : "Failed to add item. Please try again.";
+        setErrors({ general: errorMessage });
+        toast.error(errorMessage);
       }
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -282,18 +305,21 @@ export default function AddGenericItemScreen() {
             <Button
               variant="outline"
               onPress={handleCancel}
-              disabled={loading}
+              disabled={loading || uploading}
               className="flex-1"
             >
               <Text>Cancel</Text>
             </Button>
             <Button
               onPress={handleSubmit}
-              disabled={loading || !name.trim()}
+              disabled={loading || uploading || !name.trim()}
               className="flex-1 bg-blue-600"
             >
+              {uploading && <ActivityIndicator size="small" color="#fff" />}
               <Text className="text-white">
-                {loading
+                {uploading
+                  ? "Uploading..."
+                  : loading
                   ? "Saving..."
                   : borrowedBy
                   ? `Add & Lend ${categoryLabel}`

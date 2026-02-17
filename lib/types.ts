@@ -89,6 +89,8 @@ export interface Friend {
   totalItemsBorrowed: number;
   /** Current number of items this friend has borrowed and not returned */
   currentItemsBorrowed: number;
+  /** Number of items this friend owns in their library */
+  ownedItemsCount?: number;
   /** Friend record creation timestamp */
   createdAt: Date;
   /** Last update timestamp */
@@ -209,6 +211,60 @@ export interface BorrowHistory {
   notes?: string;
   /** History entry creation timestamp */
   createdAt: Date;
+}
+
+/**
+ * Status of a borrow request
+ */
+export type BorrowRequestStatus = 'pending' | 'approved' | 'denied' | 'cancelled';
+
+/**
+ * Request to borrow an item from a friend
+ */
+export interface BorrowRequest {
+  /** Unique request identifier */
+  id: string;
+  /** ID of the item being requested */
+  itemId: string;
+  /** ID of the user requesting to borrow */
+  requesterId: string;
+  /** ID of the user who owns the item */
+  ownerId: string;
+  /** Current status of the request */
+  status: BorrowRequestStatus;
+  /** Requested due date for return */
+  requestedDueDate?: Date;
+  /** Optional message from requester */
+  message?: string;
+  /** Request creation timestamp */
+  createdAt: Date;
+  /** Last update timestamp */
+  updatedAt: Date;
+}
+
+/**
+ * Borrow request with item and user details
+ * Used for display in request lists
+ */
+export interface BorrowRequestWithDetails extends BorrowRequest {
+  /** Name of the item */
+  itemName: string;
+  /** Category of the item */
+  itemCategory: ItemCategory;
+  /** Item images */
+  itemImages?: string[];
+  /** ID of user currently borrowing the item (if any) */
+  itemBorrowedBy?: string;
+  /** Name of the requester */
+  requesterName: string;
+  /** Email of the requester */
+  requesterEmail: string;
+  /** Avatar URL of the requester */
+  requesterAvatarUrl?: string;
+  /** Name of the owner */
+  ownerName: string;
+  /** Email of the owner */
+  ownerEmail: string;
 }
 
 // ============================================================================
@@ -554,3 +610,4 @@ export type ItemRow = WithTimestamps<Item>;
 export type FriendRow = WithTimestamps<Friend>;
 export type BorrowHistoryRow = WithTimestamps<BorrowHistory>;
 export type UserRow = WithTimestamps<User>;
+export type BorrowRequestRow = WithTimestamps<BorrowRequest>;

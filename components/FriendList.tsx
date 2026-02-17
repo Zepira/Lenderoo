@@ -15,6 +15,9 @@ import type { Friend } from "lib/types";
 import { FriendCard } from "./FriendCard";
 import { EmptyState } from "./EmptyState";
 import { EMPTY_STATES } from "lib/constants";
+import { Button } from "./ui/button";
+import { Plus } from "lucide-react-native";
+import { Text } from "@/components/ui/text";
 
 interface FriendListProps {
   /** Array of friends to display */
@@ -39,6 +42,10 @@ interface FriendListProps {
 
   /** Show detailed friend cards */
   detailed?: boolean;
+
+  /** Optional header component to render above the list */
+  ListHeaderComponent?: React.ComponentType<any> | React.ReactElement | null;
+  onAddFriend?: () => void;
 }
 
 export function FriendList({
@@ -51,7 +58,10 @@ export function FriendList({
   contentPadding = 16,
 
   detailed = false,
+  ListHeaderComponent,
+  onAddFriend,
 }: FriendListProps) {
+  console.log("friends", friends);
   const renderItem = ({ item }: ListRenderItemInfo<Friend>) => {
     return (
       <View className="pb-3">
@@ -89,23 +99,30 @@ export function FriendList({
   const keyExtractor = (item: Friend) => item.id;
 
   return (
-    <FlatList
-      data={friends}
-      renderItem={renderItem}
-      keyExtractor={keyExtractor}
-      contentContainerStyle={{
-        paddingHorizontal: contentPadding,
-        paddingTop: contentPadding,
-        paddingBottom: contentPadding + 80, // Extra padding for FAB
-        flexGrow: 1,
-      }}
-      ListEmptyComponent={renderEmpty}
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        ) : undefined
-      }
-      showsVerticalScrollIndicator={false}
-    />
+    <>
+      <FlatList
+        data={friends}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={{
+          paddingHorizontal: contentPadding,
+          paddingTop: contentPadding,
+          paddingBottom: contentPadding + 80, // Extra padding for FAB
+          flexGrow: 1,
+        }}
+        ListHeaderComponent={ListHeaderComponent}
+        ListEmptyComponent={renderEmpty}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          ) : undefined
+        }
+        showsVerticalScrollIndicator={false}
+      />
+      <Button onPress={onAddFriend} className="mt-2">
+        <Plus size={16} />
+        <Text>Add new friend</Text>
+      </Button>
+    </>
   );
 }

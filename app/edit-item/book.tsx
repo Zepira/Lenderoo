@@ -15,7 +15,7 @@ import { Text } from "@/components/ui/text";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Book } from "lucide-react-native";
-import { useFriends, useUpdateItem } from "hooks";
+import { useFriends, useUpdateItem, useItems } from "hooks";
 import { createItemSchema } from "lib/validation";
 import { FloatingBackButton } from "components/FloatingBackButton";
 import { ImagePicker } from "components/ImagePicker";
@@ -46,6 +46,7 @@ export default function EditBookScreen() {
   }>();
   const { friends } = useFriends();
   const { updateItem, loading: saving } = useUpdateItem();
+  const { items: existingItems } = useItems();
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Form state
@@ -107,6 +108,54 @@ export default function EditBookScreen() {
         setErrors({ name: "Title is required" });
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         Alert.alert("Missing Information", "Please enter a book title.");
+        return;
+      }
+
+      // Check for duplicates (excluding the current item being edited)
+      console.log("🔍 Checking for duplicates...");
+      const duplicates = existingItems.filter((item) => {
+        // Skip the current item
+        if (item.id === params.itemId) return false;
+
+        if (item.category !== "book") return false;
+
+        const itemTitle = item.name.toLowerCase().trim();
+        const newTitle = title.toLowerCase().trim();
+
+        // Check title match
+        if (itemTitle !== newTitle) return false;
+
+        // If we have author info, check that too
+        if (author.trim() && item.metadata) {
+          const itemAuthor = (item.metadata as BookMetadata).author
+            ?.toLowerCase()
+            .trim();
+          const newAuthor = author.toLowerCase().trim();
+
+          if (itemAuthor && itemAuthor !== newAuthor) return false;
+        }
+
+        return true;
+      });
+
+      if (duplicates.length > 0) {
+        const duplicate = duplicates[0];
+        const duplicateAuthor = (duplicate.metadata as BookMetadata)?.author;
+
+        console.warn("⚠️ Duplicate book found:", duplicate.name);
+
+        const duplicateMessage = `"${duplicate.name}"${
+          duplicateAuthor ? ` by ${duplicateAuthor}` : ""
+        } is already in your library.`;
+
+        Alert.alert(
+          "Duplicate Book",
+          duplicateMessage,
+          [{ text: "OK" }]
+        );
+
+        setErrors({ name: "This book is already in your library" });
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         return;
       }
 

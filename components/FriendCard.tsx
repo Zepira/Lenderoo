@@ -5,7 +5,7 @@
  */
 
 import { View, Pressable, TouchableOpacity } from "react-native";
-import { Mail, Phone, Package } from "lucide-react-native";
+import { Mail, Phone, Package, Library } from "lucide-react-native";
 import type { Friend } from "lib/types";
 import { getInitials, formatCount } from "lib/utils";
 import { Card, CardHeader, CardFooter } from "@/components/ui/card";
@@ -32,11 +32,7 @@ export function FriendCard({
   const hasActiveItems = friend.currentItemsBorrowed > 0;
 
   return (
-    <TouchableOpacity
-      onPressIn={() => setOpacity(0.7)}
-      onPressOut={() => setOpacity(1)}
-      style={{ opacity }}
-    >
+    <TouchableOpacity onPress={onPress} style={{ opacity }}>
       <Card>
         <CardHeader>
           <View className="flex-row gap-3 items-center">
@@ -103,7 +99,7 @@ export function FriendCard({
         </CardHeader>
 
         <CardFooter className="justify-between items-center w-full">
-          {/* Current Items */}
+          {/* Items they're borrowing from you */}
           <View className="flex-row gap-1.5 items-center">
             <Package size={16} color={hasActiveItems ? "#3b82f6" : "#888"} />
             <Text
@@ -115,16 +111,19 @@ export function FriendCard({
               )}
             >
               {hasActiveItems
-                ? formatCount(friend.currentItemsBorrowed, "item")
-                : "No active items"}
+                ? `${friend.currentItemsBorrowed} borrowed`
+                : "Nothing borrowed"}
             </Text>
           </View>
 
-          {/* Total Items Borrowed */}
-          {detailed && friend.totalItemsBorrowed > 0 && (
-            <Text variant="muted">
-              {formatCount(friend.totalItemsBorrowed, "item")} total
-            </Text>
+          {/* Items in their library */}
+          {friend.ownedItemsCount !== undefined && friend.ownedItemsCount > 0 && (
+            <View className="flex-row gap-1.5 items-center">
+              <Library size={16} color="#888" />
+              <Text variant="small" className="text-muted-foreground">
+                {friend.ownedItemsCount} {friend.ownedItemsCount === 1 ? 'item' : 'items'}
+              </Text>
+            </View>
           )}
         </CardFooter>
       </Card>

@@ -11,7 +11,18 @@ import { FloatingBackButton } from "components/FloatingBackButton";
 import { getInitials, formatCount } from "lib/utils";
 import type { Item } from "lib/types";
 import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
-import { getFriendUserById, getItemsBorrowedByFriend, removeFriend, type FriendUser } from "@/lib/friends-service";
+import {
+  getFriendUserById,
+  getItemsBorrowedByFriend,
+  getItemsOwnedByFriend,
+  removeFriend,
+  type FriendUser,
+} from "@/lib/friends-service";
+import {
+  createBorrowRequest,
+  getBorrowRequestsForItem,
+} from "@/lib/borrow-requests-service";
+import type { BorrowRequestWithDetails } from "@/lib/types";
 import * as toast from "@/lib/toast";
 
 // Convert item data from DB to Item type
@@ -40,9 +51,15 @@ export default function FriendDetailScreen() {
   const navigation = useNavigation();
   const [friend, setFriend] = useState<FriendUser | null>(null);
   const [items, setItems] = useState<Item[]>([]);
+  const [ownedItems, setOwnedItems] = useState<Item[]>([]);
+  const [borrowRequests, setBorrowRequests] = useState<
+    Map<string, BorrowRequestWithDetails>
+  >(new Map());
   const [loading, setLoading] = useState(true);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [ownedItemsLoading, setOwnedItemsLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [requestingItemId, setRequestingItemId] = useState<string | null>(null);
 
   // Load friend data
   useEffect(() => {
@@ -71,7 +88,7 @@ export default function FriendDetailScreen() {
         setLoading(false);
       }
     }
-
+    console.log("loading friend");
     loadFriend();
   }, [id, router, navigation]);
 
@@ -93,6 +110,43 @@ export default function FriendDetailScreen() {
     }
 
     loadItems();
+  }, [id]);
+
+  // Load items owned by friend
+  useEffect(() => {
+    async function loadOwnedItems() {
+      if (!id) return;
+
+      try {
+        setOwnedItemsLoading(true);
+        const itemsData = await getItemsOwnedByFriend(id);
+        const convertedItems = itemsData.map(convertItemFromDb);
+        setOwnedItems(convertedItems);
+
+        // Load borrow requests for each item
+        const requestsMap = new Map<string, BorrowRequestWithDetails>();
+        for (const item of convertedItems) {
+          try {
+            const requests = await getBorrowRequestsForItem(item.id);
+            const myPendingRequest = requests.find(
+              (r) => r.status === "pending"
+            );
+            if (myPendingRequest) {
+              requestsMap.set(item.id, myPendingRequest);
+            }
+          } catch (error) {
+            console.error(`Error loading requests for item ${item.id}:`, error);
+          }
+        }
+        setBorrowRequests(requestsMap);
+      } catch (error) {
+        console.error("Error loading owned items:", error);
+      } finally {
+        setOwnedItemsLoading(false);
+      }
+    }
+
+    loadOwnedItems();
   }, [id]);
 
   if (loading || !friend) {
@@ -133,18 +187,14 @@ export default function FriendDetailScreen() {
         return confirm(confirmMessage);
       } else {
         return new Promise<boolean>((resolve) => {
-          Alert.alert(
-            "Remove Friend",
-            confirmMessage,
-            [
-              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-              {
-                text: "Remove",
-                style: "destructive",
-                onPress: () => resolve(true),
-              },
-            ]
-          );
+          Alert.alert("Remove Friend", confirmMessage, [
+            { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+            {
+              text: "Remove",
+              style: "destructive",
+              onPress: () => resolve(true),
+            },
+          ]);
         });
       }
     })();
@@ -171,6 +221,79 @@ export default function FriendDetailScreen() {
 
   const handleItemPress = (item: Item) => {
     router.push(`/library/${item.id}` as any);
+  };
+
+  const handleRequestBorrow = async (item: Item) => {
+    if (!friend) return;
+
+    try {
+      setRequestingItemId(item.id);
+      await createBorrowRequest(item.id, friend.id);
+      toast.success(`Request sent to ${friend.name}`);
+
+      // Reload owned items and requests
+      const itemsData = await getItemsOwnedByFriend(friend.id);
+      const convertedItems = itemsData.map(convertItemFromDb);
+      setOwnedItems(convertedItems);
+
+      // Reload requests
+      const requests = await getBorrowRequestsForItem(item.id);
+      const myPendingRequest = requests.find((r) => r.status === "pending");
+      setBorrowRequests((prev) => {
+        const newMap = new Map(prev);
+        if (myPendingRequest) {
+          newMap.set(item.id, myPendingRequest);
+        }
+        return newMap;
+      });
+    } catch (error: any) {
+      console.error("Error requesting item:", error);
+      toast.error(error.message || "Failed to send request");
+    } finally {
+      setRequestingItemId(null);
+    }
+  };
+
+  const handleCancelRequest = async (item: Item) => {
+    const request = borrowRequests.get(item.id);
+    if (!request) return;
+
+    try {
+      setRequestingItemId(item.id);
+      // Import the cancel function
+      const { cancelBorrowRequest } = await import(
+        "@/lib/borrow-requests-service"
+      );
+      await cancelBorrowRequest(request.id);
+      toast.success("Request cancelled");
+
+      // Remove from requests map
+      setBorrowRequests((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(item.id);
+        return newMap;
+      });
+    } catch (error: any) {
+      console.error("Error cancelling request:", error);
+      toast.error(error.message || "Failed to cancel request");
+    } finally {
+      setRequestingItemId(null);
+    }
+  };
+
+  const getItemStatus = (item: Item) => {
+    const hasPendingRequest = borrowRequests.has(item.id);
+
+    if (item.borrowedBy) {
+      return {
+        text: `Borrowed by ${item.borrowedBy === id ? "them" : "someone"}`,
+        color: "text-gray-500",
+      };
+    }
+    if (hasPendingRequest) {
+      return { text: "Request Pending", color: "text-blue-600" };
+    }
+    return { text: "Available", color: "text-green-600" };
   };
 
   return (
@@ -246,6 +369,78 @@ export default function FriendDetailScreen() {
                   </Text>
                 </View>
               </View>
+            </View>
+
+            <Separator />
+
+            {/* Their Items Section */}
+            <View className="gap-3">
+              <View className="flex-row justify-between items-center">
+                <Text variant="h3" className="font-semibold">
+                  Their Items
+                </Text>
+                <Text variant="small" className="text-muted-foreground">
+                  {formatCount(ownedItems.length, "item")}
+                </Text>
+              </View>
+
+              {ownedItemsLoading ? (
+                <View className="p-4 items-center">
+                  <Text variant="small" className="text-muted-foreground">
+                    Loading...
+                  </Text>
+                </View>
+              ) : ownedItems.length === 0 ? (
+                <View className="p-4 items-center gap-2">
+                  <LucideIcons.Package size={40} color="#9ca3af" />
+                  <Text
+                    variant="default"
+                    className="text-muted-foreground text-center"
+                  >
+                    {friend.name.split(" ")[0]} hasn't added any items yet
+                  </Text>
+                </View>
+              ) : (
+                <View className="gap-3">
+                  {ownedItems.map((item) => {
+                    const status = getItemStatus(item);
+                    const hasPendingRequest = borrowRequests.has(item.id);
+                    const isAvailable = !item.borrowedBy && !hasPendingRequest;
+                    const isRequesting = requestingItemId === item.id;
+
+                    return (
+                      <View key={item.id} className="gap-2">
+                        <ItemCard item={item} onPress={() => {}} />
+                        <View className="flex-row items-center justify-between px-2">
+                          <Text variant="small" className={status.color}>
+                            {status.text}
+                          </Text>
+                          {isAvailable && (
+                            <Button
+                              size="sm"
+                              onPress={() => handleRequestBorrow(item)}
+                              disabled={isRequesting}
+                            >
+                              <LucideIcons.Send size={14} />
+                              <Text>Request to Borrow</Text>
+                            </Button>
+                          )}
+                          {hasPendingRequest && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onPress={() => handleCancelRequest(item)}
+                              disabled={isRequesting}
+                            >
+                              <Text>Cancel Request</Text>
+                            </Button>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </View>
 
             <Separator />

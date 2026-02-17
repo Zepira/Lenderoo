@@ -25,7 +25,7 @@ import * as toast from "@/lib/toast";
 
 // Cross-platform confirm dialog
 const confirmAsync = (title: string, message: string): Promise<boolean> => {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === "web") {
     // Use browser confirm on web
     return Promise.resolve(window.confirm(`${title}\n\n${message}`));
   }
@@ -209,47 +209,6 @@ export default function SettingsScreen() {
               </Text>
             </Button>
           </View>
-        </View>
-
-        <View className="h-px bg-border" />
-
-        {/* Data Management */}
-        <View className="gap-3">
-          <Text variant="h4">Data</Text>
-
-          <Button
-            variant="ghost"
-            className="justify-start"
-            onPress={handleExportData}
-            disabled={exporting}
-          >
-            <Download
-              size={20}
-              color={themeMode === "dark" ? "#888" : "black"}
-            />
-            <Text>Export Data</Text>
-          </Button>
-
-          <Button
-            variant="ghost"
-            className="justify-start"
-            onPress={handleSeedDemo}
-          >
-            <Database
-              size={20}
-              color={themeMode === "dark" ? "#888" : "black"}
-            />
-            <Text>Add Demo Data</Text>
-          </Button>
-
-          <Button
-            variant="ghost"
-            className="justify-start"
-            onPress={handleClearData}
-          >
-            <Trash2 size={20} color="#ef4444" />
-            <Text className="text-red-600">Clear All Data</Text>
-          </Button>
         </View>
 
         <View className="h-px bg-border" />

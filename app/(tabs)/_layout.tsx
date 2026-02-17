@@ -15,14 +15,69 @@ import { useThemeContext } from "../../contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import { show } from "@/lib/toast";
+import { BorrowRequestBanner } from "@/components/BorrowRequestBannerNative";
+import { getIncomingRequestCount } from "@/lib/borrow-requests-service";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function TabLayout() {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const [requestCount, setRequestCount] = React.useState(0);
+  const [bannerDismissed, setBannerDismissed] = React.useState(false);
 
   // Memoize the header right component to prevent recreation
   const HeaderRight = React.useCallback(() => <ThemeSwitcher />, []);
+
+  // Load incoming request count
+  React.useEffect(() => {
+    if (!user) return;
+
+    loadRequestCount();
+  }, [user]);
+
+  const loadRequestCount = async () => {
+    try {
+      const count = await getIncomingRequestCount();
+      setRequestCount(count);
+      if (count > 0) {
+        setBannerDismissed(false); // Show banner if new requests
+      }
+    } catch (error) {
+      console.error("Error loading request count:", error);
+    }
+  };
+
+  // Subscribe to borrow request changes
+  React.useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('borrow-requests-banner')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'borrow_requests',
+        filter: `owner_id=eq.${user.id}`,
+      }, () => {
+        loadRequestCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const handleBannerPress = () => {
+    router.push('/(tabs)/library');
+  };
+
+  const handleBannerDismiss = () => {
+    setBannerDismissed(true);
+  };
 
   const screenOptions = React.useMemo(
     () => ({
@@ -59,6 +114,15 @@ export default function TabLayout() {
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Borrow Request Banner */}
+      {!bannerDismissed && (
+        <BorrowRequestBanner
+          count={requestCount}
+          onPress={handleBannerPress}
+          onDismiss={handleBannerDismiss}
+        />
+      )}
+
       <Tabs screenOptions={screenOptions}>
         <Tabs.Screen
           name="index"

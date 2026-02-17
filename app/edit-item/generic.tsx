@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { Label } from "@/components/ui/label";
-import { useFriends, useUpdateItem } from "hooks";
+import { useFriends, useUpdateItem, useItems } from "hooks";
 import { CATEGORY_CONFIG, type ItemCategory } from "lib/constants";
 import { createItemSchema } from "lib/validation";
 import { FloatingBackButton } from "components/FloatingBackButton";
@@ -28,6 +28,7 @@ export default function EditGenericItemScreen() {
   const router = useRouter();
   const { friends } = useFriends();
   const { updateItem, loading } = useUpdateItem();
+  const { items: existingItems } = useItems();
 
   // Form state
   const [name, setName] = useState(params.name || "");
@@ -42,6 +43,30 @@ export default function EditGenericItemScreen() {
   const handleSubmit = async () => {
     try {
       setErrors({});
+
+      // Check for duplicates (excluding the current item being edited)
+      const duplicates = existingItems.filter((item) => {
+        // Skip the current item
+        if (item.id === params.itemId) return false;
+
+        return (
+          item.category === category &&
+          item.name.toLowerCase().trim() === name.toLowerCase().trim()
+        );
+      });
+
+      if (duplicates.length > 0) {
+        const duplicate = duplicates[0];
+
+        Alert.alert(
+          "Duplicate Item",
+          `"${duplicate.name}" is already in your library. You cannot have two items with the same name.`,
+          [{ text: "OK" }]
+        );
+
+        setErrors({ name: "This item is already in your library" });
+        return;
+      }
 
       const updates = {
         name: name.trim(),

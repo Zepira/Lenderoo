@@ -19,7 +19,7 @@ export interface FriendRequest {
   id: string;
   userId: string;
   friendUserId: string;
-  status: 'pending' | 'active' | 'rejected';
+  status: "pending" | "active" | "rejected";
   createdAt: Date;
   userName: string;
   userEmail: string;
@@ -126,17 +126,18 @@ export async function addFriendByCode(
     };
   }
 
-  // Check if friendship already exists
+  // Check if friendship already exists (may return 2 rows for bidirectional friendship)
   const { data: existing } = await supabase
     .from("friend_connections")
     .select("id, status")
     .or(
       `and(user_id.eq.${user.id},friend_user_id.eq.${friendData.id}),and(user_id.eq.${friendData.id},friend_user_id.eq.${user.id})`
     )
+    .limit(1)
     .maybeSingle();
 
   if (existing) {
-    if (existing.status === 'pending') {
+    if (existing.status === "pending") {
       return {
         success: false,
         message: "Friend request already sent",
@@ -225,30 +226,29 @@ export async function addFriendByUserId(friendUserId: string): Promise<void> {
 
   if (!user) throw new Error("Not authenticated");
 
-  // Check if friendship already exists
+  // Check if friendship already exists (may return 2 rows for bidirectional friendship)
   const { data: existing } = await supabase
     .from("friend_connections")
     .select("id, status")
     .or(
       `and(user_id.eq.${user.id},friend_user_id.eq.${friendUserId}),and(user_id.eq.${friendUserId},friend_user_id.eq.${user.id})`
     )
+    .limit(1)
     .maybeSingle();
 
   if (existing) {
-    if (existing.status === 'pending') {
+    if (existing.status === "pending") {
       throw new Error("Friend request already sent");
     }
     throw new Error("Already friends with this user");
   }
 
   // Create friend request (pending status)
-  const { error } = await supabase
-    .from("friend_connections")
-    .insert({
-      user_id: user.id,
-      friend_user_id: friendUserId,
-      status: "pending",
-    });
+  const { error } = await supabase.from("friend_connections").insert({
+    user_id: user.id,
+    friend_user_id: friendUserId,
+    status: "pending",
+  });
 
   if (error) throw error;
 }
@@ -288,43 +288,64 @@ export async function getMyFriends(): Promise<FriendUser[]> {
 /**
  * Get a single friend's details by their user ID
  */
-export async function getFriendUserById(friendUserId: string): Promise<FriendUser | null> {
+export async function getFriendUserById(
+  friendUserId: string
+): Promise<FriendUser | null> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) throw new Error("Not authenticated");
-
-  // First verify they are friends
-  const { data: connection } = await supabase
-    .from("friend_connections")
-    .select("id")
-    .or(
-      `and(user_id.eq.${user.id},friend_user_id.eq.${friendUserId},status.eq.active),and(user_id.eq.${friendUserId},friend_user_id.eq.${user.id},status.eq.active)`
-    )
-    .maybeSingle();
-
-  if (!connection) {
-    return null; // Not friends
+  if (!user) {
+    console.error("❌ Not authenticated");
+    throw new Error("Not authenticated");
   }
 
+  console.log("🔍 Fetching friend details for:", friendUserId);
+  console.log("🔍 Current user ID:", user.id);
+
+  // First verify they are friends
+  // Note: This returns 2 rows (bidirectional friendship), so we just take the first one
+  const { data: connections, error: connectionError } = await supabase
+    .from("friend_connections")
+    .select("id, status, created_at")
+    .or(
+      `and(user_id.eq.${user.id},friend_user_id.eq.${friendUserId}),and(user_id.eq.${friendUserId},friend_user_id.eq.${user.id})`
+    )
+    .eq("status", "active")
+    .limit(1);
+
+  if (connectionError) {
+    console.error("❌ Error checking friendship:", connectionError);
+    return null;
+  }
+
+  console.log("👥 Connections found:", connections);
+
+  if (!connections || connections.length === 0) {
+    console.error("❌ No active friendship found");
+    return null;
+  }
+
+  const connection = connections[0];
+
   // Get the friend's user details
-  const { data: friendData, error } = await supabase
+  const { data: friendData, error: userError } = await supabase
     .from("users")
     .select("id, name, email, avatar_url, friend_code")
     .eq("id", friendUserId)
     .single();
 
-  if (error || !friendData) return null;
+  if (userError) {
+    console.error("❌ Error fetching user details:", userError);
+    return null;
+  }
 
-  // Get the friendship date
-  const { data: friendshipData } = await supabase
-    .from("friend_connections")
-    .select("created_at")
-    .eq("user_id", user.id)
-    .eq("friend_user_id", friendUserId)
-    .eq("status", "active")
-    .maybeSingle();
+  if (!friendData) {
+    console.error("❌ User not found");
+    return null;
+  }
+
+  console.log("✅ Friend data fetched:", friendData.name);
 
   return {
     id: friendData.id,
@@ -332,14 +353,18 @@ export async function getFriendUserById(friendUserId: string): Promise<FriendUse
     email: friendData.email,
     avatarUrl: friendData.avatar_url || undefined,
     friendCode: friendData.friend_code,
-    friendsSince: friendshipData ? new Date(friendshipData.created_at) : new Date(),
+    friendsSince: connection.created_at
+      ? new Date(connection.created_at)
+      : new Date(),
   };
 }
 
 /**
  * Get items borrowed by a friend user
  */
-export async function getItemsBorrowedByFriend(friendUserId: string): Promise<any[]> {
+export async function getItemsBorrowedByFriend(
+  friendUserId: string
+): Promise<any[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -356,6 +381,79 @@ export async function getItemsBorrowedByFriend(friendUserId: string): Promise<an
   if (error) throw error;
 
   return data || [];
+}
+
+/**
+ * Get items owned by a friend user
+ * Note: This function assumes friendship has already been verified (e.g., on friend detail page)
+ */
+export async function getItemsOwnedByFriend(
+  friendUserId: string
+): Promise<any[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("user_id", friendUserId) // Their items
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return data || [];
+}
+
+/**
+ * Get item counts for a friend (items they own and items they're borrowing from you)
+ */
+export async function getFriendItemCounts(friendUserId: string): Promise<{
+  ownedCount: number;
+  borrowedCount: number;
+}> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  // Count items they own - fetch data instead of using head: true to bypass potential RLS issues
+  const { data: ownedData, error: ownedError } = await supabase
+    .from("items")
+    .select("id")
+    .eq("user_id", friendUserId);
+
+  if (ownedError) {
+    console.error("Error counting owned items:", ownedError);
+    console.error("Friend user ID:", friendUserId);
+  }
+
+  // Count items they're currently borrowing from you
+  const { data: borrowedData, error: borrowedError } = await supabase
+    .from("items")
+    .select("id")
+    .eq("user_id", user.id) // My items
+    .eq("borrowed_by", friendUserId) // Borrowed by this friend
+    .is("returned_date", null); // Not yet returned
+
+  if (borrowedError) {
+    console.error("Error counting borrowed items:", borrowedError);
+    console.error("My user ID:", user.id);
+    console.error("Friend user ID:", friendUserId);
+  }
+
+  const ownedCount = ownedData?.length || 0;
+  const borrowedCount = borrowedData?.length || 0;
+
+  console.log(`Friend ${friendUserId}: ${ownedCount} owned, ${borrowedCount} borrowed`);
+
+  return {
+    ownedCount,
+    borrowedCount,
+  };
 }
 
 /**
