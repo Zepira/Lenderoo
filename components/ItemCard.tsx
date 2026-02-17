@@ -59,9 +59,12 @@ export function ItemCard({
           <View>
             {/* Item Image or Placeholder */}
             <View className="w-20 h-20 rounded-lg overflow-hidden items-center justify-center bg-muted">
-              {(item.images?.[0] || item.imageUrls?.[0] || item.imageUrl) ? (
+              {item.images?.[0] || item.imageUrls?.[0] || item.imageUrl ? (
                 <RNImage
-                  source={{ uri: item.images?.[0] || item.imageUrls?.[0] || item.imageUrl }}
+                  source={{
+                    uri:
+                      item.images?.[0] || item.imageUrls?.[0] || item.imageUrl,
+                  }}
                   style={{ width: 80, height: 80 }}
                   resizeMode="cover"
                 />
@@ -102,7 +105,7 @@ export function ItemCard({
               {/* Category Badge */}
               <CategoryBadge category={item.category} size="sm" />
 
-              {/* Borrowed By (only show if item is borrowed) */}
+              {/* Borrowed By (show if item is borrowed) */}
               {friend && (
                 <View className="flex-row gap-2 items-center">
                   <Avatar alt={`${friend.name}'s Avatar`}>
@@ -116,13 +119,6 @@ export function ItemCard({
                     {friend.name}
                   </Text>
                 </View>
-              )}
-
-              {/* Available label for items not lent out */}
-              {!friend && !item.returnedDate && (
-                <Text variant="small" className="text-green-600 font-medium">
-                  Available
-                </Text>
               )}
             </View>
           </View>
@@ -151,13 +147,13 @@ export function ItemCard({
               )} */}
               {!item.dueDate &&
                 !item.returnedDate &&
-                friend &&
+                item.borrowedBy &&
                 item.borrowedDate && (
                   <Text variant="muted">
                     Borrowed {formatRelativeTime(item.borrowedDate)}
                   </Text>
                 )}
-              {!friend && !item.returnedDate && (
+              {!item.borrowedBy && !item.returnedDate && (
                 <Text variant="muted">
                   Added {formatRelativeTime(item.createdAt)}
                 </Text>

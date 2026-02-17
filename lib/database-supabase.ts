@@ -115,6 +115,10 @@ export async function createItem(
 ): Promise<Item> {
   const userId = await getCurrentUserId();
 
+  // Handle image data - support both images array and imageUrl string
+  const imagesData = itemData.images ||
+    (itemData.imageUrl ? [itemData.imageUrl] : null);
+
   const { data, error } = await supabase
     .from("items")
     .insert([
@@ -123,7 +127,7 @@ export async function createItem(
         name: itemData.name,
         description: itemData.description,
         category: itemData.category,
-        images: itemData.images,
+        images: imagesData,
         borrowed_by: itemData.borrowedBy,
         borrowed_date: itemData.borrowedDate?.toISOString(),
         due_date: itemData.dueDate?.toISOString(),
@@ -165,7 +169,15 @@ export async function updateItem(
   if (updates.description !== undefined)
     updateData.description = updates.description;
   if (updates.category !== undefined) updateData.category = updates.category;
-  if (updates.images !== undefined) updateData.images = updates.images;
+
+  // Handle image updates - support both images array and imageUrl string
+  if (updates.images !== undefined) {
+    updateData.images = updates.images;
+  } else if (updates.imageUrl !== undefined) {
+    // Convert imageUrl to images array for database storage
+    updateData.images = updates.imageUrl ? [updates.imageUrl] : null;
+  }
+
   if (updates.borrowedBy !== undefined)
     updateData.borrowed_by = updates.borrowedBy;
   if (updates.borrowedDate !== undefined)

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { View } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { ItemList } from "components/ItemList";
 import { BorrowRequestsSection } from "components/BorrowRequestsSection";
 import { useItems } from "hooks/useItems";
@@ -80,6 +80,14 @@ export default function ItemsScreen() {
       console.error("❌ Error loading borrow requests:", error);
     }
   };
+
+  // Refresh data when screen comes into focus (e.g., after editing an item)
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+      loadIncomingRequests();
+    }, [refresh])
+  );
 
   // Subscribe to borrow request changes
   useEffect(() => {

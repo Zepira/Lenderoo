@@ -70,7 +70,7 @@ export default function EditBookScreen() {
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Pre-fill form from URL parameters
+  // Pre-fill form from URL parameters (only on mount)
   useEffect(() => {
     if (params.title) setTitle(params.title);
     if (params.author) setAuthor(params.author);
@@ -88,7 +88,8 @@ export default function EditBookScreen() {
     if (params.hardcoverId) setHardcoverId(params.hardcoverId);
     if (params.notes) setNotes(params.notes);
     if (params.borrowedBy) setBorrowedBy(params.borrowedBy);
-  }, [params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   const handleSubmit = async () => {
     console.log("📝 Starting book submission...");

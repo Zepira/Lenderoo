@@ -113,10 +113,11 @@ export default function ItemsScreen() {
   );
 
   const renderItem = ({ item }: { item: Item }) => {
+    // borrowedBy can be either a friend ID or a user ID (from borrow requests)
     const friend = item.borrowedBy ? friendsMap[item.borrowedBy] : undefined;
 
-    if (item.borrowedBy && !friend) return null;
-
+    // Always show the item, even if we can't find friend details
+    // (This handles borrow requests where borrowedBy is a user ID)
     return (
       <View className="pb-3">
         <ItemCard

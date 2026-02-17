@@ -8,6 +8,7 @@ import {
   UserCog,
   Plus,
   BookText,
+  MessageSquare,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
@@ -19,6 +20,7 @@ import { BorrowRequestBanner } from "@/components/BorrowRequestBannerNative";
 import { getIncomingRequestCount } from "@/lib/borrow-requests-service";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { FeedbackModal } from "@/components/FeedbackModal";
 
 export default function TabLayout() {
   const { activeTheme } = useThemeContext();
@@ -27,6 +29,7 @@ export default function TabLayout() {
   const { user } = useAuth();
   const [requestCount, setRequestCount] = React.useState(0);
   const [bannerDismissed, setBannerDismissed] = React.useState(false);
+  const [feedbackModalVisible, setFeedbackModalVisible] = React.useState(false);
 
   // Memoize the header right component to prevent recreation
   const HeaderRight = React.useCallback(() => <ThemeSwitcher />, []);
@@ -112,6 +115,10 @@ export default function TabLayout() {
     router.push("/add-item");
   };
 
+  const handleFeedbackPress = () => {
+    setFeedbackModalVisible(true);
+  };
+
   return (
     <View style={{ flex: 1 }}>
       {/* Borrow Request Banner */}
@@ -174,6 +181,27 @@ export default function TabLayout() {
         />
       </Tabs>
 
+      {/* Feedback Button - Above the FAB */}
+      <Button
+        size="icon"
+        variant="outline"
+        className="absolute right-4 w-14 h-14 rounded-full shadow-lg bg-background border-2 border-border items-center justify-center"
+        style={{
+          elevation: 6,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.2,
+          shadowRadius: 6,
+          bottom: insets.bottom + 160,
+        }}
+        onPress={handleFeedbackPress}
+      >
+        <MessageSquare
+          size={22}
+          color={isDark ? THEME.dark.foreground : THEME.light.foreground}
+        />
+      </Button>
+
       {/* Floating Action Button - Appears over all tabs */}
       <Button
         size="icon"
@@ -190,6 +218,12 @@ export default function TabLayout() {
       >
         <Plus size={28} />
       </Button>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        visible={feedbackModalVisible}
+        onClose={() => setFeedbackModalVisible(false)}
+      />
     </View>
   );
 }

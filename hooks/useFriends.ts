@@ -6,7 +6,22 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { Friend, FriendFilters } from 'lib/types'
-import * as db from 'lib/database-supabase'
+import { getMyFriends, type FriendUser } from 'lib/friends-service'
+
+// Convert FriendUser to Friend for backward compatibility
+function convertFriendUserToFriend(friendUser: FriendUser): Friend {
+  return {
+    id: friendUser.id,
+    userId: '', // Not applicable for user-to-user friends
+    name: friendUser.name,
+    email: friendUser.email,
+    avatarUrl: friendUser.avatarUrl,
+    totalItemsBorrowed: 0, // Not tracked in new system
+    currentItemsBorrowed: 0, // Not tracked in new system
+    createdAt: friendUser.friendsSince,
+    updatedAt: friendUser.friendsSince,
+  }
+}
 
 export function useFriends(filters?: FriendFilters) {
   const [friends, setFriends] = useState<Friend[]>([])
@@ -17,8 +32,20 @@ export function useFriends(filters?: FriendFilters) {
     try {
       setLoading(true)
       setError(null)
-      const data = await db.queryFriends(filters)
-      setFriends(data)
+      const data = await getMyFriends()
+      let friendsList = data.map(convertFriendUserToFriend)
+
+      // Apply client-side search filter if needed
+      if (filters?.searchQuery) {
+        const query = filters.searchQuery.toLowerCase()
+        friendsList = friendsList.filter(
+          (friend) =>
+            friend.name.toLowerCase().includes(query) ||
+            friend.email?.toLowerCase().includes(query)
+        )
+      }
+
+      setFriends(friendsList)
     } catch (err) {
       setError(err as Error)
     } finally {
@@ -53,8 +80,9 @@ export function useFriend(id: string | null) {
       try {
         setLoading(true)
         setError(null)
-        const data = await db.getFriendById(id)
-        setFriend(data)
+        const { getFriendUserById } = await import('lib/friends-service')
+        const data = await getFriendUserById(id)
+        setFriend(data ? convertFriendUserToFriend(data) : null)
       } catch (err) {
         setError(err as Error)
       } finally {
@@ -72,12 +100,16 @@ export function useCreateFriend() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const createFriend = useCallback(async (friendData: Parameters<typeof db.createFriend>[0]) => {
+  const createFriend = useCallback(async (friendCode: string) => {
     try {
       setLoading(true)
       setError(null)
-      const newFriend = await db.createFriend(friendData)
-      return newFriend
+      const { addFriendByCode } = await import('lib/friends-service')
+      const result = await addFriendByCode(friendCode)
+      if (!result.success) {
+        throw new Error(result.message)
+      }
+      return result
     } catch (err) {
       setError(err as Error)
       throw err
@@ -97,8 +129,10 @@ export function useUpdateFriend() {
     try {
       setLoading(true)
       setError(null)
-      const updatedFriend = await db.updateFriend(id, updates)
-      return updatedFriend
+      // Friend updates are not supported in the new system
+      // Users manage their own profiles
+      console.warn('Friend updates are not supported in the new system')
+      return null
     } catch (err) {
       setError(err as Error)
       throw err
@@ -118,8 +152,9 @@ export function useDeleteFriend() {
     try {
       setLoading(true)
       setError(null)
-      const success = await db.deleteFriend(id)
-      return success
+      const { removeFriend } = await import('lib/friends-service')
+      await removeFriend(id)
+      return true
     } catch (err) {
       setError(err as Error)
       throw err
@@ -147,7 +182,8 @@ export function useFriendItems(friendId: string | null) {
       try {
         setLoading(true)
         setError(null)
-        const data = await db.getItemsByFriend(friendId)
+        const { getItemsBorrowedByFriend } = await import('lib/friends-service')
+        const data = await getItemsBorrowedByFriend(friendId)
         setItems(data)
       } catch (err) {
         setError(err as Error)

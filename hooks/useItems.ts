@@ -42,30 +42,34 @@ export function useItem(id: string | null) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
-  useEffect(() => {
+  const loadItem = useCallback(async () => {
     if (!id) {
       setItem(null)
       setLoading(false)
       return
     }
 
-    const loadItem = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const data = await db.getItemById(id)
-        setItem(data)
-      } catch (err) {
-        setError(err as Error)
-      } finally {
-        setLoading(false)
-      }
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await db.getItemById(id)
+      setItem(data)
+    } catch (err) {
+      setError(err as Error)
+    } finally {
+      setLoading(false)
     }
-
-    loadItem()
   }, [id])
 
-  return { item, loading, error }
+  useEffect(() => {
+    loadItem()
+  }, [loadItem])
+
+  const refresh = useCallback(() => {
+    return loadItem()
+  }, [loadItem])
+
+  return { item, loading, error, refresh }
 }
 
 export function useCreateItem() {

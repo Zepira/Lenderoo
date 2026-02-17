@@ -4573,6 +4573,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-application@npm:^7.0.8":
+  version: 7.0.8
+  resolution: "expo-application@npm:7.0.8"
+  peerDependencies:
+    expo: "*"
+  checksum: 10/f341a5374209a5ab39cb2366a62b9f53500a4fd555e3dbaa6cdfcceb38fc7891fe2eede85425584add4a13dcd579b7b30d7c6aa4d94c1324959ed6df2f10473b
+  languageName: node
+  linkType: hard
+
 "expo-asset@npm:~12.0.12":
   version: 12.0.12
   resolution: "expo-asset@npm:12.0.12"
@@ -4620,6 +4629,17 @@ __metadata:
     expo: "*"
     react-native: "*"
   checksum: 10/f29c72b6f5798bd37550aafcc89c3f1a630c4910a5b69c1e19d03544f6ebf0cb65adf39db600ccbeb6e60545b2b231d244373ef3139e3c75991b380940065c6b
+  languageName: node
+  linkType: hard
+
+"expo-device@npm:^8.0.10":
+  version: 8.0.10
+  resolution: "expo-device@npm:8.0.10"
+  dependencies:
+    ua-parser-js: "npm:^0.7.33"
+  peerDependencies:
+    expo: "*"
+  checksum: 10/2f4d0198bef084c7eb8378a97aa779698f43d0102510b893d901daa2262400875dcfc3b8b871095b3461edca42137ddb59d1ef094327b7448141d05a44c0696a
   languageName: node
   linkType: hard
 
@@ -5775,8 +5795,10 @@ __metadata:
     clsx: "npm:^2.1.1"
     date-fns: "npm:^4.1.0"
     expo: "npm:^54.0.23"
+    expo-application: "npm:^7.0.8"
     expo-build-properties: "npm:~1.0.9"
     expo-clipboard: "npm:^8.0.8"
+    expo-device: "npm:^8.0.10"
     expo-file-system: "npm:^19.0.21"
     expo-font: "npm:~14.0.10"
     expo-image-manipulator: "npm:^14.0.8"
@@ -8589,6 +8611,15 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: 10/5d416ad4f2ea564f515a3f919e901edbfa4b497cc17dd325c5726046c3eef7ed22d1f59c787267d478311f6f0a265ff790f8a6c7e9df3ea3471458f5ec81e8b7
+  languageName: node
+  linkType: hard
+
+"ua-parser-js@npm:^0.7.33":
+  version: 0.7.41
+  resolution: "ua-parser-js@npm:0.7.41"
+  bin:
+    ua-parser-js: script/cli.js
+  checksum: 10/e41306332d8ace098d51a644a3ba95522ddfc04243727a3c0419efcdf486c8f868c3af8e6a56f6aa86bdc26e6b893abb0b2bde0c9e1a1625a183dfdf839cac82
   languageName: node
   linkType: hard
 

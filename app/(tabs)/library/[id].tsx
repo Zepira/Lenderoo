@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useLocalSearchParams, useRouter, useNavigation, useFocusEffect } from "expo-router";
 import {
   ScrollView,
   View,
@@ -37,12 +37,19 @@ export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const { item, loading } = useItem(id!);
+  const { item, loading, refresh } = useItem(id!);
   const { friend } = useFriend(item?.borrowedBy ?? null);
   const { deleteItem, loading: deleting } = useDeleteItem();
   const { markReturned, loading: returning } = useMarkItemReturned();
   const { items: allItems } = useItems();
   const { friends } = useFriends();
+
+  // Refresh item data when screen comes into focus (e.g., after editing)
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   // Find other users who own the same book (for books only)
   const communityOwners = useMemo(() => {
