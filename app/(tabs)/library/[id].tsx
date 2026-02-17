@@ -7,6 +7,7 @@ import {
   Alert,
   Pressable,
   TouchableOpacity,
+  Platform,
 } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -43,7 +44,8 @@ export default function ItemDetailScreen() {
   const { item, loading, refresh } = useItem(id!);
 
   // Determine if the current user is the borrower (viewing an item they borrowed)
-  const isBorrower = item && user && item.borrowedBy === user.id;
+  // Only consider them a borrower if the item hasn't been returned yet
+  const isBorrower = item && user && item.borrowedBy === user.id && !item.returnedDate;
   // Determine if the current user is the owner
   const isOwner = item && user && item.userId === user.id;
 
@@ -135,28 +137,38 @@ export default function ItemDetailScreen() {
     router.push(`/edit-item/${item.id}` as any);
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      "Delete Item",
-      `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteItem(item.id);
-              toast.success(`"${item.name}" has been deleted`);
-              router.back();
-            } catch (error) {
-              console.error("Failed to delete item:", error);
-              toast.error("Failed to delete item");
-            }
-          },
-        },
-      ]
-    );
+  const handleDelete = async () => {
+    console.log("🗑️ Delete button pressed");
+
+    // Web doesn't support Alert.alert with buttons, use window.confirm
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`)
+      : await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            "Delete Item",
+            `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
+            [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: "Delete", style: "destructive", onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmed) {
+      console.log("🚫 Delete cancelled");
+      return;
+    }
+
+    console.log("🗑️ Delete confirmed, deleting item...");
+    try {
+      await deleteItem(item.id);
+      console.log("✅ Item deleted successfully");
+      toast.success(`"${item.name}" has been deleted`);
+      router.back();
+    } catch (error) {
+      console.error("❌ Failed to delete item:", error);
+      toast.error("Failed to delete item");
+    }
   };
 
   return (

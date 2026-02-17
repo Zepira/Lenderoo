@@ -322,6 +322,7 @@ export async function markItemReturned(
   returnedDate?: Date
 ): Promise<Item | null> {
   return updateItem(id, {
+    borrowedBy: undefined, // Clear the borrower
     returnedDate: returnedDate || new Date(),
   });
 }

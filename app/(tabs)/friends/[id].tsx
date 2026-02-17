@@ -275,7 +275,7 @@ export default function FriendDetailScreen() {
   const getItemStatus = (item: Item) => {
     const hasPendingRequest = borrowRequests.has(item.id);
 
-    if (item.borrowedBy) {
+    if (item.borrowedBy && !item.returnedDate) {
       return {
         text: `Borrowed by ${item.borrowedBy === id ? "them" : "someone"}`,
         color: "text-gray-500",
@@ -396,6 +396,7 @@ export default function FriendDetailScreen() {
                   {ownedItems.map((item) => {
                     const status = getItemStatus(item);
                     const hasPendingRequest = borrowRequests.has(item.id);
+                    console.log("aaas", item.borrowedBy, hasPendingRequest);
                     const isAvailable = !item.borrowedBy && !hasPendingRequest;
                     const isRequesting = requestingItemId === item.id;
 
