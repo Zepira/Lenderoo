@@ -31,14 +31,27 @@ import {
   getInitials,
   calculateItemStatus,
 } from "lib/utils";
+import * as toast from "@/lib/toast";
+import { useAuth } from "@/contexts/AuthContext";
 import type { ItemStatus, BookMetadata } from "lib/types";
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
+  const { user } = useAuth();
   const { item, loading, refresh } = useItem(id!);
-  const { friend } = useFriend(item?.borrowedBy ?? null);
+
+  // Determine if the current user is the borrower (viewing an item they borrowed)
+  const isBorrower = item && user && item.borrowedBy === user.id;
+  // Determine if the current user is the owner
+  const isOwner = item && user && item.userId === user.id;
+
+  // Only look up friend if the current user is NOT the borrower
+  // (If you're the borrower, borrowedBy is YOUR id, not a friend's id)
+  const friendId = item?.borrowedBy && !isBorrower ? item.borrowedBy : null;
+  const { friend } = useFriend(friendId);
+
   const { deleteItem, loading: deleting } = useDeleteItem();
   const { markReturned, loading: returning } = useMarkItemReturned();
   const { items: allItems } = useItems();
@@ -83,17 +96,14 @@ export default function ItemDetailScreen() {
 
   useEffect(() => {
     if (!loading && !item) {
-      // Item not found, go back to library or home
-      if (navigation.canGoBack()) {
-        router.back();
-      } else {
-        router.push("/library" as any);
-      }
+      // Item not found, go back using history
+      router.back();
     }
-  }, [loading, item, router, navigation]);
+  }, [loading, item, router]);
 
-  // Show loading if still loading or if item is borrowed but friend data isn't loaded yet
-  if (loading || !item || (item.borrowedBy && !friend)) {
+  // Show loading if still loading or if item is borrowed by someone else but friend data isn't loaded yet
+  // Don't wait for friend data if you're the borrower (you don't need friend lookup for yourself)
+  if (loading || !item || (item.borrowedBy && !isBorrower && !friend)) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <Text variant="muted">Loading...</Text>
@@ -110,15 +120,14 @@ export default function ItemDetailScreen() {
     : 0;
 
   const handleMarkReturned = async () => {
+    const actionText = isBorrower ? "returned to owner" : "marked as returned";
     try {
       await markReturned(item.id);
-      if (navigation.canGoBack()) {
-        router.back();
-      } else {
-        router.push("/library" as any);
-      }
+      toast.success(`"${item.name}" has been ${actionText}`);
+      router.back();
     } catch (error) {
       console.error("Failed to mark item as returned:", error);
+      toast.error(`Failed to ${actionText.replace("has been ", "")}`);
     }
   };
 
@@ -138,13 +147,11 @@ export default function ItemDetailScreen() {
           onPress: async () => {
             try {
               await deleteItem(item.id);
-              if (navigation.canGoBack()) {
-                router.back();
-              } else {
-                router.push("/library" as any);
-              }
+              toast.success(`"${item.name}" has been deleted`);
+              router.back();
             } catch (error) {
               console.error("Failed to delete item:", error);
+              toast.error("Failed to delete item");
             }
           },
         },
@@ -301,8 +308,8 @@ export default function ItemDetailScreen() {
                 </>
               )}
 
-            {/* Community Ownership */}
-            {item.category === "book" && communityOwners.length > 0 && (
+            {/* Community Ownership - only show for owned items */}
+            {!isBorrower && item.category === "book" && communityOwners.length > 0 && (
               <>
                 <Separator />
                 <View className="gap-3">
@@ -359,12 +366,31 @@ export default function ItemDetailScreen() {
 
             <Separator />
 
-            {/* Borrower Info or Availability Status */}
+            {/* Borrower/Owner Info or Availability Status */}
             <View className="gap-3">
               <Text variant="h3" className="font-semibold">
-                {friend ? "Borrowed By" : "Status"}
+                {isBorrower
+                  ? "Owner"
+                  : friend
+                  ? "Borrowed By"
+                  : "Status"}
               </Text>
-              {friend ? (
+              {isBorrower ? (
+                <View className="flex-row gap-3 items-center p-3 bg-blue-50 rounded-lg">
+                  <LucideIcons.User size={24} color="#3b82f6" />
+                  <View className="flex-1 gap-1">
+                    <Text
+                      variant="default"
+                      className="text-blue-600 font-semibold"
+                    >
+                      Borrowed from someone
+                    </Text>
+                    <Text variant="small" className="text-blue-600">
+                      You borrowed this item
+                    </Text>
+                  </View>
+                </View>
+              ) : friend ? (
                 <TouchableOpacity
                   onPress={() => router.push(`/friend/${friend.id}` as any)}
                 >
@@ -536,38 +562,57 @@ export default function ItemDetailScreen() {
 
             {/* Action Buttons */}
             <View className="gap-3 pt-2">
-              {!isAvailable && item.borrowedBy && (
-                <Button
-                  onPress={handleMarkReturned}
-                  disabled={returning || deleting}
-                  className="bg-green-600"
-                >
-                  <LucideIcons.Check size={16} color="white" />
-                  <Text className="text-white">
-                    {returning ? "Marking as Returned..." : "Mark as Returned"}
-                  </Text>
-                </Button>
+              {isBorrower ? (
+                // Buttons for borrowed items (you're the borrower)
+                <>
+                  <Button
+                    onPress={handleMarkReturned}
+                    disabled={returning}
+                    className="bg-green-600"
+                  >
+                    <LucideIcons.Check size={16} color="white" />
+                    <Text className="text-white">
+                      {returning ? "Returning..." : "Return to Owner"}
+                    </Text>
+                  </Button>
+                </>
+              ) : (
+                // Buttons for owned items
+                <>
+                  {!isAvailable && item.borrowedBy && (
+                    <Button
+                      onPress={handleMarkReturned}
+                      disabled={returning || deleting}
+                      className="bg-green-600"
+                    >
+                      <LucideIcons.Check size={16} color="white" />
+                      <Text className="text-white">
+                        {returning ? "Marking as Returned..." : "Mark as Returned"}
+                      </Text>
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    onPress={handleEdit}
+                    disabled={deleting || returning}
+                    className="border-blue-200"
+                  >
+                    <LucideIcons.Edit size={16} color="#3b82f6" />
+                    <Text className="text-blue-600">Edit Item</Text>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onPress={handleDelete}
+                    disabled={deleting || returning}
+                    className="border-red-200"
+                  >
+                    <LucideIcons.Trash2 size={16} color="#ef4444" />
+                    <Text className="text-red-600">Delete Item</Text>
+                  </Button>
+                </>
               )}
-
-              <Button
-                variant="outline"
-                onPress={handleEdit}
-                disabled={deleting || returning}
-                className="border-blue-200"
-              >
-                <LucideIcons.Edit size={16} color="#3b82f6" />
-                <Text className="text-blue-600">Edit Item</Text>
-              </Button>
-
-              <Button
-                variant="outline"
-                onPress={handleDelete}
-                disabled={deleting || returning}
-                className="border-red-200"
-              >
-                <LucideIcons.Trash2 size={16} color="#ef4444" />
-                <Text className="text-red-600">Delete Item</Text>
-              </Button>
             </View>
           </View>
         </View>

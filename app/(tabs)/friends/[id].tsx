@@ -71,12 +71,8 @@ export default function FriendDetailScreen() {
         const friendData = await getFriendUserById(id);
 
         if (!friendData) {
-          // Friend not found, go back
-          if (navigation.canGoBack()) {
-            router.back();
-          } else {
-            router.push("/(tabs)/friends" as any);
-          }
+          // Friend not found, go back using history
+          router.back();
           return;
         }
 
@@ -205,12 +201,7 @@ export default function FriendDetailScreen() {
       setDeleting(true);
       await removeFriend(friend.id);
       toast.success(`Removed ${friend.name} from friends`);
-
-      if (navigation.canGoBack()) {
-        router.back();
-      } else {
-        router.push("/(tabs)/friends" as any);
-      }
+      router.back();
     } catch (error) {
       console.error("Failed to remove friend:", error);
       toast.error("Failed to remove friend");

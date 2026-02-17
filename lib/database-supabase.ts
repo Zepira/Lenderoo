@@ -5,6 +5,7 @@
  */
 
 import { supabase } from "./supabase";
+import { deleteItemImages } from "./storage-service";
 import type {
   Item,
   Friend,
@@ -219,6 +220,22 @@ export async function updateItem(
 export async function deleteItem(id: string): Promise<boolean> {
   const item = await getItemById(id);
   if (!item) return false;
+
+  // Delete associated images from storage (only if they're stored in our Supabase bucket)
+  if (item.images && item.images.length > 0) {
+    const supabaseImages = item.images.filter(url =>
+      url && url.includes('supabase.co/storage')
+    );
+
+    if (supabaseImages.length > 0) {
+      try {
+        await deleteItemImages(supabaseImages);
+      } catch (error) {
+        console.error('Failed to delete item images:', error);
+        // Continue with deletion even if image cleanup fails
+      }
+    }
+  }
 
   const { error } = await supabase.from("items").delete().eq("id", id);
 

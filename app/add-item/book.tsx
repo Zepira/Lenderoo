@@ -250,7 +250,7 @@ export default function AddBookScreen() {
 
       console.log("✅ Book added successfully! ID:", result.id);
 
-      router.push("/library" as any);
+      router.back();
     } catch (error) {
       isSubmitting.current = false;
       setIsLoading(false);
