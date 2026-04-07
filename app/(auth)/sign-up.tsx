@@ -20,6 +20,7 @@ import {
   validateName
 } from '@/lib/auth-errors';
 import { UserPlus } from 'lucide-react-native';
+import { AuthIconBox } from '@/components/AuthIconBox';
 
 export default function SignUpScreen() {
   const { signUp } = useAuth();
@@ -108,7 +109,8 @@ export default function SignUpScreen() {
         <View className="w-full max-w-md mx-auto">
           {/* Header */}
           <View className="mb-8">
-            <Text className="text-4xl font-bold mb-2">Create account</Text>
+            <AuthIconBox />
+            <Text className="font-display-bold text-3xl mb-2">Create account</Text>
             <Text className="text-muted-foreground text-base">
               Sign up to start tracking your items
             </Text>

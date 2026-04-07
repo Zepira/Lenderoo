@@ -1121,6 +1121,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo-google-fonts/inter@npm:^0.4.2":
+  version: 0.4.2
+  resolution: "@expo-google-fonts/inter@npm:0.4.2"
+  checksum: 10/86d11cbd90f60a69c2ef52637a797f0e30827857493e85e6c4124f41100d649c026acfd1b858b6434b8fe81e396654e2e2b47557c2dbf8d8293d324ebc6362c9
+  languageName: node
+  linkType: hard
+
+"@expo-google-fonts/outfit@npm:^0.4.3":
+  version: 0.4.3
+  resolution: "@expo-google-fonts/outfit@npm:0.4.3"
+  checksum: 10/1c2bcd7b33f0c3e88555b357e831b54619bdfcc1027121f0ccaf462a226449674d842e97719bdb28900bda8bee2dfd56d7545ed9e4179c8630b58b9df05834a9
+  languageName: node
+  linkType: hard
+
 "@expo/cli@npm:54.0.22":
   version: 54.0.22
   resolution: "@expo/cli@npm:54.0.22"
@@ -5775,6 +5789,8 @@ __metadata:
   resolution: "lenderoo@workspace:."
   dependencies:
     "@babel/core": "npm:^7.24.6"
+    "@expo-google-fonts/inter": "npm:^0.4.2"
+    "@expo-google-fonts/outfit": "npm:^0.4.3"
     "@expo/metro-config": "npm:~54.0.2"
     "@expo/metro-runtime": "npm:~6.1.2"
     "@react-native-async-storage/async-storage": "npm:^2.2.0"

@@ -1,8 +1,8 @@
 import * as React from "react";
-import { View } from "react-native";
+import { View, Pressable } from "react-native";
 import { router, Tabs } from "expo-router";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import {
-  Users,
   Search,
   Home,
   UserCog,
@@ -21,6 +21,149 @@ import { getIncomingRequestCount } from "@/lib/borrow-requests-service";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { FeedbackModal } from "@/components/FeedbackModal";
+
+const BTN_SIZE = 60;
+const NAV_HEIGHT = 74;
+// Container is taller than the pill so the overlapping button stays within
+// the touchable area while visually sitting above the navbar.
+const CONTAINER_HEIGHT = 120;
+
+function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+  // Only render routes that have a tabBarIcon — hides any auto-registered
+  // routes (e.g. friends/) that shouldn't appear in the floating nav.
+  const routes = state.routes.filter(
+    (r) => descriptors[r.key]?.options?.tabBarIcon !== undefined
+  );
+  const half = Math.floor(routes.length / 2);
+  const leftRoutes = routes.slice(0, half);
+  const rightRoutes = routes.slice(half);
+
+  const renderTab = (route: (typeof routes)[0], index: number) => {
+    const { options } = descriptors[route.key];
+    const isFocused = state.index === index;
+    const onPress = () => {
+      const event = navigation.emit({
+        type: "tabPress",
+        target: route.key,
+        canPreventDefault: true,
+      });
+      if (!isFocused && !event.defaultPrevented)
+        navigation.navigate(route.name);
+    };
+    return (
+      <Pressable
+        key={route.key}
+        onPress={onPress}
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+        accessibilityRole="button"
+        accessibilityState={isFocused ? { selected: true } : {}}
+        accessibilityLabel={options.tabBarAccessibilityLabel}
+      >
+        {options.tabBarIcon?.({
+          focused: isFocused,
+          color: isFocused ? "#00BFA6" : "#6B7280",
+          size: 24,
+        })}
+      </Pressable>
+    );
+  };
+
+  return (
+    <View
+      style={{
+        position: "absolute",
+        bottom: insets.bottom + 8,
+        left: 12,
+        right: 12,
+        height: CONTAINER_HEIGHT,
+      }}
+    >
+      {/* Pill */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: NAV_HEIGHT,
+          borderRadius: 37,
+          backgroundColor: "#101828",
+          flexDirection: "row",
+          alignItems: "stretch",
+          elevation: 12,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.3,
+          shadowRadius: 16,
+        }}
+      >
+        {/* Left group — guaranteed equal width to right group */}
+        <View
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          {leftRoutes.map((route, i) => renderTab(route, i))}
+        </View>
+        {/* Gap for the center button */}
+        <View style={{ width: BTN_SIZE + 16 }} />
+        {/* Right group */}
+        <View
+          style={{
+            flex: 1,
+            flexGrow: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-evenly",
+          }}
+        >
+          {rightRoutes.map((route, i) => renderTab(route, i + half))}
+        </View>
+      </View>
+
+      {/* Center add button — overlaps the top of the pill */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 30,
+          left: 0,
+          right: 0,
+          alignItems: "center",
+        }}
+      >
+        <Pressable
+          onPress={() => router.push("/add-item")}
+          style={{
+            width: BTN_SIZE,
+            height: BTN_SIZE,
+            borderRadius: BTN_SIZE / 2,
+            backgroundColor: "#00BFA6",
+            borderWidth: 4,
+            borderColor: "white",
+            alignItems: "center",
+            justifyContent: "center",
+            elevation: 14,
+            shadowColor: "#00BFA6",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.5,
+            shadowRadius: 8,
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Add item"
+        >
+          <Plus size={26} color="white" strokeWidth={2.5} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
 
 export default function TabLayout() {
   const { activeTheme } = useThemeContext();
@@ -58,15 +201,19 @@ export default function TabLayout() {
     if (!user) return;
 
     const channel = supabase
-      .channel('borrow-requests-banner')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'borrow_requests',
-        filter: `owner_id=eq.${user.id}`,
-      }, () => {
-        loadRequestCount();
-      })
+      .channel("borrow-requests-banner")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "borrow_requests",
+          filter: `owner_id=eq.${user.id}`,
+        },
+        () => {
+          loadRequestCount();
+        },
+      )
       .subscribe();
 
     return () => {
@@ -75,45 +222,14 @@ export default function TabLayout() {
   }, [user]);
 
   const handleBannerPress = () => {
-    router.push('/(tabs)/library');
+    router.push("/(tabs)/library");
   };
 
   const handleBannerDismiss = () => {
     setBannerDismissed(true);
   };
 
-  const screenOptions = React.useMemo(
-    () => ({
-      tabBarActiveTintColor: isDark ? THEME.dark.primary : THEME.light.primary,
-      tabBarInactiveTintColor: isDark
-        ? THEME.dark.mutedForeground
-        : THEME.light.mutedForeground,
-      tabBarStyle: {
-        paddingTop: 8,
-        paddingBottom: insets.bottom,
-        height: 60 + insets.bottom,
-        backgroundColor: isDark
-          ? THEME.dark.background
-          : THEME.light.background,
-        borderTopColor: isDark ? THEME.dark.border : THEME.light.border,
-      },
-      // headerShadowVisible: false,
-      // headerStyle: {
-      //   backgroundColor: isDark
-      //     ? THEME.dark.background
-      //     : THEME.light.background,
-      // },
-      // headerTintColor: isDark ? THEME.dark.foreground : THEME.light.foreground,
-      // headerRight: HeaderRight,
-      // headerBackVisible: true,
-      headerShown: false,
-    }),
-    [isDark, insets.bottom]
-  );
-
-  const handleAddItem = () => {
-    router.push("/add-item");
-  };
+  const screenOptions = React.useMemo(() => ({ headerShown: false }), []);
 
   const handleFeedbackPress = () => {
     setFeedbackModalVisible(true);
@@ -130,7 +246,10 @@ export default function TabLayout() {
         />
       )}
 
-      <Tabs screenOptions={screenOptions}>
+      <Tabs
+        screenOptions={screenOptions}
+        tabBar={(props) => <FloatingTabBar {...props} />}
+      >
         <Tabs.Screen
           name="index"
           options={{
@@ -160,16 +279,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="friends"
-          options={{
-            title: "Friends",
-            tabBarIcon: ({ color, size }) => (
-              <Users color={color} size={size} />
-            ),
-            headerTitle: "Friends",
-          }}
-        />
-        <Tabs.Screen
           name="settings"
           options={{
             title: "Profile",
@@ -179,44 +288,27 @@ export default function TabLayout() {
             headerTitle: "Profile",
           }}
         />
+        {/* Friends screens — registered without tabBarIcon so they are
+            filtered out of the FloatingTabBar but remain navigable. */}
+        <Tabs.Screen name="friends" options={{ headerShown: false }} />
       </Tabs>
 
-      {/* Feedback Button - Above the FAB */}
+      {/* Feedback Button */}
       <Button
         size="icon"
-        variant="outline"
-        className="absolute right-4 w-14 h-14 rounded-full shadow-lg bg-background border-2 border-border items-center justify-center"
+        variant="secondary"
+        className="absolute right-4 w-14 h-14 rounded-full shadow-lg items-center justify-center"
         style={{
           elevation: 6,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 3 },
           shadowOpacity: 0.2,
           shadowRadius: 6,
-          bottom: insets.bottom + 160,
+          bottom: insets.bottom + CONTAINER_HEIGHT,
         }}
         onPress={handleFeedbackPress}
       >
-        <MessageSquare
-          size={22}
-          color={isDark ? THEME.dark.foreground : THEME.light.foreground}
-        />
-      </Button>
-
-      {/* Floating Action Button - Appears over all tabs */}
-      <Button
-        size="icon"
-        className="absolute  right-4 w-16 h-16 rounded-full shadow-2xl  bg-primary items-center justify-center"
-        style={{
-          elevation: 8,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          bottom: insets.bottom + 80,
-        }}
-        onPress={handleAddItem}
-      >
-        <Plus size={28} />
+        <MessageSquare size={22} color="white" />
       </Button>
 
       {/* Feedback Modal */}

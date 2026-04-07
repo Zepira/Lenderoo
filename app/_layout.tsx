@@ -1,13 +1,20 @@
 import "../global.css";
 
 import * as React from "react";
-import { View, ActivityIndicator } from "react-native";
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
+import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useFonts } from "expo-font";
+import {
+  Outfit_400Regular,
+  Outfit_700Bold,
+  Outfit_800ExtraBold,
+} from "@expo-google-fonts/outfit";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from "@expo-google-fonts/inter";
 
 import { StatusBar } from "expo-status-bar";
 import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
@@ -16,16 +23,13 @@ import { useThemeContext } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 
 export {
-  // Catch any errors thrown by the Layout component.
   ErrorBoundary,
 } from "expo-router";
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
   initialRouteName: "(tabs)",
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutContent() {
@@ -35,13 +39,6 @@ function RootLayoutContent() {
   const router = useRouter();
   const segments = useSegments();
 
-  // Memoize the navigation theme to prevent context disruption
-  const navigationTheme = React.useMemo(
-    () => (isDark ? DarkTheme : DefaultTheme),
-    [isDark]
-  );
-
-  // Memoize screen options to prevent unnecessary re-renders
   const stackScreenOptions = React.useMemo(
     () => ({
       contentStyle: { backgroundColor: isDark ? "#0a0a0a" : "#ffffff" },
@@ -49,60 +46,31 @@ function RootLayoutContent() {
     [isDark]
   );
 
-  // Auth-based navigation
+  // Hide the native splash once auth and theme are ready, then navigate.
   React.useEffect(() => {
     if (themeLoading || authLoading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    SplashScreen.hideAsync().catch(() => {});
 
+    const inAuthGroup = segments[0] === "(auth)";
     if (!user && !inAuthGroup) {
-      // User is not authenticated and not in auth group, redirect to sign-in
-      console.log('🔒 No user detected, redirecting to sign-in');
-      router.replace('/(auth)/sign-in');
+      router.replace("/(auth)/");
     } else if (user && inAuthGroup) {
-      // User is authenticated but still in auth group, redirect to tabs
-      console.log('✅ User authenticated, redirecting to main app');
-      router.replace('/(tabs)');
+      router.replace("/(tabs)");
     }
   }, [user, segments, themeLoading, authLoading, router]);
 
-  // Hide splash screen once both theme and auth are loaded
-  React.useEffect(() => {
-    if (!themeLoading && !authLoading) {
-      SplashScreen.hideAsync().catch((error) => {
-        // Splash screen may already be hidden or not registered
-        console.log("Splash screen hide error (safe to ignore):", error.message);
-      });
-    }
-  }, [themeLoading, authLoading]);
-
-  // Show loading indicator while theme or auth is loading
+  // Native splash is still visible while loading — nothing to render.
   if (themeLoading || authLoading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" />
-      </View>
-    );
+    return null;
   }
 
   return (
     <View className={isDark ? "dark flex-1" : "flex-1"}>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack screenOptions={stackScreenOptions}>
-        <Stack.Screen
-          name="(auth)"
-          options={{
-            headerShown: false,
-          }}
-        />
-
-        <Stack.Screen
-          name="(tabs)"
-          options={{
-            headerShown: false,
-          }}
-        />
-
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="add-item"
           options={{
@@ -113,7 +81,6 @@ function RootLayoutContent() {
             gestureDirection: "vertical",
           }}
         />
-
         <Stack.Screen
           name="modal"
           options={{
@@ -130,6 +97,21 @@ function RootLayoutContent() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Outfit: Outfit_400Regular,
+    "Outfit-Bold": Outfit_700Bold,
+    "Outfit-ExtraBold": Outfit_800ExtraBold,
+    Inter: Inter_400Regular,
+    "Inter-Medium": Inter_500Medium,
+    "Inter-Bold": Inter_700Bold,
+    "Inter-ExtraBold": Inter_800ExtraBold,
+  });
+
+  // Native splash stays visible until fonts are loaded.
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <SafeAreaProvider>
       <Provider>

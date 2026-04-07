@@ -4,6 +4,7 @@ import { View, type ViewProps } from "react-native";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 
+// Cards use rounded-3xl (24px) and a soft colored shadow per design spec.
 function Card({ className, style, ...props }: ViewProps & React.RefAttributes<View>) {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
@@ -13,7 +14,7 @@ function Card({ className, style, ...props }: ViewProps & React.RefAttributes<Vi
     <TextClassContext.Provider value="text-card-foreground">
       <View
         className={cn(
-          "border-border flex flex-col gap-6 rounded-xl border py-6 shadow-sm shadow-black/5",
+          "border-border flex flex-col gap-6 rounded-3xl border py-6 shadow-sm shadow-primary/10",
           className
         )}
         style={[{ backgroundColor: theme.card }, style]}
@@ -40,7 +41,8 @@ function CardTitle({
     <Text
       role="heading"
       aria-level={3}
-      className={cn("font-semibold leading-none", className)}
+      variant="h3"
+      className={cn(className)}
       {...props}
     />
   );
@@ -52,7 +54,8 @@ function CardDescription({
 }: React.ComponentProps<typeof Text> & React.RefAttributes<Text>) {
   return (
     <Text
-      className={cn("text-muted-foreground text-sm", className)}
+      variant="muted"
+      className={cn(className)}
       {...props}
     />
   );

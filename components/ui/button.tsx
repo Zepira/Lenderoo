@@ -5,91 +5,93 @@ import { Platform, Pressable, TouchableOpacity } from "react-native";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 
+// Buttons use rounded-lg (16px via --radius) per design spec.
+// Shadows use the brand color at low opacity for a "lifted" feel.
 const buttonVariants = cva(
   cn(
-    "group shrink-0 flex-row items-center justify-center gap-2 rounded-md shadow-none",
+    "group shrink-0 flex-row items-center justify-center gap-2 rounded-lg shadow-none",
     Platform.select({
       web: "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap outline-none transition-all focus-visible:ring-[3px] disabled:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
-    })
+    }),
   ),
   {
     variants: {
       variant: {
+        // Primary — teal #00BFA6
         default: cn(
-          "active:opacity-90 shadow-sm shadow-black/5",
-          Platform.select({ web: "hover:opacity-90" })
+          "bg-primary active:opacity-90 shadow-sm shadow-primary/20",
+          Platform.select({ web: "hover:opacity-90" }),
         ),
+        // Destructive — coral #FF6B6B
         destructive: cn(
-          "bg-destructive active:bg-destructive/90 dark:bg-destructive/60 shadow-sm shadow-black/5",
-          Platform.select({
-            web: "hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
-          })
+          "bg-destructive active:opacity-90 shadow-sm shadow-destructive/20",
+          Platform.select({ web: "hover:opacity-90" }),
         ),
+        // Outline
         outline: cn(
-          "border-border bg-background active:bg-accent dark:bg-input/30 dark:border-input dark:active:bg-input/50 border shadow-sm shadow-black/5",
-          Platform.select({
-            web: "hover:bg-accent dark:hover:bg-input/50",
-          })
+          "border-border bg-background active:bg-muted dark:bg-input/30 dark:border-input dark:active:bg-input/50 border-2 shadow-sm shadow-black/5",
+          Platform.select({ web: "hover:bg-muted dark:hover:bg-input/50" }),
         ),
+        // Secondary — yellow #FFC857
         secondary: cn(
-          "bg-secondary active:bg-secondary/80 shadow-sm shadow-black/5",
-          Platform.select({ web: "hover:bg-secondary/80" })
+          "bg-secondary active:opacity-90 shadow-sm shadow-secondary/20",
+          Platform.select({ web: "hover:opacity-90" }),
         ),
+        // Ghost — no background
         ghost: cn(
-          "active:bg-accent dark:active:bg-accent/50",
-          Platform.select({ web: "hover:bg-accent dark:hover:bg-accent/50" })
+          "active:bg-muted dark:active:bg-muted/50",
+          Platform.select({ web: "hover:bg-muted dark:hover:bg-muted/50" }),
         ),
+        // Link
         link: "",
       },
       size: {
-        default: cn(
-          "h-10 px-4 py-2 sm:h-9",
-          Platform.select({ web: "has-[>svg]:px-3" })
-        ),
+        default: cn("h-14 px-6", Platform.select({ web: "has-[>svg]:px-4" })),
         sm: cn(
-          "h-9 gap-1.5 rounded-md px-3 sm:h-8",
-          Platform.select({ web: "has-[>svg]:px-2.5" })
+          "h-14 gap-1.5 rounded-md px-4",
+          Platform.select({ web: "has-[>svg]:px-3" }),
         ),
         lg: cn(
-          "h-11 rounded-md px-6 sm:h-10",
-          Platform.select({ web: "has-[>svg]:px-4" })
+          "h-14 rounded-lg px-8",
+          Platform.select({ web: "has-[>svg]:px-5" }),
         ),
-        icon: "h-10 w-10 sm:h-9 sm:w-9",
+        icon: "h-14 w-14",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
     },
-  }
+  },
 );
 
+// Button text — Inter Bold 16px per design spec
 const buttonTextVariants = cva(
   cn(
-    "text-foreground text-sm font-medium",
-    Platform.select({ web: "pointer-events-none transition-colors" })
+    "font-sans-bold text-base",
+    Platform.select({ web: "pointer-events-none transition-colors" }),
   ),
   {
     variants: {
       variant: {
         default: "text-primary-foreground",
-        destructive: "text-white",
+        destructive: "text-destructive-foreground",
         outline: cn(
-          "group-active:text-primary-foreground",
-          Platform.select({ web: "group-hover:text-accent-foreground" })
+          "text-foreground group-active:text-foreground",
+          Platform.select({ web: "group-hover:text-foreground" }),
         ),
         secondary: "text-secondary-foreground",
-        ghost: "group-active:text-accent-foreground",
+        ghost: "text-foreground group-active:text-foreground",
         link: cn(
           "text-primary group-active:underline",
           Platform.select({
             web: "underline-offset-4 hover:underline group-hover:underline",
-          })
+          }),
         ),
       },
       size: {
         default: "",
-        sm: "",
+        sm: "text-base",
         lg: "",
         icon: "",
       },
@@ -98,7 +100,7 @@ const buttonTextVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
+  },
 );
 
 type ButtonProps = React.ComponentProps<typeof Pressable> &
@@ -119,24 +121,48 @@ function Button({
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
 
-  // Get background color based on variant
+  // Inline background color for variants that need a specific brand color.
+  // NativeWind handles the color via className on web; inline style is for native.
   const getBackgroundColor = () => {
-    if (variant === "default") return theme.accent;
+    if (variant === "default" || variant == null) return theme.primary;
     if (variant === "secondary") return theme.secondary;
     if (variant === "destructive") return theme.destructive;
+    if (variant === "outline") return "white/0";
     return undefined;
   };
 
-  const backgroundColor = getBackgroundColor();
+  const getShadowStyle = () => {
+    const shadowColor =
+      variant === "default" || variant == null
+        ? theme.primary
+        : variant === "secondary"
+          ? theme.secondary
+          : variant === "destructive"
+            ? theme.destructive
+            : undefined;
+    if (!shadowColor) return undefined;
+    return {
+      shadowColor,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 8,
+      elevation: 6,
+    };
+  };
 
-  // Combine our background color with user-provided style
-  const combinedStyle = backgroundColor ? [{ backgroundColor }, style] : style;
+  const backgroundColor = getBackgroundColor();
+  const shadowStyle = getShadowStyle();
+  const combinedStyle = [
+    backgroundColor ? { backgroundColor } : undefined,
+    shadowStyle,
+    style,
+  ].filter(Boolean);
 
   return (
     <TextClassContext.Provider
       value={cn(
         buttonTextVariants({ variant, size }),
-        isSelected && "text-primary-foreground"
+        isSelected && "text-primary-foreground",
       )}
     >
       <TouchableOpacity
@@ -144,7 +170,7 @@ function Button({
           props.disabled && "opacity-50",
           buttonVariants({ variant, size }),
           isSelected && "border-2 border-primary-foreground",
-          className
+          className,
         )}
         style={combinedStyle}
         role="button"

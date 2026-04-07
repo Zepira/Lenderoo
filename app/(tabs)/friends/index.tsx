@@ -1,8 +1,21 @@
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
-import { Plus } from "lucide-react-native";
-import { FriendList } from "components/FriendList";
-import { FriendRequests } from "components/FriendRequests";
+import {
+  View,
+  ScrollView,
+  TextInput,
+  Pressable,
+  Image,
+  ActivityIndicator,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  ArrowLeft,
+  ChevronRight,
+  Plus,
+  Search,
+  Users,
+} from "lucide-react-native";
 import {
   getMyFriends,
   getPendingFriendRequests,
@@ -10,71 +23,52 @@ import {
   type FriendRequest,
   type FriendUser,
 } from "@/lib/friends-service";
+import { FriendRequests } from "components/FriendRequests";
+import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
-import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
-import type { Friend } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
-
-// Convert FriendUser to Friend format for FriendList component
-function convertToFriendFormat(
-  friendUser: FriendUser,
-  counts?: { ownedCount: number; borrowedCount: number }
-): Friend {
-  return {
-    id: friendUser.id,
-    userId: "", // Not applicable for user-to-user friends
-    name: friendUser.name,
-    email: friendUser.email,
-    phone: undefined,
-    avatarUrl: friendUser.avatarUrl,
-    totalItemsBorrowed: 0, // Historical count not currently tracked
-    currentItemsBorrowed: counts?.borrowedCount || 0,
-    ownedItemsCount: counts?.ownedCount || 0,
-    createdAt: friendUser.friendsSince,
-    updatedAt: friendUser.friendsSince,
-  };
-}
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { THEME } from "@/lib/theme";
 
 export default function FriendsScreen() {
-  const [friends, setFriends] = useState<Friend[]>([]);
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
+
+  const [friends, setFriends] = useState<FriendUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
-  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [itemCounts, setItemCounts] = useState<Record<string, number>>({});
+  const [search, setSearch] = useState("");
 
-  // Load friends and friend requests
   useEffect(() => {
     loadFriends();
     loadFriendRequests();
   }, []);
 
-  // Set up realtime subscription for friend_connections changes
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    async function setupRealtimeSubscription() {
+    async function setup() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      console.log("🔴 Setting up realtime subscription for user:", user.id);
-
-      // Subscribe to changes in friend_connections table
       channel = supabase
         .channel("friend-connections-changes")
         .on(
           "postgres_changes",
           {
-            event: "*", // Listen to INSERT, UPDATE, DELETE
+            event: "*",
             schema: "public",
             table: "friend_connections",
-            filter: `friend_user_id=eq.${user.id}`, // Incoming requests
+            filter: `friend_user_id=eq.${user.id}`,
           },
-          (payload) => {
-            console.log("🔴 Realtime change detected (incoming):", payload);
+          () => {
             loadFriendRequests();
             loadFriends();
-          }
+          },
         )
         .on(
           "postgres_changes",
@@ -82,53 +76,40 @@ export default function FriendsScreen() {
             event: "*",
             schema: "public",
             table: "friend_connections",
-            filter: `user_id=eq.${user.id}`, // Outgoing requests & my friendships
+            filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            console.log("🔴 Realtime change detected (outgoing):", payload);
-            loadFriends();
-          }
+          () => loadFriends(),
         )
-        .subscribe((status) => {
-          console.log("🔴 Realtime subscription status:", status);
-        });
+        .subscribe();
     }
 
-    setupRealtimeSubscription();
-
-    // Cleanup subscription on unmount
+    setup();
     return () => {
-      if (channel) {
-        console.log("🔴 Cleaning up realtime subscription");
-        supabase.removeChannel(channel);
-      }
+      if (channel) supabase.removeChannel(channel);
     };
   }, []);
 
   async function loadFriends() {
     try {
       setLoading(true);
-      console.log("🔄 Loading friends...");
-      const friendsData = await getMyFriends();
-      console.log("✅ Friends loaded:", friendsData.length);
+      const data = await getMyFriends();
+      setFriends(data);
 
-      // Fetch item counts for each friend
-      const friendsWithCounts = await Promise.all(
-        friendsData.map(async (friendUser) => {
+      // Load item counts in background
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        data.map(async (f) => {
           try {
-            const counts = await getFriendItemCounts(friendUser.id);
-            return convertToFriendFormat(friendUser, counts);
-          } catch (error) {
-            console.error(`Error loading counts for friend ${friendUser.id}:`, error);
-            return convertToFriendFormat(friendUser);
+            const c = await getFriendItemCounts(f.id);
+            counts[f.id] = (c.ownedCount ?? 0) + (c.borrowedCount ?? 0);
+          } catch {
+            counts[f.id] = 0;
           }
-        })
+        }),
       );
-
-      setFriends(friendsWithCounts);
-    } catch (error: any) {
-      console.error("❌ Error loading friends:", error);
-      console.error("Error details:", error.message, error.details);
+      setItemCounts(counts);
+    } catch (error) {
+      console.error("Error loading friends:", error);
     } finally {
       setLoading(false);
     }
@@ -136,51 +117,259 @@ export default function FriendsScreen() {
 
   async function loadFriendRequests() {
     try {
-      setLoadingRequests(true);
-      console.log("🔄 Loading friend requests...");
       const requests = await getPendingFriendRequests();
-      console.log("✅ Friend requests loaded:", requests.length);
       setFriendRequests(requests);
-    } catch (error: any) {
-      console.error("❌ Error loading friend requests:", error);
-      console.error("Error details:", error.message, error.details);
-    } finally {
-      setLoadingRequests(false);
+    } catch (error) {
+      console.error("Error loading requests:", error);
     }
   }
 
-  async function handleRefresh() {
-    await Promise.all([loadFriends(), loadFriendRequests()]);
-  }
-
-  const handleFriendPress = (friend: (typeof friends)[0]) => {
-    router.push(`/friends/${friend.id}` as any);
-  };
-
-  const handleAddFriend = () => {
-    router.push("/(tabs)/friends/add-user-friend");
-  };
+  const filtered = friends.filter((f) =>
+    f.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
   return (
-    <SafeAreaWrapper>
-      <FriendList
-        friends={friends}
-        onFriendPress={handleFriendPress}
-        onRefresh={handleRefresh}
-        refreshing={loading || loadingRequests}
-        loading={loading}
-        detailed
-        emptyState={{
-          title: "No friends yet",
-          message: "Add friends to start lending them items",
-          actionLabel: "Add Your First Friend",
-          onAction: handleAddFriend,
-        }}
-        ListHeaderComponent={
-          <FriendRequests requests={friendRequests} onUpdate={handleRefresh} />
-        }
-        onAddFriend={handleAddFriend}
-      />
-    </SafeAreaWrapper>
+    <View
+      style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 160 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header card */}
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderBottomLeftRadius: 40,
+            borderBottomRightRadius: 40,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 12,
+            elevation: 4,
+            marginBottom: 24,
+          }}
+        >
+          <SafeAreaView
+            edges={["top"]}
+            style={{ backgroundColor: "transparent" }}
+          >
+            <View
+              style={{
+                paddingHorizontal: 24,
+                paddingTop: 16,
+                paddingBottom: 28,
+              }}
+            >
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 16 }}
+              >
+                <Pressable
+                  onPress={() => router.back()}
+                  style={({ pressed }) => ({
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <ArrowLeft size={22} color={theme.mutedForeground} />
+                </Pressable>
+                <Text
+                  className="font-display-bold text-foreground"
+                  style={{ fontSize: 26, lineHeight: 34 }}
+                >
+                  My Friends
+                </Text>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+
+        <View style={{ paddingHorizontal: 24, gap: 16 }}>
+          {/* Pending friend requests */}
+          {friendRequests.length > 0 && (
+            <FriendRequests
+              requests={friendRequests}
+              onUpdate={() => {
+                loadFriends();
+                loadFriendRequests();
+              }}
+            />
+          )}
+
+          {/* Search */}
+          <View
+            style={{
+              backgroundColor: theme.card,
+              borderRadius: 24,
+              padding: 12,
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                borderRadius: 16,
+                paddingHorizontal: 14,
+                gap: 10,
+              }}
+            >
+              <Search size={18} color={theme.mutedForeground} />
+              <TextInput
+                placeholder="Search friends…"
+                placeholderTextColor={theme.mutedForeground}
+                value={search}
+                onChangeText={setSearch}
+                style={{
+                  flex: 1,
+                  paddingVertical: 14,
+                  fontSize: 15,
+                  color: theme.foreground,
+                }}
+              />
+            </View>
+          </View>
+
+          {/* Friends list */}
+          {loading ? (
+            <View style={{ paddingVertical: 40, alignItems: "center" }}>
+              <ActivityIndicator size="large" color={THEME.light.primary} />
+            </View>
+          ) : filtered.length === 0 ? (
+            <View
+              style={{
+                backgroundColor: theme.card,
+                borderRadius: 24,
+                padding: 32,
+                alignItems: "center",
+                gap: 12,
+                borderWidth: 1,
+                borderColor: theme.border,
+              }}
+            >
+              <Users size={40} color={theme.mutedForeground} />
+              <Text
+                className="text-muted-foreground font-sans-medium text-center"
+                style={{ fontSize: 14 }}
+              >
+                {search ? "No friends match your search" : "No friends yet"}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ gap: 12 }}>
+              {filtered.map((friend) => (
+                <Pressable
+                  key={friend.id}
+                  onPress={() => router.push(`/friends/${friend.id}` as any)}
+                  style={({ pressed }) => ({
+                    backgroundColor: theme.card,
+                    borderRadius: 24,
+                    padding: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    opacity: pressed ? 0.7 : 1,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 4,
+                    elevation: 2,
+                  })}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 14,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 16,
+                        overflow: "hidden",
+                        backgroundColor: THEME.light.primary + "22",
+                      }}
+                    >
+                      {friend.avatarUrl ? (
+                        <Image
+                          source={{ uri: friend.avatarUrl }}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View
+                          style={{
+                            flex: 1,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Text
+                            className="font-sans-bold text-primary"
+                            style={{ fontSize: 18 }}
+                          >
+                            {friend.name[0]?.toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View>
+                      <Text
+                        className="font-sans-bold text-foreground"
+                        style={{ fontSize: 15 }}
+                      >
+                        {friend.name}
+                      </Text>
+                      <Text
+                        className="text-muted-foreground font-sans-medium"
+                        style={{ fontSize: 12, marginTop: 1 }}
+                      >
+                        {itemCounts[friend.id] ?? 0} items shared
+                      </Text>
+                    </View>
+                  </View>
+                  <ChevronRight size={18} color={theme.border} />
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          {/* Add friend button */}
+          <Pressable
+            onPress={() => router.push("/(tabs)/friends/add-user-friend")}
+            style={({ pressed }) => ({
+              backgroundColor: THEME.light.primary + "18",
+              borderRadius: 18,
+              paddingVertical: 18,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Plus size={20} color={THEME.light.primary} />
+            <Text
+              className="font-sans-bold text-primary"
+              style={{ fontSize: 15 }}
+            >
+              Add New Friend
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </View>
   );
 }

@@ -46,10 +46,28 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      fontFamily: {
+        // Outfit — display font for headings and branding
+        display: ["Outfit"],
+        "display-bold": ["Outfit-Bold"],
+        "display-extrabold": ["Outfit-ExtraBold"],
+        // Inter — sans font for body, inputs, UI
+        sans: ["Inter"],
+        "sans-medium": ["Inter-Medium"],
+        "sans-bold": ["Inter-Bold"],
+        "sans-extrabold": ["Inter-ExtraBold"],
+      },
+      fontSize: {
+        // Design spec sizes
+        "10": ["10px", { lineHeight: "14px" }],
+        stat: ["24px", { lineHeight: "32px" }],
+      },
       borderRadius: {
+        // --radius = 1rem (16px) for buttons/inputs
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        // Cards use rounded-3xl (1.5rem / 24px) — built into Tailwind
       },
       borderWidth: {
         hairline: hairlineWidth(),
