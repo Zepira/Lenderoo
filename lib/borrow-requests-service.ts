@@ -231,6 +231,34 @@ export async function getBorrowRequestsForItem(itemId: string): Promise<BorrowRe
 }
 
 /**
+ * Get the current user's active borrow request for a specific item
+ * (pending or approved). Queries borrow_requests directly — avoids
+ * any view-level RLS ambiguity.
+ *
+ * @param itemId - ID of the item
+ * @returns The request, or null if none exists
+ */
+export async function getMyBorrowRequestForItem(itemId: string): Promise<BorrowRequest | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('borrow_requests')
+    .select('*')
+    .eq('item_id', itemId)
+    .eq('requester_id', user.id)
+    .in('status', ['pending', 'approved'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return convertBorrowRequestFromDb(data);
+}
+
+/**
  * Get count of pending incoming requests
  *
  * @returns Number of pending requests

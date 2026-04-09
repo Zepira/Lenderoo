@@ -1,5 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useLocalSearchParams, useRouter, useNavigation, useFocusEffect } from "expo-router";
+import {
+  useLocalSearchParams,
+  useRouter,
+  useNavigation,
+  useFocusEffect,
+} from "expo-router";
 import {
   ScrollView,
   View,
@@ -9,7 +14,7 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -35,7 +40,7 @@ import {
   useItems,
 } from "hooks/useItems";
 import { useFriend, useFriends } from "hooks/useFriends";
-import { CATEGORY_CONFIG } from "components/ItemTile";
+import { CATEGORY_CONFIG } from "@/lib/category-config";
 import {
   formatDate,
   formatRelativeTime,
@@ -43,6 +48,7 @@ import {
   daysBorrowed,
   getInitials,
   calculateItemStatus,
+  toProperCase,
 } from "lib/utils";
 import * as toast from "@/lib/toast";
 import { resolveAvatarSource } from "@/lib/avatar-service";
@@ -64,14 +70,14 @@ export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
   const { item, loading, refresh } = useItem(id!);
 
-  const isBorrower = item && user && item.borrowedBy === user.id && !item.returnedDate;
+  const isBorrower =
+    item && user && item.borrowedBy === user.id && !item.returnedDate;
   const isOwner = item && user && item.userId === user.id;
   const friendId = item?.borrowedBy && !isBorrower ? item.borrowedBy : null;
   const { friend } = useFriend(friendId);
@@ -84,7 +90,7 @@ export default function ItemDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       refresh();
-    }, [refresh])
+    }, [refresh]),
   );
 
   const communityOwners = useMemo(() => {
@@ -115,10 +121,37 @@ export default function ItemDetailScreen() {
     }
   }, [loading, item, router]);
 
+  const goBack = () =>
+    navigation.canGoBack() ? router.back() : router.push("/(tabs)" as any);
+
   if (loading || !item || (item.borrowedBy && !isBorrower && !friend)) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: theme.background }}>
-        <Caption>Loading…</Caption>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <SafeAreaView
+          edges={["top"]}
+          style={{ backgroundColor: "transparent" }}
+        >
+          <Pressable
+            onPress={goBack}
+            style={({ pressed }) => ({
+              margin: 16,
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              backgroundColor: isDark ? theme.muted : "#F3F4F6",
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <ArrowLeft size={22} color={theme.mutedForeground} />
+          </Pressable>
+        </SafeAreaView>
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <Caption>Loading…</Caption>
+        </View>
       </View>
     );
   }
@@ -132,11 +165,21 @@ export default function ItemDetailScreen() {
     : 0;
 
   const cfg = CATEGORY_CONFIG[item.category] ?? CATEGORY_CONFIG.other;
-  const imageUrl = item.images?.[0] ?? (item as any).imageUrls?.[0] ?? (item as any).imageUrl;
-  const bookMeta = item.category === "book" ? (item.metadata as BookMetadata) : null;
+  const imageUrl =
+    item.images?.[0] ?? (item as any).imageUrls?.[0] ?? (item as any).imageUrl;
+  const bookMeta =
+    item.category === "book" ? (item.metadata as BookMetadata) : null;
 
-  const statusLabel = isAvailable ? "Available" : isOverdue ? "Overdue" : "Lent Out";
-  const statusColor = isAvailable ? theme.primary : isOverdue ? theme.destructive : theme.secondary;
+  const statusLabel = isAvailable
+    ? "Available"
+    : isOverdue
+      ? "Overdue"
+      : "Lent Out";
+  const statusColor = isAvailable
+    ? theme.primary
+    : isOverdue
+      ? theme.destructive
+      : theme.secondary;
 
   const handleMarkReturned = async () => {
     const actionText = isBorrower ? "returned to owner" : "marked as returned";
@@ -156,15 +199,25 @@ export default function ItemDetailScreen() {
   const handleDelete = async () => {
     const confirmed =
       Platform.OS === "web"
-        ? window.confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`)
+        ? window.confirm(
+            `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
+          )
         : await new Promise<boolean>((resolve) => {
             Alert.alert(
               "Delete Item",
               `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
               [
-                { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-                { text: "Delete", style: "destructive", onPress: () => resolve(true) },
-              ]
+                {
+                  text: "Cancel",
+                  style: "cancel",
+                  onPress: () => resolve(false),
+                },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: () => resolve(true),
+                },
+              ],
             );
           });
 
@@ -180,8 +233,41 @@ export default function ItemDetailScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+    <View
+      style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#ffffff" }}
+    >
+      {/* Back button — SafeAreaView overlay, always on top of hero */}
+      <SafeAreaView
+        edges={["top"]}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          backgroundColor: "transparent",
+        }}
+      >
+        <Pressable
+          onPress={goBack}
+          style={{
+            margin: 16,
+            width: 44,
+            height: 44,
+            borderRadius: 50,
+            backgroundColor: "rgba(0, 0, 0, 0.34)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <ArrowLeft size={32} color="rgba(255, 255, 255, 0.91)" />
+        </Pressable>
+      </SafeAreaView>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 160 }}
+      >
         {/* ── Hero Image ── */}
         <View style={{ height: 400, width: "100%" }}>
           {imageUrl ? (
@@ -207,33 +293,20 @@ export default function ItemDetailScreen() {
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.65)"]}
             locations={[0.35, 1]}
-            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-          />
-
-          {/* Back button */}
-          <Pressable
-            onPress={() => navigation.canGoBack() ? router.back() : router.push("/(tabs)" as any)}
-            style={({ pressed }) => ({
+            style={{
               position: "absolute",
-              top: insets.top + 12,
-              left: 20,
-              width: 44,
-              height: 44,
-              borderRadius: 14,
-              backgroundColor: "rgba(0,0,0,0.45)",
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <ArrowLeft size={22} color="#fff" />
-          </Pressable>
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
+          />
 
           {/* Floating info */}
           <View
             style={{
               position: "absolute",
-              bottom: 28,
+              bottom: 48,
               left: 20,
               right: 20,
             }}
@@ -248,8 +321,11 @@ export default function ItemDetailScreen() {
                   borderRadius: 8,
                 }}
               >
-                <TinyLabel style={{ color: "#fff" }} className="normal-case tracking-normal">
-                  {item.category}
+                <TinyLabel
+                  style={{ color: "#fff" }}
+                  className="normal-case tracking-normal"
+                >
+                  {toProperCase(item.category)}
                 </TinyLabel>
               </View>
               <View
@@ -260,14 +336,20 @@ export default function ItemDetailScreen() {
                   borderRadius: 8,
                 }}
               >
-                <TinyLabel style={{ color: "#fff" }} className="normal-case tracking-normal">
+                <TinyLabel
+                  style={{ color: "#fff" }}
+                  className="normal-case tracking-normal"
+                >
                   {statusLabel}
                 </TinyLabel>
               </View>
             </View>
 
             {/* Item name */}
-            <PageHero style={{ color: "#fff", lineHeight: 40 }} numberOfLines={2}>
+            <PageHero
+              style={{ color: "#fff", lineHeight: 40 }}
+              numberOfLines={2}
+            >
               {item.name}
             </PageHero>
 
@@ -286,15 +368,10 @@ export default function ItemDetailScreen() {
             backgroundColor: theme.card,
             borderTopLeftRadius: 40,
             borderTopRightRadius: 40,
-            marginTop: -24,
-            paddingTop: 32,
+            marginTop: -38,
+            paddingTop: 44,
             paddingHorizontal: 24,
             paddingBottom: 8,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.06,
-            shadowRadius: 16,
-            elevation: 8,
           }}
         >
           {/* ── Quick stats row ── */}
@@ -314,7 +391,11 @@ export default function ItemDetailScreen() {
                 {isBorrower ? "Owner" : friend ? "Lent To" : "Status"}
               </TinyLabel>
               <LabelStrong numberOfLines={1}>
-                {isBorrower ? "You borrowed" : friend ? friend.name : "Available"}
+                {isBorrower
+                  ? "You borrowed"
+                  : friend
+                    ? friend.name
+                    : "Available"}
               </LabelStrong>
             </View>
 
@@ -329,8 +410,8 @@ export default function ItemDetailScreen() {
                 {bookMeta?.averageRating
                   ? `${bookMeta.averageRating.toFixed(1)}/5`
                   : daysSinceBorrowed > 0
-                  ? `${daysSinceBorrowed}d`
-                  : "—"}
+                    ? `${daysSinceBorrowed}d`
+                    : "—"}
               </LabelStrong>
             </View>
 
@@ -342,7 +423,9 @@ export default function ItemDetailScreen() {
                 {item.dueDate ? "Due" : "Added"}
               </TinyLabel>
               <LabelStrong
-                style={{ color: isOverdue ? theme.destructive : theme.foreground }}
+                style={{
+                  color: isOverdue ? theme.destructive : theme.foreground,
+                }}
                 numberOfLines={1}
               >
                 {item.dueDate
@@ -361,7 +444,13 @@ export default function ItemDetailScreen() {
                   {bookMeta.genre && (
                     <View style={{ flex: 1 }}>
                       <TinyLabel style={{ marginBottom: 6 }}>Genre</TinyLabel>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          gap: 6,
+                        }}
+                      >
                         {(Array.isArray(bookMeta.genre)
                           ? bookMeta.genre
                           : String(bookMeta.genre).split(",")
@@ -375,7 +464,9 @@ export default function ItemDetailScreen() {
                               borderRadius: 8,
                             }}
                           >
-                            <Caption style={{ color: theme.primary }}>{g.trim()}</Caption>
+                            <Caption style={{ color: theme.primary }}>
+                              {g.trim()}
+                            </Caption>
                           </View>
                         ))}
                       </View>
@@ -386,7 +477,9 @@ export default function ItemDetailScreen() {
                       <TinyLabel style={{ marginBottom: 6 }}>Series</TinyLabel>
                       <BodyText>
                         {bookMeta.seriesName}
-                        {bookMeta.seriesNumber ? ` #${bookMeta.seriesNumber}` : ""}
+                        {bookMeta.seriesNumber
+                          ? ` #${bookMeta.seriesNumber}`
+                          : ""}
                       </BodyText>
                     </View>
                   )}
@@ -398,7 +491,9 @@ export default function ItemDetailScreen() {
                 <View style={{ flexDirection: "row", gap: 24 }}>
                   {bookMeta.publicationYear && (
                     <View style={{ flex: 1 }}>
-                      <TinyLabel style={{ marginBottom: 4 }}>Published</TinyLabel>
+                      <TinyLabel style={{ marginBottom: 4 }}>
+                        Published
+                      </TinyLabel>
                       <BodyText>{bookMeta.publicationYear}</BodyText>
                     </View>
                   )}
@@ -415,7 +510,9 @@ export default function ItemDetailScreen() {
               {bookMeta.synopsis && (
                 <View>
                   <TinyLabel style={{ marginBottom: 8 }}>Synopsis</TinyLabel>
-                  <BodyText style={{ color: theme.mutedForeground, lineHeight: 22 }}>
+                  <BodyText
+                    style={{ color: theme.mutedForeground, lineHeight: 22 }}
+                  >
                     {bookMeta.synopsis}
                   </BodyText>
                 </View>
@@ -444,7 +541,11 @@ export default function ItemDetailScreen() {
               >
                 <Avatar className="w-12 h-12" alt={friend.name}>
                   {friend.avatarUrl ? (
-                    <AvatarImage source={resolveAvatarSource(friend.avatarUrl) ?? { uri: "" }} />
+                    <AvatarImage
+                      source={
+                        resolveAvatarSource(friend.avatarUrl) ?? { uri: "" }
+                      }
+                    />
                   ) : (
                     <AvatarFallback>
                       <BodyStrong style={{ color: theme.secondary }}>
@@ -454,7 +555,9 @@ export default function ItemDetailScreen() {
                   )}
                 </Avatar>
                 <View style={{ flex: 1 }}>
-                  <TinyLabel style={{ marginBottom: 2 }}>Currently Lent To</TinyLabel>
+                  <TinyLabel style={{ marginBottom: 2 }}>
+                    Currently Lent To
+                  </TinyLabel>
                   <BodyStrong>{friend.name}</BodyStrong>
                   {friend.email && <Caption>{friend.email}</Caption>}
                 </View>
@@ -493,7 +596,9 @@ export default function ItemDetailScreen() {
                   <Info size={20} color={theme.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <TinyLabel style={{ color: theme.primary, marginBottom: 2 }}>Currently Borrowing</TinyLabel>
+                  <TinyLabel style={{ color: theme.primary, marginBottom: 2 }}>
+                    Currently Borrowing
+                  </TinyLabel>
                   <BodyText>You borrowed this item</BodyText>
                 </View>
               </View>
@@ -504,28 +609,55 @@ export default function ItemDetailScreen() {
           {(item.borrowedDate || item.returnedDate) && (
             <>
               <Separator style={{ marginBottom: 20 }} />
-              <SectionHeading style={{ marginBottom: 16 }}>Timeline</SectionHeading>
+              <SectionHeading style={{ marginBottom: 16 }}>
+                Timeline
+              </SectionHeading>
               <View style={{ gap: 14, marginBottom: 24 }}>
                 {item.borrowedDate && (
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
                     <Caption>Borrowed</Caption>
                     <View style={{ alignItems: "flex-end" }}>
-                      <BodyStrong style={{ fontSize: 13 }}>{formatDate(item.borrowedDate)}</BodyStrong>
+                      <BodyStrong style={{ fontSize: 13 }}>
+                        {formatDate(item.borrowedDate)}
+                      </BodyStrong>
                       <Caption>{formatRelativeTime(item.borrowedDate)}</Caption>
                     </View>
                   </View>
                 )}
                 {item.dueDate && (
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
                     <Caption>Due Date</Caption>
                     <View style={{ alignItems: "flex-end" }}>
                       <BodyStrong
-                        style={{ fontSize: 13, color: isOverdue ? theme.destructive : theme.foreground }}
+                        style={{
+                          fontSize: 13,
+                          color: isOverdue
+                            ? theme.destructive
+                            : theme.foreground,
+                        }}
                       >
                         {formatDate(item.dueDate)}
                       </BodyStrong>
                       {!isAvailable && daysUntil !== undefined && (
-                        <Caption style={{ color: isOverdue ? theme.destructive : theme.mutedForeground }}>
+                        <Caption
+                          style={{
+                            color: isOverdue
+                              ? theme.destructive
+                              : theme.mutedForeground,
+                          }}
+                        >
                           {isOverdue
                             ? `Overdue by ${Math.abs(daysUntil)}d`
                             : `Due in ${daysUntil}d`}
@@ -535,10 +667,18 @@ export default function ItemDetailScreen() {
                   </View>
                 )}
                 {item.returnedDate && (
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
                     <Caption>Returned</Caption>
                     <View style={{ alignItems: "flex-end" }}>
-                      <BodyStrong style={{ fontSize: 13, color: theme.primary }}>
+                      <BodyStrong
+                        style={{ fontSize: 13, color: theme.primary }}
+                      >
                         {formatDate(item.returnedDate)}
                       </BodyStrong>
                       <Caption>{formatRelativeTime(item.returnedDate)}</Caption>
@@ -546,10 +686,17 @@ export default function ItemDetailScreen() {
                   </View>
                 )}
                 {daysSinceBorrowed > 0 && (
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
                     <Caption>Duration</Caption>
                     <BodyStrong style={{ fontSize: 13 }}>
-                      {daysSinceBorrowed} day{daysSinceBorrowed !== 1 ? "s" : ""}
+                      {daysSinceBorrowed} day
+                      {daysSinceBorrowed !== 1 ? "s" : ""}
                     </BodyStrong>
                   </View>
                 )}
@@ -561,7 +708,9 @@ export default function ItemDetailScreen() {
           {item.notes && (
             <>
               <Separator style={{ marginBottom: 20 }} />
-              <SectionHeading style={{ marginBottom: 12 }}>Notes</SectionHeading>
+              <SectionHeading style={{ marginBottom: 12 }}>
+                Notes
+              </SectionHeading>
               <View
                 style={{
                   backgroundColor: theme.muted,
@@ -572,7 +721,9 @@ export default function ItemDetailScreen() {
                   marginBottom: 24,
                 }}
               >
-                <BodyText style={{ color: theme.mutedForeground }}>{item.notes}</BodyText>
+                <BodyText style={{ color: theme.mutedForeground }}>
+                  {item.notes}
+                </BodyText>
               </View>
             </>
           )}
@@ -581,10 +732,14 @@ export default function ItemDetailScreen() {
           {!isBorrower && communityOwners.length > 0 && (
             <>
               <Separator style={{ marginBottom: 20 }} />
-              <SectionHeading style={{ marginBottom: 4 }}>Also in the Community</SectionHeading>
+              <SectionHeading style={{ marginBottom: 4 }}>
+                Also in the Community
+              </SectionHeading>
               <Caption style={{ marginBottom: 16 }}>
-                {communityOwners.length} {communityOwners.length === 1 ? "person" : "people"} in your network{" "}
-                {communityOwners.length === 1 ? "owns" : "own"} this book
+                {communityOwners.length}{" "}
+                {communityOwners.length === 1 ? "person" : "people"} in your
+                network {communityOwners.length === 1 ? "owns" : "own"} this
+                book
               </Caption>
               <View style={{ gap: 10, marginBottom: 24 }}>
                 {communityOwners.map(({ item: otherItem, owner }) => (
@@ -601,19 +756,31 @@ export default function ItemDetailScreen() {
                   >
                     <Avatar className="w-10 h-10" alt={owner?.name ?? "?"}>
                       {owner?.avatarUrl ? (
-                        <AvatarImage source={resolveAvatarSource(owner.avatarUrl) ?? { uri: "" }} />
+                        <AvatarImage
+                          source={
+                            resolveAvatarSource(owner.avatarUrl) ?? { uri: "" }
+                          }
+                        />
                       ) : (
                         <AvatarFallback>
-                          <Caption>{owner ? getInitials(owner.name) : "?"}</Caption>
+                          <Caption>
+                            {owner ? getInitials(owner.name) : "?"}
+                          </Caption>
                         </AvatarFallback>
                       )}
                     </Avatar>
                     <View style={{ flex: 1 }}>
-                      <BodyStrong style={{ fontSize: 13 }}>{owner?.name ?? "Unknown"}</BodyStrong>
+                      <BodyStrong style={{ fontSize: 13 }}>
+                        {owner?.name ?? "Unknown"}
+                      </BodyStrong>
                       {!otherItem.borrowedBy && !otherItem.returnedDate ? (
-                        <Caption style={{ color: theme.primary }}>Available</Caption>
+                        <Caption style={{ color: theme.primary }}>
+                          Available
+                        </Caption>
                       ) : otherItem.borrowedBy && !otherItem.returnedDate ? (
-                        <Caption style={{ color: theme.secondary }}>Currently lent out</Caption>
+                        <Caption style={{ color: theme.secondary }}>
+                          Currently lent out
+                        </Caption>
                       ) : null}
                     </View>
                   </View>
@@ -624,7 +791,9 @@ export default function ItemDetailScreen() {
 
           {/* ── Meta ── */}
           <Separator style={{ marginBottom: 16 }} />
-          <Caption style={{ marginBottom: 4 }}>Added {formatRelativeTime(item.createdAt)}</Caption>
+          <Caption style={{ marginBottom: 4 }}>
+            Added {formatRelativeTime(item.createdAt)}
+          </Caption>
           {item.createdAt.getTime() !== item.updatedAt.getTime() && (
             <Caption>Updated {formatRelativeTime(item.updatedAt)}</Caption>
           )}
@@ -632,11 +801,7 @@ export default function ItemDetailScreen() {
           {/* ── Action Buttons ── */}
           <View style={{ gap: 12, marginTop: 28 }}>
             {isBorrower ? (
-              <Button
-                onPress={handleMarkReturned}
-                disabled={returning}
-                style={{ borderRadius: 24, paddingVertical: 18 } as any}
-              >
+              <Button onPress={handleMarkReturned} disabled={returning}>
                 <Check size={18} color="#fff" />
                 <Text className="text-white font-bold">
                   {returning ? "Returning…" : "Return to Owner"}
@@ -648,7 +813,7 @@ export default function ItemDetailScreen() {
                   <Button
                     onPress={handleMarkReturned}
                     disabled={returning || deleting}
-                    style={{ borderRadius: 24, paddingVertical: 18 } as any}
+                    style={{ borderRadius: 24 } as any}
                   >
                     <Check size={18} color="#fff" />
                     <Text className="text-white font-bold">
@@ -671,7 +836,12 @@ export default function ItemDetailScreen() {
                   variant="outline"
                   onPress={handleDelete}
                   disabled={deleting || returning}
-                  style={{ borderRadius: 24, borderColor: theme.destructive + "44" } as any}
+                  style={
+                    {
+                      borderRadius: 24,
+                      borderColor: theme.destructive + "44",
+                    } as any
+                  }
                 >
                   <Trash2 size={16} color={theme.destructive} />
                   <Text style={{ color: theme.destructive }}>
@@ -681,7 +851,10 @@ export default function ItemDetailScreen() {
               </>
             )}
           </View>
-          <Caption className="text-center" style={{ marginTop: 16, marginBottom: 8 }}>
+          <Caption
+            className="text-center"
+            style={{ marginTop: 16, marginBottom: 8 }}
+          >
             Typically returned in 7–10 days
           </Caption>
         </View>

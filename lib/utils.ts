@@ -203,6 +203,19 @@ export function capitalize(str: string): string {
 }
 
 /**
+ * Convert a string to proper case (every word capitalised).
+ * e.g. "hello world" → "Hello World", "HELLO" → "Hello"
+ */
+export function toProperCase(str: string): string {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+/**
  * Generate initials from a name (e.g., "John Doe" -> "JD")
  */
 export function getInitials(name: string): string {

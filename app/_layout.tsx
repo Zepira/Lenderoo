@@ -1,7 +1,14 @@
 import "../global.css";
 
 import * as React from "react";
-import { View } from "react-native";
+import { View, LogBox } from "react-native";
+
+// Suppress the SafeAreaView deprecation warning produced by expo-router's
+// internal components (DefaultNavigator, ErrorBoundary).  Our own code
+// already imports SafeAreaView from react-native-safe-area-context.
+LogBox.ignoreLogs([
+  "SafeAreaView has been deprecated",
+]);
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import {
@@ -81,6 +88,7 @@ function RootLayoutContent() {
             gestureDirection: "vertical",
           }}
         />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen
           name="modal"
           options={{

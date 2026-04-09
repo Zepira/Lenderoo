@@ -1,5 +1,5 @@
 import * as React from "react";
-import { View, Pressable } from "react-native";
+import { View, Pressable, Platform } from "react-native";
 import { router, Tabs } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import {
@@ -33,7 +33,7 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   // Only render routes that have a tabBarIcon — hides any auto-registered
   // routes (e.g. friends/) that shouldn't appear in the floating nav.
   const routes = state.routes.filter(
-    (r) => descriptors[r.key]?.options?.tabBarIcon !== undefined
+    (r) => descriptors[r.key]?.options?.tabBarIcon !== undefined,
   );
   const half = Math.floor(routes.length / 2);
   const leftRoutes = routes.slice(0, half);
@@ -149,11 +149,13 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             borderColor: "white",
             alignItems: "center",
             justifyContent: "center",
-            elevation: 14,
+            // iOS shadow glow
             shadowColor: "#00BFA6",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.5,
             shadowRadius: 8,
+            // elevation removed on Android to prevent double-layer ghost
+            elevation: Platform.OS === "android" ? 0 : 14,
           }}
           accessibilityRole="button"
           accessibilityLabel="Add item"

@@ -1,139 +1,110 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { View } from "react-native";
+import { View, FlatList, useWindowDimensions, Pressable } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import { ItemList } from "components/ItemList";
+import { Plus } from "lucide-react-native";
 import { BorrowRequestsSection } from "components/BorrowRequestsSection";
 import { useItems } from "hooks/useItems";
-import { useFriends } from "hooks/useFriends";
 import type { ItemStatus, BorrowRequestWithDetails } from "lib/types";
-import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
-import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 import { getIncomingBorrowRequests, approveBorrowRequest, denyBorrowRequest } from "@/lib/borrow-requests-service";
 import { supabase } from "@/lib/supabase";
 import * as toast from "@/lib/toast";
+import { ItemCard, calcCardLayout } from "@/components/ItemCard";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { CardSearchInput } from "@/components/CardSearchInput";
+import { SegmentedTabs } from "@/components/SegmentedTabs";
+import { THEME } from "@/lib/theme";
+import { useThemeContext } from "@/contexts/ThemeContext";
 
 type FilterTab = "all" | "available" | "lent";
 
 export default function ItemsScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
+  const [search, setSearch] = useState("");
   const [incomingRequests, setIncomingRequests] = useState<BorrowRequestWithDetails[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // Determine filter based on active tab
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
+
   const filter = useMemo(() => {
-    if (activeFilter === "available") {
-      return { status: "available" as ItemStatus };
-    }
-    if (activeFilter === "lent") {
-      return { status: "borrowed" as ItemStatus };
-    }
-    return undefined; // All items
+    if (activeFilter === "available") return { status: "available" as ItemStatus };
+    if (activeFilter === "lent") return { status: "borrowed" as ItemStatus };
+    return undefined;
   }, [activeFilter]);
 
+  const { width: screenWidth } = useWindowDimensions();
+  const { numColumns } = calcCardLayout(screenWidth);
+
   const { items, loading, refresh } = useItems(filter);
-  const { friends } = useFriends();
-
-  // Create a map of friend IDs to Friend objects for ItemList
-  const friendsMap = useMemo(() => {
-    return friends.reduce((acc, friend) => {
-      acc[friend.id] = friend;
-      return acc;
-    }, {} as Record<string, (typeof friends)[0]>);
-  }, [friends]);
-
-  const handleItemPress = (item: (typeof items)[0]) => {
-    router.push(`/library/${item.id}` as any);
-  };
-
-  const handleAddItem = () => {
-    router.push("/add-item");
-  };
-
-  // Fetch all items once for counting
   const { items: allItems } = useItems();
 
-  // Calculate counts from all items
-  const allCount = allItems.length;
-  const availableCount = useMemo(() => {
-    return allItems.filter((item) => !item.borrowedBy && !item.returnedDate)
-      .length;
-  }, [allItems]);
-  const lentCount = useMemo(() => {
-    return allItems.filter((item) => !!item.borrowedBy && !item.returnedDate)
-      .length;
-  }, [allItems]);
+  const filteredItems = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.toLowerCase();
+    return items.filter((item) => item.name.toLowerCase().includes(q));
+  }, [items, search]);
 
-  // Load incoming borrow requests
-  useEffect(() => {
-    loadIncomingRequests();
-  }, []);
+  const allCount = allItems.length;
+  const availableCount = useMemo(
+    () => allItems.filter((i) => !i.borrowedBy && !i.returnedDate).length,
+    [allItems],
+  );
+  const lentCount = useMemo(
+    () => allItems.filter((i) => !!i.borrowedBy && !i.returnedDate).length,
+    [allItems],
+  );
 
   const loadIncomingRequests = async () => {
     try {
-      console.log('📥 Loading incoming borrow requests...');
       const requests = await getIncomingBorrowRequests();
-      console.log('📥 Loaded requests:', requests.length, requests);
       setIncomingRequests(requests);
     } catch (error) {
       console.error("❌ Error loading borrow requests:", error);
     }
   };
 
-  // Refresh data when screen comes into focus (e.g., after editing an item)
+  useEffect(() => {
+    loadIncomingRequests();
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       refresh();
       loadIncomingRequests();
-    }, [refresh])
+    }, [refresh]),
   );
 
-  // Subscribe to borrow request changes
   useEffect(() => {
     let channel: any;
-
     const setupSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-
       if (!user) return;
-
       channel = supabase
-        .channel('borrow-requests-library')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'borrow_requests',
+        .channel("borrow-requests-library")
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "borrow_requests",
           filter: `owner_id=eq.${user.id}`,
         }, () => {
           loadIncomingRequests();
-          refresh(); // Refresh items list
+          refresh();
         })
         .subscribe();
     };
-
     setupSubscription();
-
-    return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-    };
+    return () => { if (channel) supabase.removeChannel(channel); };
   }, []);
 
   const handleApproveBorrowRequest = async (requestId: string) => {
-    console.log('🟡 handleApproveBorrowRequest called with ID:', requestId);
     try {
       setProcessingId(requestId);
-      console.log('🟡 Calling approveBorrowRequest service...');
       await approveBorrowRequest(requestId);
-      console.log('🟡 Service call completed, showing success toast');
       toast.success("Request approved!");
       await loadIncomingRequests();
-      await refresh(); // Refresh items list
-      console.log('🟡 Lists refreshed');
+      await refresh();
     } catch (error: any) {
-      console.error("❌ Error approving request:", error);
       toast.error(error.message || "Failed to approve request");
     } finally {
       setProcessingId(null);
@@ -147,74 +118,79 @@ export default function ItemsScreen() {
       toast.success("Request denied");
       await loadIncomingRequests();
     } catch (error: any) {
-      console.error("Error denying request:", error);
       toast.error(error.message || "Failed to deny request");
     } finally {
       setProcessingId(null);
     }
   };
 
-  return (
-    <SafeAreaWrapper>
-      {/* Filter Tabs */}
-      <View className="flex-row p-3 gap-2 bg-background border-b border-border">
-        <Button
-          variant={activeFilter === "all" ? "default" : "outline"}
-          isSelected={activeFilter === "all"}
-          className="flex-auto"
-          onPress={() => setActiveFilter("all")}
-        >
-          <Text>All ({allCount})</Text>
-        </Button>
-        <Button
-          variant={activeFilter === "available" ? "default" : "outline"}
-          isSelected={activeFilter === "available"}
-          className="flex-auto"
-          onPress={() => setActiveFilter("available")}
-        >
-          <Text>Available ({availableCount})</Text>
-        </Button>
-        <Button
-          variant={activeFilter === "lent" ? "default" : "outline"}
-          isSelected={activeFilter === "lent"}
-          className="flex-auto"
-          onPress={() => setActiveFilter("lent")}
-        >
-          <Text>Lent Out ({lentCount})</Text>
-        </Button>
-      </View>
+  const tabs = [
+    { key: "all", label: "All", count: allCount },
+    { key: "available", label: "Available", count: availableCount },
+    { key: "lent", label: "Lent Out", count: lentCount },
+  ];
 
-      <ItemList
-        items={items}
-        friendsMap={friendsMap}
-        onItemPress={handleItemPress}
-        onRefresh={refresh}
-        loading={loading}
-        headerComponent={
-          <BorrowRequestsSection
-            requests={incomingRequests}
-            onApprove={handleApproveBorrowRequest}
-            onDeny={handleDenyBorrowRequest}
-            processingId={processingId || undefined}
-          />
+  return (
+    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+      <ScreenHeader
+        title="My Library"
+        right={
+          <Pressable
+            onPress={() => router.push("/add-item")}
+            style={({ pressed }) => ({
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: THEME.light.primary + "18",
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Plus size={22} color={THEME.light.primary} />
+          </Pressable>
         }
-        emptyState={{
-          title:
-            activeFilter === "all"
-              ? "No items yet"
-              : activeFilter === "available"
-              ? "No available items"
-              : "No items lent out",
-          message:
-            activeFilter === "all"
-              ? "Start tracking items in your library"
-              : activeFilter === "available"
-              ? "All your items are currently lent out"
-              : "You haven't lent anything out yet",
-          actionLabel: "Add an Item",
-          onAction: handleAddItem,
-        }}
       />
-    </SafeAreaWrapper>
+
+      <FlatList
+        key={numColumns}
+        data={filteredItems}
+        keyExtractor={(item) => item.id}
+        numColumns={numColumns}
+        columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 160, gap: 12 }}
+        showsVerticalScrollIndicator={false}
+        onRefresh={refresh}
+        refreshing={loading}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <View style={{ gap: 12, marginBottom: 4 }}>
+            <BorrowRequestsSection
+              requests={incomingRequests}
+              onApprove={handleApproveBorrowRequest}
+              onDeny={handleDenyBorrowRequest}
+              processingId={processingId || undefined}
+            />
+            <CardSearchInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search items…"
+            />
+            <SegmentedTabs
+              tabs={tabs}
+              activeKey={activeFilter}
+              onChange={(key) => setActiveFilter(key as FilterTab)}
+            />
+          </View>
+        }
+        renderItem={({ item }) => (
+          <ItemCard
+            item={item}
+            onPress={() => router.push(`/library/${item.id}` as any)}
+            style={{ flex: 1 }}
+          />
+        )}
+      />
+    </View>
   );
 }

@@ -1,185 +1,244 @@
-/**
- * ItemCard Component
- *
- * Displays a summary of an item in a card format
- */
-
 import {
   View,
-  Image as RNImage,
+  Image,
   Pressable,
-  TouchableOpacity,
+  ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
-import { Clock, Package } from "lucide-react-native";
-import type { Item, Friend, ItemStatus, BookMetadata } from "lib/types";
-import {
-  formatDate,
-  formatRelativeTime,
-  daysUntilDue,
-  getInitials,
-  calculateItemStatus,
-} from "lib/utils";
-import { CategoryBadge } from "./CategoryBadge";
-import { StatusBadge } from "./StatusBadge";
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import type { StyleProp, ViewStyle } from "react-native";
+
+// ── Layout calculator (exported so FlatList screens can use matching numColumns) ─
+const H_PADDING = 32; // 16px left + 16px right
+const COL_GAP = 32;
+const MIN_CARD_WIDTH = 120;
+
+export function calcCardLayout(screenWidth: number) {
+  const numColumns = Math.max(
+    2,
+    Math.floor(
+      (screenWidth - H_PADDING + COL_GAP) / (MIN_CARD_WIDTH + COL_GAP),
+    ),
+  );
+  const cardWidth =
+    (screenWidth - H_PADDING - COL_GAP * (numColumns - 1)) / numColumns;
+  return { numColumns, cardWidth };
+}
+import { Send, X } from "lucide-react-native";
+import type { Item, BorrowRequest } from "lib/types";
+import { CATEGORY_CONFIG } from "@/lib/category-config";
+import { THEME } from "@/lib/theme";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { BodyStrong, TinyLabel } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
-import { resolveAvatarSource } from "@/lib/avatar-service";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 interface ItemCardProps {
-  /** The item to display */
   item: Item;
-  /** Friend information for the borrower (optional for available items) */
-  friend?: Friend;
-  /** Press handler for the card */
+  /** The current user's active borrow request for this item, if any. */
+  request?: BorrowRequest;
+  /** True while a borrow/cancel network call is in flight for this item. */
+  isRequesting?: boolean;
+  /** Called when the user taps Borrow. */
+  onBorrow?: () => void;
+  /** Called when the user taps Cancel Request. */
+  onCancel?: () => void;
+  /** Called when the card itself is tapped (library screen navigation). */
   onPress?: () => void;
-  /** Whether to show detailed information */
-  detailed?: boolean;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function ItemCard({
   item,
-  friend,
+  request,
+  isRequesting = false,
+  onBorrow,
+  onCancel,
   onPress,
-  detailed = false,
+  style,
 }: ItemCardProps) {
-  const status: ItemStatus = calculateItemStatus(item);
-  // const isOverdue = status === "overdue";
-  // const daysUntil = item.dueDate ? daysUntilDue(item.dueDate) : undefined;
+  const { width: screenWidth } = useWindowDimensions();
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
+
+  const cfg = CATEGORY_CONFIG[item.category] ?? CATEGORY_CONFIG.other;
+  const imageUrl = item.images?.[0] ?? (item as any).imageUrl;
+
+  const hasPending = request?.status === "pending";
+  const hasApproved = request?.status === "approved";
+  const isUnavailable =
+    !!(item.borrowedBy && !item.returnedDate) || hasApproved;
+
+  let statusLabel = "Available";
+  let statusColor = THEME.light.primary;
+  if (hasPending) {
+    statusLabel = "Requested";
+    statusColor = THEME.light.secondary;
+  } else if (isUnavailable) {
+    statusLabel = "Borrowed";
+    statusColor = "#6B7280";
+  }
+
+  const width = calcCardLayout(screenWidth).cardWidth;
 
   return (
-    <TouchableOpacity onPress={onPress}>
-      <Card>
-        <CardHeader>
-          <View>
-            {/* Item Image or Placeholder */}
-            <View className="w-20 h-20 rounded-lg overflow-hidden items-center justify-center bg-muted">
-              {item.images?.[0] || item.imageUrls?.[0] || item.imageUrl ? (
-                <RNImage
-                  source={{
-                    uri:
-                      item.images?.[0] || item.imageUrls?.[0] || item.imageUrl,
-                  }}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Package size={32} color="#888" />
-              )}
-            </View>
-
-            {/* Item Info */}
-            <View className="flex-1 gap-2">
-              {/* Item Name */}
-              <Text variant="large" className="font-semibold" numberOfLines={2}>
-                {item.name}
-              </Text>
-
-              {/* Book Metadata - Author and Series */}
-              {item.category === "book" && item.metadata && (
-                <View className="gap-0.5">
-                  {(item.metadata as BookMetadata).author && (
-                    <Text
-                      variant="small"
-                      className="text-muted-foreground"
-                      numberOfLines={1}
-                    >
-                      by {(item.metadata as BookMetadata).author}
-                    </Text>
-                  )}
-                  {(item.metadata as BookMetadata).seriesName && (
-                    <Text variant="muted" numberOfLines={1}>
-                      {(item.metadata as BookMetadata).seriesName}
-                      {(item.metadata as BookMetadata).seriesNumber &&
-                        ` #${(item.metadata as BookMetadata).seriesNumber}`}
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {/* Category Badge */}
-              <CategoryBadge category={item.category} size="sm" />
-
-              {/* Borrowed By (show if item is borrowed) */}
-              {friend && (
-                <View className="flex-row gap-2 items-center">
-                  <Avatar alt={`${friend.name}'s Avatar`}>
-                    <AvatarImage source={resolveAvatarSource(friend.avatarUrl) ?? { uri: '' }} />
-                    <AvatarFallback>
-                      <Text> {getInitials(friend.name)}</Text>
-                    </AvatarFallback>
-                  </Avatar>
-
-                  <Text variant="small" numberOfLines={1}>
-                    {friend.name}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </CardHeader>
-
-        <CardFooter className="flex-col items-start gap-2">
-          <View className="flex-row justify-between items-center w-full">
-            {/* Left side: Status or Date */}
-            <View className="gap-1">
-              {/* {item.dueDate && !item.returnedDate && friend && (
-                <View className="flex-row gap-1.5 items-center">
-                  <Clock size={14} color={isOverdue ? "red" : "gray"} />
-                  <Text
-                    variant="muted"
-                    className={cn(
-                      isOverdue ? "text-red-600 font-semibold" : ""
-                    )}
-                  >
-                    {isOverdue
-                      ? `Overdue by ${Math.abs(daysUntil!)} day${
-                          Math.abs(daysUntil!) !== 1 ? "s" : ""
-                        }`
-                      : `Due ${formatRelativeTime(item.dueDate)}`}
-                  </Text>
-                </View>
-              )} */}
-              {!item.dueDate &&
-                !item.returnedDate &&
-                item.borrowedBy &&
-                item.borrowedDate && (
-                  <Text variant="muted">
-                    Borrowed {formatRelativeTime(item.borrowedDate)}
-                  </Text>
-                )}
-              {!item.borrowedBy && !item.returnedDate && (
-                <Text variant="muted">
-                  Added {formatRelativeTime(item.createdAt)}
-                </Text>
-              )}
-              {item.returnedDate && (
-                <Text variant="muted">
-                  Returned {formatDate(item.returnedDate)}
-                </Text>
-              )}
-            </View>
-
-            {/* Right side: Status Badge */}
-            <StatusBadge status={status} size="sm" />
-          </View>
-
-          {/* Detailed Info (optional) */}
-          {detailed && item.description && (
-            <View className="mt-2 pt-2 border-t border-border w-full">
-              <Text variant="small" numberOfLines={2}>
-                {item.description}
-              </Text>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        { opacity: pressed && onPress ? 0.75 : 1 },
+        style,
+      ]}
+    >
+      <View
+        style={{
+          backgroundColor: theme.card,
+          borderRadius: 24,
+          padding: 12,
+          borderWidth: 1,
+          borderColor: theme.border,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          elevation: 4,
+          flex: 1,
+          width: width,
+          flexDirection: "column",
+        }}
+      >
+        {/* Image / placeholder */}
+        <View
+          style={{
+            width: "100%",
+            aspectRatio: 3 / 4,
+            borderRadius: 16,
+            overflow: "hidden",
+            backgroundColor: cfg.color + "18",
+            marginBottom: 10,
+          }}
+        >
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="cover"
+            />
+          ) : (
+            <View
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <cfg.Icon size={36} color={cfg.color} />
             </View>
           )}
-        </CardFooter>
-      </Card>
-    </TouchableOpacity>
+
+          {/* Status badge */}
+          <View
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              backgroundColor: statusColor + "EE",
+              borderRadius: 8,
+              paddingHorizontal: 7,
+              paddingVertical: 3,
+            }}
+          >
+            <TinyLabel
+              style={{ color: "white", fontSize: 8 }}
+              className="normal-case tracking-normal"
+            >
+              {statusLabel}
+            </TinyLabel>
+          </View>
+        </View>
+
+        {/* Name — grows to push button to bottom */}
+        <View style={{ flex: 1 }}>
+          <BodyStrong
+            style={{ fontSize: 13, lineHeight: 18, marginBottom: 8 }}
+            numberOfLines={2}
+          >
+            {item.name}
+          </BodyStrong>
+        </View>
+
+        {/* Borrow button */}
+        {!isUnavailable && !hasPending && onBorrow && (
+          <Button
+            variant="default"
+            onPress={onBorrow}
+            disabled={isRequesting}
+            className="h-9 rounded-xl"
+          >
+            {isRequesting ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <Send size={12} color="white" />
+                <Text className="text-xs normal-case tracking-normal text-primary-foreground">
+                  Borrow
+                </Text>
+              </>
+            )}
+          </Button>
+        )}
+
+        {/* Cancel request button */}
+        {hasPending && onCancel && (
+          <Pressable
+            onPress={onCancel}
+            disabled={isRequesting}
+            style={({ pressed }) => ({
+              backgroundColor: isDark ? theme.muted : "#F3F4F6",
+              borderRadius: 12,
+              paddingVertical: 8,
+              alignItems: "center",
+              flexDirection: "row",
+              justifyContent: "center",
+              gap: 4,
+              opacity: pressed || isRequesting ? 0.6 : 1,
+            })}
+          >
+            {isRequesting ? (
+              <ActivityIndicator size="small" color={theme.mutedForeground} />
+            ) : (
+              <>
+                <X size={12} color={theme.mutedForeground} />
+                <TinyLabel
+                  style={{ color: theme.mutedForeground }}
+                  className="normal-case tracking-normal"
+                >
+                  Cancel Request
+                </TinyLabel>
+              </>
+            )}
+          </Pressable>
+        )}
+
+        {/* Request Next button */}
+        {isUnavailable &&
+          (onBorrow !== undefined || onCancel !== undefined) && (
+            <View
+              style={{
+                backgroundColor: theme.destructive,
+                borderRadius: 12,
+                paddingVertical: 8,
+                alignItems: "center",
+              }}
+            >
+              <TinyLabel
+                className="normal-case tracking-normal"
+                style={{ color: theme.destructiveForeground }}
+              >
+                Request Next
+              </TinyLabel>
+            </View>
+          )}
+      </View>
+    </Pressable>
   );
 }

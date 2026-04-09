@@ -17,20 +17,12 @@ import {
   History,
   Package,
   CheckCircle2,
-  Send,
-  BookOpen,
-  Wrench,
-  Shirt,
-  Smartphone,
-  Gamepad2,
-  Trophy,
-  UtensilsCrossed,
-  X,
 } from "lucide-react-native";
+import { ItemCard } from "@/components/ItemCard";
 import { Text } from "@/components/ui/text";
 import { resolveAvatarSource } from "@/lib/avatar-service";
 import { getInitials } from "lib/utils";
-import type { Item, ItemCategory } from "lib/types";
+import type { Item } from "lib/types";
 import {
   getFriendUserById,
   getItemsBorrowedByFriend,
@@ -41,8 +33,9 @@ import {
 import {
   createBorrowRequest,
   getBorrowRequestsForItem,
+  getMyBorrowRequestForItem,
 } from "@/lib/borrow-requests-service";
-import type { BorrowRequestWithDetails } from "@/lib/types";
+import type { BorrowRequest, BorrowRequestWithDetails } from "@/lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
@@ -57,23 +50,8 @@ import {
   TinyLabel,
 } from "@/components/ui/typography";
 
-// ── Category config (mirrors DashboardItemCard) ───────────────────────────────
-const CATEGORY_CONFIG: Record<
-  ItemCategory,
-  { color: string; Icon: React.ComponentType<{ size: number; color: string }> }
-> = {
-  book:        { color: THEME.light.primary,     Icon: BookOpen },
-  tool:        { color: '#F59E0B',               Icon: Wrench },
-  clothing:    { color: THEME.light.secondary,   Icon: Shirt },
-  electronics: { color: '#8B5CF6',               Icon: Smartphone },
-  game:        { color: THEME.light.destructive, Icon: Gamepad2 },
-  sports:      { color: '#10B981',               Icon: Trophy },
-  kitchen:     { color: '#F97316',               Icon: UtensilsCrossed },
-  other:       { color: '#6B7280',               Icon: Package },
-};
-
 // ── Tab type ──────────────────────────────────────────────────────────────────
-type Tab = 'library' | 'borrowing' | 'history';
+type Tab = "library" | "borrowing" | "history";
 
 // ── DB conversion ─────────────────────────────────────────────────────────────
 function convertItemFromDb(data: any): Item {
@@ -101,14 +79,16 @@ export default function FriendDetailScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { activeTheme } = useThemeContext();
-  const isDark = activeTheme === 'dark';
+  const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
 
-  const [activeTab, setActiveTab] = useState<Tab>('library');
+  const [activeTab, setActiveTab] = useState<Tab>("library");
   const [friend, setFriend] = useState<FriendUser | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [ownedItems, setOwnedItems] = useState<Item[]>([]);
-  const [borrowRequests, setBorrowRequests] = useState<Map<string, BorrowRequestWithDetails>>(new Map());
+  const [borrowRequests, setBorrowRequests] = useState<
+    Map<string, BorrowRequest>
+  >(new Map());
   const [loading, setLoading] = useState(true);
   const [ownedItemsLoading, setOwnedItemsLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -121,10 +101,13 @@ export default function FriendDetailScreen() {
       try {
         setLoading(true);
         const data = await getFriendUserById(id);
-        if (!data) { router.back(); return; }
+        if (!data) {
+          router.back();
+          return;
+        }
         setFriend(data);
       } catch {
-        toast.error('Failed to load friend details');
+        toast.error("Failed to load friend details");
       } finally {
         setLoading(false);
       }
@@ -143,10 +126,17 @@ export default function FriendDetailScreen() {
     }
     loadItems();
     if (!id) return;
-    const ch = supabase.channel(`friend-${id}-borrowed-items`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, loadItems)
+    const ch = supabase
+      .channel(`friend-${id}-borrowed-items`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "items" },
+        loadItems,
+      )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [id]);
 
   // Load items owned by friend
@@ -158,47 +148,68 @@ export default function FriendDetailScreen() {
         const data = await getItemsOwnedByFriend(id);
         const converted = data.map(convertItemFromDb);
         setOwnedItems(converted);
-        const map = new Map<string, BorrowRequestWithDetails>();
-        for (const item of converted) {
-          try {
-            const reqs = await getBorrowRequestsForItem(item.id);
-            const pending = reqs.find(r => r.status === 'pending');
-            if (pending) map.set(item.id, pending);
-          } catch {}
-        }
+        // For each item, fetch the current user's own active request directly
+        // from borrow_requests (not the view) to avoid any RLS/view edge cases.
+        const map = new Map<string, BorrowRequest>();
+        await Promise.all(
+          converted.map(async (item) => {
+            try {
+              const req = await getMyBorrowRequestForItem(item.id);
+              if (req) map.set(item.id, req);
+            } catch {}
+          }),
+        );
         setBorrowRequests(map);
-      } catch {} finally {
+      } catch {
+      } finally {
         setOwnedItemsLoading(false);
       }
     }
     loadOwnedItems();
     if (!id) return;
-    const ich = supabase.channel(`friend-${id}-owned-items`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, loadOwnedItems)
+    const ich = supabase
+      .channel(`friend-${id}-owned-items`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "items" },
+        loadOwnedItems,
+      )
       .subscribe();
-    const rch = supabase.channel(`friend-${id}-borrow-requests`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_requests' }, loadOwnedItems)
+    const rch = supabase
+      .channel(`friend-${id}-borrow-requests`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "borrow_requests" },
+        loadOwnedItems,
+      )
       .subscribe();
-    return () => { supabase.removeChannel(ich); supabase.removeChannel(rch); };
+    return () => {
+      supabase.removeChannel(ich);
+      supabase.removeChannel(rch);
+    };
   }, [id]);
 
-  const activeItems   = items.filter(i => !i.returnedDate);
-  const returnedItems = items.filter(i => i.returnedDate);
+  const activeItems = items.filter((i) => !i.returnedDate);
+  const returnedItems = items.filter((i) => i.returnedDate);
 
   const handleDelete = async () => {
     if (!friend) return;
     if (activeItems.length > 0) {
-      const msg = `Cannot remove ${friend.name} — they still have ${activeItems.length} unreturned item${activeItems.length !== 1 ? 's' : ''}.`;
-      Platform.OS === 'web' ? alert(msg) : Alert.alert('Cannot Remove', msg, [{ text: 'OK' }]);
+      const msg = `Cannot remove ${friend.name} — they still have ${activeItems.length} unreturned item${activeItems.length !== 1 ? "s" : ""}.`;
+      Platform.OS === "web"
+        ? alert(msg)
+        : Alert.alert("Cannot Remove", msg, [{ text: "OK" }]);
       return;
     }
     const msg = `Remove ${friend.name} from your friends? This cannot be undone.`;
-    const confirmed = await (Platform.OS === 'web'
+    const confirmed = await (Platform.OS === "web"
       ? Promise.resolve(confirm(msg))
-      : new Promise<boolean>(res => Alert.alert('Remove Friend', msg, [
-          { text: 'Cancel', style: 'cancel', onPress: () => res(false) },
-          { text: 'Remove', style: 'destructive', onPress: () => res(true) },
-        ])));
+      : new Promise<boolean>((res) =>
+          Alert.alert("Remove Friend", msg, [
+            { text: "Cancel", style: "cancel", onPress: () => res(false) },
+            { text: "Remove", style: "destructive", onPress: () => res(true) },
+          ]),
+        ));
     if (!confirmed) return;
     try {
       setDeleting(true);
@@ -206,7 +217,7 @@ export default function FriendDetailScreen() {
       toast.success(`Removed ${friend.name}`);
       router.back();
     } catch {
-      toast.error('Failed to remove friend');
+      toast.error("Failed to remove friend");
     } finally {
       setDeleting(false);
     }
@@ -218,11 +229,14 @@ export default function FriendDetailScreen() {
       setRequestingItemId(item.id);
       await createBorrowRequest(item.id, friend.id);
       toast.success(`Request sent to ${friend.name}`);
-      const reqs = await getBorrowRequestsForItem(item.id);
-      const pending = reqs.find(r => r.status === 'pending');
-      setBorrowRequests(prev => { const m = new Map(prev); if (pending) m.set(item.id, pending); return m; });
+      const req = await getMyBorrowRequestForItem(item.id);
+      setBorrowRequests((prev) => {
+        const m = new Map(prev);
+        if (req) m.set(item.id, req);
+        return m;
+      });
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to send request');
+      toast.error(e?.message || "Failed to send request");
     } finally {
       setRequestingItemId(null);
     }
@@ -233,12 +247,17 @@ export default function FriendDetailScreen() {
     if (!request) return;
     try {
       setRequestingItemId(item.id);
-      const { cancelBorrowRequest } = await import('@/lib/borrow-requests-service');
+      const { cancelBorrowRequest } =
+        await import("@/lib/borrow-requests-service");
       await cancelBorrowRequest(request.id);
-      toast.success('Request cancelled');
-      setBorrowRequests(prev => { const m = new Map(prev); m.delete(item.id); return m; });
+      toast.success("Request cancelled");
+      setBorrowRequests((prev) => {
+        const m = new Map(prev);
+        m.delete(item.id);
+        return m;
+      });
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to cancel request');
+      toast.error(e?.message || "Failed to cancel request");
     } finally {
       setRequestingItemId(null);
     }
@@ -247,48 +266,79 @@ export default function FriendDetailScreen() {
   // ── Loading state ────────────────────────────────────────────────────────────
   if (loading || !friend) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background }}>
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: theme.background,
+        }}
+      >
         <ActivityIndicator size="large" color={THEME.light.primary} />
       </View>
     );
   }
 
-  const firstName = friend.name.split(' ')[0];
+  const firstName = friend.name.split(" ")[0];
   const avatarSrc = resolveAvatarSource(friend.avatarUrl);
 
   const TABS: { key: Tab; label: string; count: number }[] = [
-    { key: 'library',  label: 'Library',   count: ownedItems.length },
-    { key: 'borrowing', label: 'Borrowed',  count: activeItems.length },
-    { key: 'history',  label: 'History',   count: returnedItems.length },
+    { key: "library", label: "Library", count: ownedItems.length },
+    { key: "borrowing", label: "Borrowed", count: activeItems.length },
+    { key: "history", label: "History", count: returnedItems.length },
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : '#F3F4F6' }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 160 }}>
-
+    <View
+      style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 160 }}
+      >
         {/* ── Header card ── */}
-        <View style={{
-          backgroundColor: theme.card,
-          borderBottomLeftRadius: 40,
-          borderBottomRightRadius: 40,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-          elevation: 4,
-          marginBottom: 24,
-        }}>
-          <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-            <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28 }}>
-
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderBottomLeftRadius: 40,
+            borderBottomRightRadius: 40,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 12,
+            elevation: 4,
+            marginBottom: 24,
+          }}
+        >
+          <SafeAreaView
+            edges={["top"]}
+            style={{ backgroundColor: "transparent" }}
+          >
+            <View
+              style={{
+                paddingHorizontal: 24,
+                paddingTop: 16,
+                paddingBottom: 28,
+              }}
+            >
               {/* Top row: back + delete */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 24,
+                }}
+              >
                 <Pressable
                   onPress={() => router.back()}
                   style={({ pressed }) => ({
-                    width: 40, height: 40, borderRadius: 12,
-                    backgroundColor: isDark ? theme.muted : '#F3F4F6',
-                    alignItems: 'center', justifyContent: 'center',
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                    alignItems: "center",
+                    justifyContent: "center",
                     opacity: pressed ? 0.6 : 1,
                   })}
                 >
@@ -298,9 +348,12 @@ export default function FriendDetailScreen() {
                   onPress={handleDelete}
                   disabled={deleting}
                   style={({ pressed }) => ({
-                    width: 40, height: 40, borderRadius: 12,
-                    backgroundColor: THEME.light.destructive + '15',
-                    alignItems: 'center', justifyContent: 'center',
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    backgroundColor: THEME.light.destructive + "15",
+                    alignItems: "center",
+                    justifyContent: "center",
                     opacity: pressed || deleting ? 0.6 : 1,
                   })}
                 >
@@ -309,21 +362,37 @@ export default function FriendDetailScreen() {
               </View>
 
               {/* Avatar + name */}
-              <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                <View style={{
-                  width: 96, height: 96,
-                  borderRadius: 32,
-                  overflow: 'hidden',
-                  borderWidth: 3,
-                  borderColor: THEME.light.primary + '33',
-                  backgroundColor: THEME.light.primary + '22',
-                  marginBottom: 12,
-                }}>
+              <View style={{ alignItems: "center", marginBottom: 24 }}>
+                <View
+                  style={{
+                    width: 96,
+                    height: 96,
+                    borderRadius: 32,
+                    overflow: "hidden",
+                    borderWidth: 3,
+                    borderColor: THEME.light.primary + "33",
+                    backgroundColor: THEME.light.primary + "22",
+                    marginBottom: 12,
+                  }}
+                >
                   {avatarSrc ? (
-                    <Image source={avatarSrc} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    <Image
+                      source={avatarSrc}
+                      style={{ width: "100%", height: "100%" }}
+                      resizeMode="cover"
+                    />
                   ) : (
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                      <BodyStrong className="text-primary" style={{ fontSize: 32, lineHeight: 42 }}>
+                    <View
+                      style={{
+                        flex: 1,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <BodyStrong
+                        className="text-primary"
+                        style={{ fontSize: 32, lineHeight: 42 }}
+                      >
                         {getInitials(friend.name)}
                       </BodyStrong>
                     </View>
@@ -336,39 +405,49 @@ export default function FriendDetailScreen() {
               </View>
 
               {/* Stats row */}
-              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 32 }}>
-                <View style={{ alignItems: 'center' }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  gap: 32,
+                }}
+              >
+                <View style={{ alignItems: "center" }}>
                   <StatDisplay>{ownedItems.length}</StatDisplay>
                   <TinyLabel>Items</TinyLabel>
                 </View>
                 <View style={{ width: 1, backgroundColor: theme.border }} />
-                <View style={{ alignItems: 'center' }}>
-                  <StatDisplay className="text-secondary">{activeItems.length}</StatDisplay>
+                <View style={{ alignItems: "center" }}>
+                  <StatDisplay className="text-secondary">
+                    {activeItems.length}
+                  </StatDisplay>
                   <TinyLabel>Borrowed</TinyLabel>
                 </View>
                 <View style={{ width: 1, backgroundColor: theme.border }} />
-                <View style={{ alignItems: 'center' }}>
-                  <StatDisplay className="text-muted-foreground">{returnedItems.length}</StatDisplay>
+                <View style={{ alignItems: "center" }}>
+                  <StatDisplay className="text-muted-foreground">
+                    {returnedItems.length}
+                  </StatDisplay>
                   <TinyLabel>Returned</TinyLabel>
                 </View>
               </View>
-
             </View>
           </SafeAreaView>
         </View>
 
         <View style={{ paddingHorizontal: 24, gap: 20 }}>
-
           {/* ── Tab switcher ── */}
-          <View style={{
-            backgroundColor: theme.card,
-            borderRadius: 20,
-            padding: 6,
-            flexDirection: 'row',
-            gap: 4,
-            borderWidth: 1,
-            borderColor: theme.border,
-          }}>
+          <View
+            style={{
+              backgroundColor: theme.card,
+              borderRadius: 20,
+              padding: 6,
+              flexDirection: "row",
+              gap: 4,
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}
+          >
             {TABS.map(({ key, label, count }) => {
               const active = activeTab === key;
               return (
@@ -379,12 +458,14 @@ export default function FriendDetailScreen() {
                     flex: 1,
                     paddingVertical: 10,
                     borderRadius: 14,
-                    alignItems: 'center',
-                    backgroundColor: active ? THEME.light.primary : 'transparent',
+                    alignItems: "center",
+                    backgroundColor: active
+                      ? THEME.light.primary
+                      : "transparent",
                   }}
                 >
                   <TinyLabel
-                    style={{ color: active ? 'white' : theme.mutedForeground }}
+                    style={{ color: active ? "white" : theme.mutedForeground }}
                     className="normal-case tracking-normal"
                   >
                     {label}
@@ -392,7 +473,9 @@ export default function FriendDetailScreen() {
                   {count > 0 && (
                     <TinyLabel
                       style={{
-                        color: active ? 'rgba(255,255,255,0.7)' : theme.mutedForeground,
+                        color: active
+                          ? "rgba(255,255,255,0.7)"
+                          : theme.mutedForeground,
                         fontSize: 9,
                       }}
                     >
@@ -405,134 +488,32 @@ export default function FriendDetailScreen() {
           </View>
 
           {/* ── Library tab ── */}
-          {activeTab === 'library' && (
+          {activeTab === "library" && (
             <View>
               {ownedItemsLoading ? (
-                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <View style={{ paddingVertical: 40, alignItems: "center" }}>
                   <ActivityIndicator color={THEME.light.primary} />
                 </View>
               ) : ownedItems.length === 0 ? (
-                <EmptyState icon={<Package size={40} color={theme.mutedForeground} />}
-                  message={`${firstName} hasn't added any items yet`} />
+                <EmptyState
+                  icon={<Package size={40} color={theme.mutedForeground} />}
+                  message={`${firstName} hasn't added any items yet`}
+                />
               ) : (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                  {ownedItems.map(item => {
-                    const hasPending = borrowRequests.has(item.id);
-                    const isUnavailable = !!(item.borrowedBy && !item.returnedDate);
-                    const isRequesting = requestingItemId === item.id;
-                    const cfg = CATEGORY_CONFIG[item.category] ?? CATEGORY_CONFIG.other;
-                    const imageUrl = item.images?.[0] ?? (item as any).imageUrl;
-
-                    let statusLabel = 'Available';
-                    let statusColor = THEME.light.primary;
-                    if (hasPending) { statusLabel = 'Requested'; statusColor = THEME.light.secondary; }
-                    else if (isUnavailable) { statusLabel = 'Borrowed'; statusColor = '#6B7280'; }
-
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}
+                >
+                  {ownedItems.map((item) => {
                     return (
-                      <View key={item.id} style={{
-                        width: '47%',
-                        backgroundColor: theme.card,
-                        borderRadius: 24,
-                        padding: 12,
-                        borderWidth: 1,
-                        borderColor: theme.border,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.04,
-                        shadowRadius: 4,
-                        elevation: 2,
-                      }}>
-                        {/* Image */}
-                        <View style={{
-                          aspectRatio: 3 / 4,
-                          borderRadius: 16,
-                          overflow: 'hidden',
-                          backgroundColor: cfg.color + '18',
-                          marginBottom: 10,
-                        }}>
-                          {imageUrl ? (
-                            <Image source={{ uri: imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                          ) : (
-                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                              <cfg.Icon size={36} color={cfg.color} />
-                            </View>
-                          )}
-                          {/* Status badge */}
-                          <View style={{
-                            position: 'absolute', top: 8, right: 8,
-                            backgroundColor: statusColor + 'EE',
-                            borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3,
-                          }}>
-                            <TinyLabel style={{ color: 'white', fontSize: 8 }} className="normal-case tracking-normal">
-                              {statusLabel}
-                            </TinyLabel>
-                          </View>
-                        </View>
-
-                        <BodyStrong style={{ fontSize: 13, lineHeight: 18, marginBottom: 8 }} numberOfLines={2}>
-                          {item.name}
-                        </BodyStrong>
-
-                        {/* Action button */}
-                        {!isUnavailable && !hasPending && (
-                          <Pressable
-                            onPress={() => handleRequestBorrow(item)}
-                            disabled={isRequesting}
-                            style={({ pressed }) => ({
-                              backgroundColor: THEME.light.primary + '18',
-                              borderRadius: 12,
-                              paddingVertical: 8,
-                              alignItems: 'center',
-                              flexDirection: 'row',
-                              justifyContent: 'center',
-                              gap: 4,
-                              opacity: pressed || isRequesting ? 0.6 : 1,
-                            })}
-                          >
-                            {isRequesting
-                              ? <ActivityIndicator size="small" color={THEME.light.primary} />
-                              : <>
-                                  <Send size={12} color={THEME.light.primary} />
-                                  <TinyLabel style={{ color: THEME.light.primary }} className="normal-case tracking-normal">
-                                    Borrow
-                                  </TinyLabel>
-                                </>
-                            }
-                          </Pressable>
-                        )}
-                        {hasPending && (
-                          <Pressable
-                            onPress={() => handleCancelRequest(item)}
-                            disabled={isRequesting}
-                            style={({ pressed }) => ({
-                              backgroundColor: isDark ? theme.muted : '#F3F4F6',
-                              borderRadius: 12,
-                              paddingVertical: 8,
-                              alignItems: 'center',
-                              flexDirection: 'row',
-                              justifyContent: 'center',
-                              gap: 4,
-                              opacity: pressed || isRequesting ? 0.6 : 1,
-                            })}
-                          >
-                            <X size={12} color={theme.mutedForeground} />
-                            <TinyLabel style={{ color: theme.mutedForeground }} className="normal-case tracking-normal">
-                              Cancel Request
-                            </TinyLabel>
-                          </Pressable>
-                        )}
-                        {isUnavailable && (
-                          <View style={{
-                            backgroundColor: isDark ? theme.muted : '#F3F4F6',
-                            borderRadius: 12, paddingVertical: 8,
-                            alignItems: 'center',
-                          }}>
-                            <TinyLabel className="normal-case tracking-normal" style={{ color: theme.mutedForeground }}>
-                              Unavailable
-                            </TinyLabel>
-                          </View>
-                        )}
-                      </View>
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        request={borrowRequests.get(item.id)}
+                        isRequesting={requestingItemId === item.id}
+                        onPress={() => router.push(`/library/${item.id}` as any)}
+                        onBorrow={() => handleRequestBorrow(item)}
+                        onCancel={() => handleCancelRequest(item)}
+                      />
                     );
                   })}
                 </View>
@@ -541,7 +522,7 @@ export default function FriendDetailScreen() {
           )}
 
           {/* ── Borrowing tab ── */}
-          {activeTab === 'borrowing' && (
+          {activeTab === "borrowing" && (
             <View style={{ gap: 12 }}>
               {activeItems.length === 0 ? (
                 <EmptyState
@@ -549,7 +530,7 @@ export default function FriendDetailScreen() {
                   message={`${firstName} doesn't have any of your items right now`}
                 />
               ) : (
-                activeItems.map(item => (
+                activeItems.map((item) => (
                   <Pressable
                     key={item.id}
                     onPress={() => router.push(`/library/${item.id}` as any)}
@@ -557,33 +538,44 @@ export default function FriendDetailScreen() {
                       backgroundColor: theme.card,
                       borderRadius: 24,
                       padding: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
                       borderWidth: 1,
                       borderColor: theme.border,
                       opacity: pressed ? 0.7 : 1,
-                      shadowColor: '#000',
+                      shadowColor: "#000",
                       shadowOffset: { width: 0, height: 1 },
                       shadowOpacity: 0.04,
                       shadowRadius: 4,
                       elevation: 2,
                     })}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                      <View style={{
-                        width: 44, height: 44, borderRadius: 14,
-                        backgroundColor: THEME.light.secondary + '18',
-                        alignItems: 'center', justifyContent: 'center',
-                      }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 14,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 14,
+                          backgroundColor: THEME.light.secondary + "18",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
                         <Clock size={20} color={THEME.light.secondary} />
                       </View>
                       <View>
                         <BodyStrong numberOfLines={1}>{item.name}</BodyStrong>
                         <Caption style={{ marginTop: 2 }}>
                           {item.dueDate
-                            ? `Due ${item.dueDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
-                            : 'No due date set'}
+                            ? `Due ${item.dueDate.toLocaleDateString("en-AU", { day: "numeric", month: "short" })}`
+                            : "No due date set"}
                         </Caption>
                       </View>
                     </View>
@@ -600,7 +592,7 @@ export default function FriendDetailScreen() {
           )}
 
           {/* ── History tab ── */}
-          {activeTab === 'history' && (
+          {activeTab === "history" && (
             <View style={{ gap: 12 }}>
               {returnedItems.length === 0 ? (
                 <EmptyState
@@ -608,7 +600,7 @@ export default function FriendDetailScreen() {
                   message="No borrowing history yet"
                 />
               ) : (
-                returnedItems.map(item => (
+                returnedItems.map((item) => (
                   <Pressable
                     key={item.id}
                     onPress={() => router.push(`/library/${item.id}` as any)}
@@ -616,28 +608,39 @@ export default function FriendDetailScreen() {
                       backgroundColor: theme.card,
                       borderRadius: 24,
                       padding: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
                       borderWidth: 1,
                       borderColor: theme.border,
                       opacity: pressed ? 0.6 : 0.75,
                     })}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                      <View style={{
-                        width: 44, height: 44, borderRadius: 14,
-                        backgroundColor: isDark ? theme.muted : '#F3F4F6',
-                        alignItems: 'center', justifyContent: 'center',
-                      }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 14,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 14,
+                          backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
                         <History size={20} color={theme.mutedForeground} />
                       </View>
                       <View>
                         <BodyStrong numberOfLines={1}>{item.name}</BodyStrong>
                         <Caption style={{ marginTop: 2 }}>
                           {item.returnedDate
-                            ? `Returned ${item.returnedDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}`
-                            : 'Returned'}
+                            ? `Returned ${item.returnedDate.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`
+                            : "Returned"}
                         </Caption>
                       </View>
                     </View>
@@ -649,7 +652,6 @@ export default function FriendDetailScreen() {
               )}
             </View>
           )}
-
         </View>
       </ScrollView>
     </View>
@@ -657,20 +659,28 @@ export default function FriendDetailScreen() {
 }
 
 // ── Small helper ──────────────────────────────────────────────────────────────
-function EmptyState({ icon, message }: { icon: React.ReactNode; message: string }) {
+function EmptyState({
+  icon,
+  message,
+}: {
+  icon: React.ReactNode;
+  message: string;
+}) {
   const { activeTheme } = useThemeContext();
-  const isDark = activeTheme === 'dark';
+  const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
   return (
-    <View style={{
-      backgroundColor: theme.card,
-      borderRadius: 24,
-      padding: 32,
-      alignItems: 'center',
-      gap: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-    }}>
+    <View
+      style={{
+        backgroundColor: theme.card,
+        borderRadius: 24,
+        padding: 32,
+        alignItems: "center",
+        gap: 12,
+        borderWidth: 1,
+        borderColor: theme.border,
+      }}
+    >
       {icon}
       <Caption className="text-center">{message}</Caption>
     </View>

@@ -261,7 +261,7 @@ export default function AddUserFriendScreen() {
               className="flex-1"
               onPress={() => setActiveTab("code")}
             >
-              <Hash size={16} />
+              <Hash size={16} color="white" />
               <Text>Friend Code</Text>
             </Button>
 

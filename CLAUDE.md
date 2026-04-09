@@ -101,6 +101,13 @@ Custom UI components are located in `components/ui/`:
 
 Always use these components instead of creating custom styled components.
 
+**Critical rule: always reach for an existing component before writing a new one.** Before using a raw `Pressable`, `View`, or `Text` for interactive or styled elements, check `components/ui/` first. Specifically:
+- Use `Button` (with `variant` and `size` props) for all tappable actions — never a raw `Pressable` styled to look like a button.
+- Use `Text` from `components/ui/text` inside `Button` so the `TextClassContext` colour propagation works correctly.
+- Use `Card`, `Input`, `Label`, etc. from `components/ui/` where they fit.
+
+This applies to new screens, modals, and any edits to existing screens.
+
 ### Import Path Resolution
 
 The project uses baseUrl `"."` in `tsconfig.base.json`, allowing imports like:

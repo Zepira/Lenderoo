@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   View,
   ScrollView,
@@ -14,16 +13,13 @@ import {
   BodyStrong,
 } from "@/components/ui/typography";
 import { router } from "expo-router";
-import { Text } from "@/components/ui/text";
 import { useActiveItems, useBorrowedByMeItems, useItems } from "hooks/useItems";
-import { useFriends } from "hooks/useFriends";
 import { useAuth } from "@/contexts/AuthContext";
 import { resolveAvatarSource } from "@/lib/avatar-service";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DashboardSection } from "@/components/dashboard/DashboardSection";
-import type { Item } from "lib/types";
 
 export default function HomeScreen() {
   const { appUser } = useAuth();
@@ -42,32 +38,14 @@ export default function HomeScreen() {
     refresh: refreshBorrowed,
   } = useBorrowedByMeItems();
   const { items: allItems } = useItems();
-  const { friends } = useFriends();
 
   const loading = lentLoading || borrowedLoading;
-
-  const friendsMap = useMemo(
-    () =>
-      friends.reduce(
-        (acc, f) => ({ ...acc, [f.id]: f }),
-        {} as Record<string, (typeof friends)[0]>,
-      ),
-    [friends],
-  );
 
   const firstName = appUser?.name?.split(" ")[0] ?? "there";
 
   const refresh = async () => {
     await Promise.all([refreshLent(), refreshBorrowed()]);
   };
-
-  const getLentPersonName = (item: Item) =>
-    item.borrowedBy
-      ? (friendsMap[item.borrowedBy]?.name ?? "Someone")
-      : "Someone";
-
-  const getBorrowedPersonName = (item: Item) =>
-    friendsMap[item.userId]?.name ?? "Someone";
 
   return (
     <View
@@ -207,8 +185,6 @@ export default function HomeScreen() {
               <DashboardSection
                 title="Borrowed"
                 items={borrowedItems}
-                type="borrowed"
-                getPersonName={getBorrowedPersonName}
                 onItemPress={(item) =>
                   router.push(`/library/${item.id}` as any)
                 }
@@ -217,8 +193,6 @@ export default function HomeScreen() {
               <DashboardSection
                 title="Lent Out"
                 items={lentOutItems}
-                type="lent"
-                getPersonName={getLentPersonName}
                 onItemPress={(item) =>
                   router.push(`/library/${item.id}` as any)
                 }

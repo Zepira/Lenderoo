@@ -3,17 +3,13 @@ import { useState, useEffect } from "react";
 import {
   View,
   ScrollView,
-  TextInput,
   Pressable,
   Image,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  ArrowLeft,
   ChevronRight,
   Plus,
-  Search,
   Users,
 } from "lucide-react-native";
 import {
@@ -27,7 +23,6 @@ import { FriendRequests } from "components/FriendRequests";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import {
-  PageTitle,
   BodyStrong,
   LabelStrong,
   Caption,
@@ -36,6 +31,8 @@ import { supabase } from "@/lib/supabase";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { resolveAvatarSource } from "@/lib/avatar-service";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { CardSearchInput } from "@/components/CardSearchInput";
 
 export default function FriendsScreen() {
   const { activeTheme } = useThemeContext();
@@ -139,59 +136,13 @@ export default function FriendsScreen() {
     <View
       style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}
     >
+      <ScreenHeader title="My Friends" showBack onBack={() => router.back()} />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 160 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header card */}
-        <View
-          style={{
-            backgroundColor: theme.card,
-            borderBottomLeftRadius: 40,
-            borderBottomRightRadius: 40,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            elevation: 4,
-            marginBottom: 24,
-          }}
-        >
-          <SafeAreaView
-            edges={["top"]}
-            style={{ backgroundColor: "transparent" }}
-          >
-            <View
-              style={{
-                paddingHorizontal: 24,
-                paddingTop: 16,
-                paddingBottom: 28,
-              }}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 16 }}
-              >
-                <Pressable
-                  onPress={() => router.back()}
-                  style={({ pressed }) => ({
-                    width: 40,
-                    height: 40,
-                    borderRadius: 12,
-                    backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    opacity: pressed ? 0.6 : 1,
-                  })}
-                >
-                  <ArrowLeft size={22} color={theme.mutedForeground} />
-                </Pressable>
-                <PageTitle>My Friends</PageTitle>
-              </View>
-            </View>
-          </SafeAreaView>
-        </View>
-
         <View style={{ paddingHorizontal: 24, gap: 16 }}>
           {/* Pending friend requests */}
           {friendRequests.length > 0 && (
@@ -204,41 +155,11 @@ export default function FriendsScreen() {
             />
           )}
 
-          {/* Search */}
-          <View
-            style={{
-              backgroundColor: theme.card,
-              borderRadius: 24,
-              padding: 12,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                borderRadius: 16,
-                paddingHorizontal: 14,
-                gap: 10,
-              }}
-            >
-              <Search size={18} color={theme.mutedForeground} />
-              <TextInput
-                placeholder="Search friends…"
-                placeholderTextColor={theme.mutedForeground}
-                value={search}
-                onChangeText={setSearch}
-                style={{
-                  flex: 1,
-                  paddingVertical: 14,
-                  fontSize: 15,
-                  color: theme.foreground,
-                }}
-              />
-            </View>
-          </View>
+          <CardSearchInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search friends…"
+          />
 
           {/* Friends list */}
           {loading ? (

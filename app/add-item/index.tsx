@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { View, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft } from "lucide-react-native";
-import { CATEGORY_CONFIG } from "@/components/ItemTile";
+import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import {

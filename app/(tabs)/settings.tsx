@@ -245,28 +245,15 @@ export default function SettingsScreen() {
             }}
           >
             <SettingsItem
-              icon={<User size={20} color={THEME.light.primary} />}
-              label="Edit Profile"
-              badge={{ text: "Coming Soon", color: THEME.light.primary }}
-              onPress={() => {}}
-            />
-            <SettingsItem
-              icon={<Lock size={20} color={THEME.light.primary} />}
-              label="Change Password"
-              badge={{ text: "Coming Soon", color: THEME.light.primary }}
-              onPress={() => {}}
-            />
-            <SettingsItem
-              icon={<Lock size={20} color={THEME.light.primary} />}
-              label="Change Password"
-              badge={{ text: "Coming Soon", color: THEME.light.primary }}
-              onPress={() => {}}
-            />
-            <SettingsItem
               icon={<Users size={20} color={THEME.light.primary} />}
               label="My Friends"
               onPress={() => router.push("/(tabs)/friends" as any)}
               isLast
+            />
+            <SettingsItem
+              icon={<User size={20} color={THEME.light.primary} />}
+              label="Profile"
+              onPress={() => router.push("/profile" as any)}
             />
           </View>
 

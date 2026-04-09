@@ -22,7 +22,7 @@ import {
   Caption,
 } from "@/components/ui/typography";
 import { useFriends, useCreateItem, useItems } from "hooks";
-import { CATEGORY_CONFIG } from "@/components/ItemTile";
+import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
 import { uploadItemImage, validateImage } from "@/lib/storage-service";
