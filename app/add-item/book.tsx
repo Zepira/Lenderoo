@@ -7,24 +7,33 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  TextInput,
+  Platform,
 } from "react-native";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ArrowLeft, Camera, BookOpen } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { Label } from "@/components/ui/label";
-import { Card, CardHeader } from "@/components/ui/card";
-import { Book } from "lucide-react-native";
-import { useFriends, useCreateItem, useItems } from "hooks";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { THEME } from "@/lib/theme";
+import {
+  PageTitle,
+  TinyLabel,
+  BodyStrong,
+  Caption,
+} from "@/components/ui/typography";
+import { useCreateItem, useItems } from "hooks";
 import { createItemSchema } from "lib/validation";
-import { FloatingBackButton } from "components/FloatingBackButton";
 import { supabase } from "@/lib/supabase";
 import { ImagePicker } from "components/ImagePicker";
 import type { BookMetadata } from "lib/types";
-import { cn } from "lib/utils";
-import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
+
 export default function AddBookScreen() {
   const router = useRouter();
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
+
   const params = useLocalSearchParams<{
     title?: string;
     author?: string;
@@ -40,13 +49,12 @@ export default function AddBookScreen() {
     averageRating?: string;
     hardcoverId?: string;
   }>();
-  const { friends } = useFriends();
+
   const { createItem, loading: saving } = useCreateItem();
   const { items: existingItems } = useItems();
   const scrollViewRef = useRef<ScrollView>(null);
   const isSubmitting = useRef(false);
 
-  // Form state
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [seriesNumber, setSeriesNumber] = useState("");
@@ -56,21 +64,16 @@ export default function AddBookScreen() {
   const [synopsis, setSynopsis] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [description, setDescription] = useState("");
-  const [borrowedBy, setBorrowedBy] = useState("");
   const [notes, setNotes] = useState("");
   const [isbn, setIsbn] = useState("");
   const [pageCount, setPageCount] = useState("");
   const [publicationYear, setPublicationYear] = useState("");
   const [averageRating, setAverageRating] = useState("");
   const [hardcoverId, setHardcoverId] = useState("");
-
-  // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Local loading state for immediate UI feedback
   const [isLoading, setIsLoading] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
 
-  // Pre-fill form from URL parameters
   useEffect(() => {
     if (params.title) setTitle(params.title);
     if (params.author) setAuthor(params.author);
@@ -80,7 +83,6 @@ export default function AddBookScreen() {
     if (params.genre) setGenre(params.genre);
     if (params.description) {
       setSynopsis(params.description);
-      // Use first sentence as short description
       const shortDesc = params.description.split(".")[0] + ".";
       setDescription(shortDesc.length < 100 ? shortDesc : "");
     }
@@ -93,30 +95,22 @@ export default function AddBookScreen() {
   }, [params]);
 
   const handleSubmit = async () => {
-    console.log("📝 Starting book submission...");
-
-    // Prevent double submission
-    if (saving || isSubmitting.current || isLoading) {
-      console.log("⚠️ Already saving, ignoring duplicate submission");
-      return;
-    }
-
+    if (saving || isSubmitting.current || isLoading) return;
     isSubmitting.current = true;
     setIsLoading(true);
 
     try {
       setErrors({});
 
-      // Validate required fields
       if (!title.trim()) {
-        console.error("❌ Validation failed: Title is required");
         setErrors({ name: "Title is required" });
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        Alert.alert("Missing Information", "Please enter a book title.");
+        if (Platform.OS !== "web") Alert.alert("Missing Information", "Please enter a book title.");
+        isSubmitting.current = false;
+        setIsLoading(false);
         return;
       }
 
-      console.log("📦 Building metadata...");
       const metadata: BookMetadata = {
         author: author.trim() || undefined,
         seriesName: seriesName.trim() || undefined,
@@ -126,95 +120,50 @@ export default function AddBookScreen() {
         synopsis: synopsis.trim() || undefined,
         isbn: isbn.trim() || undefined,
         pageCount: pageCount ? parseInt(pageCount) : undefined,
-        publicationYear: publicationYear
-          ? parseInt(publicationYear)
-          : undefined,
+        publicationYear: publicationYear ? parseInt(publicationYear) : undefined,
         averageRating: averageRating ? parseFloat(averageRating) : undefined,
         hardcoverId: hardcoverId || undefined,
       };
 
-      // Check for duplicates
-      console.log("🔍 Checking for duplicates...");
       const duplicates = existingItems.filter((item) => {
         if (item.category !== "book") return false;
-
-        const itemTitle = item.name.toLowerCase().trim();
-        const newTitle = title.toLowerCase().trim();
-
-        // Check title match
-        if (itemTitle !== newTitle) return false;
-
-        // If we have author info, check that too
+        if (item.name.toLowerCase().trim() !== title.toLowerCase().trim()) return false;
         if (author.trim() && item.metadata) {
-          const itemAuthor = (item.metadata as BookMetadata).author
-            ?.toLowerCase()
-            .trim();
-          const newAuthor = author.toLowerCase().trim();
-
-          if (itemAuthor && itemAuthor !== newAuthor) return false;
+          const itemAuthor = (item.metadata as BookMetadata).author?.toLowerCase().trim();
+          if (itemAuthor && itemAuthor !== author.toLowerCase().trim()) return false;
         }
-
         return true;
       });
 
       if (duplicates.length > 0) {
-        const duplicate = duplicates[0];
-        const duplicateAuthor = (duplicate.metadata as BookMetadata)?.author;
-
-        console.warn("⚠️ Duplicate book found:", duplicate.name);
-
-        const duplicateMessage = `"${duplicate.name}"${
-          duplicateAuthor ? ` by ${duplicateAuthor}` : ""
-        } is already in your library.`;
-
-        Alert.alert("Duplicate Book", duplicateMessage, [{ text: "OK" }]);
-
+        const dup = duplicates[0];
+        const dupAuthor = (dup.metadata as BookMetadata)?.author;
+        const msg = `"${dup.name}"${dupAuthor ? ` by ${dupAuthor}` : ""} is already in your library.`;
+        if (Platform.OS !== "web") Alert.alert("Duplicate Book", msg, [{ text: "OK" }]);
         setErrors({ name: "This book is already in your library" });
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         isSubmitting.current = false;
         setIsLoading(false);
         return;
       }
 
-      console.log("📦 Building item data...");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("Not authenticated");
-      }
-
-      // For external URLs (book covers), use them directly - no need to re-upload
-      // Only upload if it's a local file URI (from image picker)
       let imageUrl: string | undefined;
       const trimmedCoverUrl = coverUrl.trim();
-
       if (trimmedCoverUrl) {
-        const isExternalUrl =
-          trimmedCoverUrl.startsWith("http://") ||
-          trimmedCoverUrl.startsWith("https://");
-        const isSupabaseUrl = trimmedCoverUrl.includes("supabase.co/storage");
-
-        if (isExternalUrl && !isSupabaseUrl) {
-          // External URL (e.g., book cover API) - use directly
-          console.log("🔗 Using external URL directly (no upload needed)");
+        const isExternal = trimmedCoverUrl.startsWith("http://") || trimmedCoverUrl.startsWith("https://");
+        const isSupabase = trimmedCoverUrl.includes("supabase.co/storage");
+        if (isExternal && !isSupabase) {
           imageUrl = trimmedCoverUrl;
-        } else if (!isExternalUrl) {
-          // Local file - upload to storage
+        } else if (!isExternal) {
           try {
-            console.log("📤 Uploading local image...");
             const { uploadItemImage } = await import("@/lib/storage-service");
             imageUrl = await uploadItemImage(trimmedCoverUrl, user.id);
-            console.log("✅ Image uploaded:", imageUrl);
-          } catch (error: any) {
-            console.error("❌ Image upload failed:", error);
-            console.warn("⚠️ Book will be added without cover image");
+          } catch {
             // Continue without image
           }
         } else {
-          // Already a Supabase URL
           imageUrl = trimmedCoverUrl;
         }
       }
@@ -224,269 +173,328 @@ export default function AddBookScreen() {
         description: description.trim() || undefined,
         category: "book" as const,
         images: imageUrl ? [imageUrl] : undefined,
-        borrowedBy: borrowedBy || undefined,
-        borrowedDate: borrowedBy ? new Date() : undefined,
         notes: notes.trim() || undefined,
         metadata,
       };
 
-      console.log("✅ Validating with schema...");
       createItemSchema.parse(itemData);
-
-      console.log("💾 Creating item in database...");
-      console.log("Item data:", JSON.stringify(itemData, null, 2));
-
-      const result = await createItem({
-        ...itemData,
-        userId: user.id,
-      });
-
-      if (!result) {
-        throw new Error(
-          "Failed to create item - no result returned from database"
-        );
-      }
-
-      console.log("✅ Book added successfully! ID:", result.id);
-
+      const result = await createItem({ ...itemData, userId: user.id });
+      if (!result) throw new Error("Failed to create item");
       router.push("/library");
     } catch (error) {
       isSubmitting.current = false;
       setIsLoading(false);
-      console.error("❌ Error adding book:", error);
-
-      // Handle Zod validation errors
       if (error && typeof error === "object" && "issues" in error) {
-        const zodError = error as {
-          issues: Array<{ path: Array<string | number>; message: string }>;
-        };
+        const zodError = error as { issues: Array<{ path: Array<string | number>; message: string }> };
         const fieldErrors: Record<string, string> = {};
-        const errorMessages: string[] = [];
-
         zodError.issues.forEach((err) => {
-          const fieldName = err.path[0] as string;
-          const message = err.message;
-
-          if (err.path.length > 0) {
-            fieldErrors[fieldName] = message;
-            errorMessages.push(`${fieldName}: ${message}`);
-          }
-          console.error(`  - ${fieldName}: ${message}`);
+          if (err.path.length > 0) fieldErrors[err.path[0] as string] = err.message;
         });
-
         setErrors(fieldErrors);
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-
-        Alert.alert(
-          "Validation Error",
-          `Please fix the following issues:\n\n${errorMessages.join("\n")}`,
-          [{ text: "OK" }]
-        );
       } else if (error instanceof Error) {
-        // Handle generic errors
-        const errorMessage = error.message || "An unknown error occurred";
-        console.error("Error details:", errorMessage);
-        setErrors({ general: `Failed to add book: ${errorMessage}` });
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-
-        Alert.alert(
-          "Error",
-          `Failed to add book. ${errorMessage}\n\nPlease try again.`,
-          [{ text: "OK" }]
-        );
-      } else {
-        // Handle unknown error types
-        console.error("Unknown error type:", error);
-        setErrors({
-          general: "An unexpected error occurred. Please try again.",
-        });
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-
-        Alert.alert(
-          "Error",
-          "An unexpected error occurred while adding the book. Please try again.",
-          [{ text: "OK" }]
-        );
+        setErrors({ general: error.message });
+        if (Platform.OS !== "web") Alert.alert("Error", error.message);
       }
     }
   };
 
-  const handleCancel = () => {
-    router.back();
+  const inputStyle = {
+    backgroundColor: isDark ? theme.muted : "#F3F4F6",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: theme.foreground,
+    fontFamily: "Inter-Medium",
   };
 
-  return (
-    <SafeAreaWrapper>
-      <FloatingBackButton />
+  const fromHardcover = !!params.title;
 
-      <ScrollView ref={scrollViewRef} className="flex-1 bg-background">
-        <View className="p-4 gap-4">
-          {errors.general && (
-            <View className="p-3 bg-red-50 rounded-lg border border-red-200">
-              <Text variant="small" className="text-red-600">
-                {errors.general}
-              </Text>
+  return (
+    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+      {/* Header */}
+      <View
+        style={{
+          backgroundColor: theme.card,
+          borderBottomLeftRadius: 40,
+          borderBottomRightRadius: 40,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          elevation: 4,
+          marginBottom: 24,
+        }}
+      >
+        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
+          <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+              <Pressable
+                onPress={() => router.back()}
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <ArrowLeft size={22} color={theme.mutedForeground} />
+              </Pressable>
+              <View style={{ flex: 1 }}>
+                <PageTitle numberOfLines={1}>{fromHardcover ? title || "Book Details" : "Add a Book"}</PageTitle>
+                {fromHardcover && (
+                  <Caption style={{ color: theme.primary, marginTop: 2 }}>
+                    from Hardcover
+                  </Caption>
+                )}
+              </View>
             </View>
+          </View>
+        </SafeAreaView>
+      </View>
+
+      <ScrollView
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
+      >
+        {errors.general && (
+          <View
+            style={{
+              backgroundColor: theme.destructive + "18",
+              borderRadius: 16,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: theme.destructive + "33",
+            }}
+          >
+            <Caption style={{ color: theme.destructive }}>{errors.general}</Caption>
+          </View>
+        )}
+
+        {/* Cover + core details */}
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderRadius: 32,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: theme.border,
+            gap: 20,
+          }}
+        >
+          {/* Cover image */}
+          {coverUrl ? (
+            <View style={{ alignItems: "center", gap: 12 }}>
+              <View
+                style={{
+                  width: 120,
+                  height: 170,
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  backgroundColor: theme.muted,
+                }}
+              >
+                <Image
+                  source={{ uri: coverUrl }}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="cover"
+                />
+              </View>
+              <Pressable onPress={() => setShowImagePicker(true)}>
+                <Caption style={{ textDecorationLine: "underline", color: theme.primary }}>
+                  Change cover
+                </Caption>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => setShowImagePicker(true)}
+              style={({ pressed }) => ({
+                borderWidth: 2,
+                borderStyle: "dashed",
+                borderColor: pressed ? theme.primary + "88" : theme.border,
+                borderRadius: 20,
+                paddingVertical: 32,
+                alignItems: "center",
+                gap: 10,
+                backgroundColor: pressed ? theme.primary + "08" : "transparent",
+              })}
+            >
+              <Camera size={32} color={theme.mutedForeground} />
+              <TinyLabel>Add Cover Photo</TinyLabel>
+            </Pressable>
           )}
 
-          {/* Book Form */}
-          <View className="gap-4">
-            {/* Header */}
-            <View className="gap-2 items-center">
-              <Label className="text-xl font-semibold px-8">
-                Add Book Details
-              </Label>
-              <Text variant="muted">Fill in the book information below</Text>
-            </View>
+          {showImagePicker && (
+            <ImagePicker
+              imageUrl={coverUrl}
+              onImageSelected={(uri) => { setCoverUrl(uri); setShowImagePicker(false); }}
+              onImageRemoved={() => { setCoverUrl(""); setShowImagePicker(false); }}
+            />
+          )}
 
-            {/* Cover Image */}
-            <View className="gap-2">
-              <Label className="font-semibold">Cover Image (Optional)</Label>
-              <ImagePicker
-                imageUrl={coverUrl}
-                onImageSelected={(uri) => setCoverUrl(uri)}
-                onImageRemoved={() => setCoverUrl("")}
-              />
-              <Text variant="small" className="text-muted-foreground">
-                Take a photo or choose from your library
-              </Text>
-            </View>
+          {/* Title */}
+          <View style={{ gap: 8 }}>
+            <TinyLabel>Book Title *</TinyLabel>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="e.g. The Great Gatsby"
+              placeholderTextColor={theme.mutedForeground}
+              style={[inputStyle, errors.name ? { borderWidth: 1.5, borderColor: theme.destructive } : {}]}
+            />
+            {errors.name && <Caption style={{ color: theme.destructive }}>{errors.name}</Caption>}
+          </View>
 
-            {/* Cover URL Input - Manual fallback */}
-            <View className="gap-2">
-              <Label nativeID="coverUrl" className="font-semibold">
-                Or enter image URL
-              </Label>
-              <Input
-                value={coverUrl}
-                onChangeText={setCoverUrl}
-                placeholder="https://example.com/cover.jpg"
-                autoCapitalize="none"
-                keyboardType="url"
-              />
-            </View>
+          {/* Author */}
+          <View style={{ gap: 8 }}>
+            <TinyLabel>Author</TinyLabel>
+            <TextInput
+              value={author}
+              onChangeText={setAuthor}
+              placeholder="e.g. F. Scott Fitzgerald"
+              placeholderTextColor={theme.mutedForeground}
+              style={inputStyle}
+            />
+          </View>
+        </View>
 
-            {/* Book Title */}
-            <View className="gap-2">
-              <Label nativeID="title" className="font-semibold">
-                Title *
-              </Label>
-              <Input
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Book title"
-                className={cn(errors.name && "border-red-500")}
-              />
-              {errors.name && (
-                <Text variant="muted" className="text-red-600">
-                  {errors.name}
-                </Text>
-              )}
-            </View>
+        {/* Series + metadata */}
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderRadius: 32,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: theme.border,
+            gap: 20,
+          }}
+        >
+          <TinyLabel>Series & Details</TinyLabel>
 
-            {/* Author */}
-            <View className="gap-2">
-              <Label nativeID="author" className="font-semibold">
-                Author
-              </Label>
-              <Input
-                value={author}
-                onChangeText={setAuthor}
-                placeholder="Author name"
+          {/* Series */}
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flex: 2, gap: 8 }}>
+              <TinyLabel>Series Name</TinyLabel>
+              <TextInput
+                value={seriesName}
+                onChangeText={setSeriesName}
+                placeholder="e.g. Harry Potter"
+                placeholderTextColor={theme.mutedForeground}
+                style={inputStyle}
               />
             </View>
-
-            {/* Series Info */}
-            <View className="flex-row gap-3">
-              <View className="flex-[2] gap-2">
-                <Label nativeID="seriesName" className="font-semibold">
-                  Series
-                </Label>
-                <Input
-                  value={seriesName}
-                  onChangeText={setSeriesName}
-                  placeholder="Series name"
-                />
-              </View>
-              <View className="flex-1 gap-2">
-                <Label nativeID="seriesNumber" className="font-semibold">
-                  Book #
-                </Label>
-                <Input
-                  value={seriesNumber}
-                  onChangeText={setSeriesNumber}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-
-            {/* Genre */}
-            <View className="gap-2">
-              <Label nativeID="genre" className="font-semibold">
-                Genre
-              </Label>
-              <Input
-                value={genre}
-                onChangeText={setGenre}
-                placeholder="Fantasy, Science Fiction, etc."
+            <View style={{ flex: 1, gap: 8 }}>
+              <TinyLabel>Book #</TinyLabel>
+              <TextInput
+                value={seriesNumber}
+                onChangeText={setSeriesNumber}
+                placeholder="1"
+                keyboardType="numeric"
+                placeholderTextColor={theme.mutedForeground}
+                style={inputStyle}
               />
             </View>
+          </View>
 
-            {/* Synopsis */}
-            <View className="gap-2">
-              <Label nativeID="synopsis" className="font-semibold">
-                Synopsis
-              </Label>
-              <Textarea
-                value={synopsis}
-                onChangeText={setSynopsis}
-                placeholder="Enter the book's synopsis or description"
-                numberOfLines={4}
+          {/* Genre */}
+          <View style={{ gap: 8 }}>
+            <TinyLabel>Genre</TinyLabel>
+            <TextInput
+              value={genre}
+              onChangeText={setGenre}
+              placeholder="Fantasy, Sci-Fi, etc."
+              placeholderTextColor={theme.mutedForeground}
+              style={inputStyle}
+            />
+          </View>
+
+          {/* Publication year + pages */}
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flex: 1, gap: 8 }}>
+              <TinyLabel>Year</TinyLabel>
+              <TextInput
+                value={publicationYear}
+                onChangeText={setPublicationYear}
+                placeholder="2024"
+                keyboardType="numeric"
+                placeholderTextColor={theme.mutedForeground}
+                style={inputStyle}
               />
             </View>
-
-            {/* Notes */}
-            <View className="gap-2">
-              <Label nativeID="notes" className="font-semibold">
-                Notes
-              </Label>
-              <Input
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Any additional notes..."
-                multiline
-                numberOfLines={2}
+            <View style={{ flex: 1, gap: 8 }}>
+              <TinyLabel>Pages</TinyLabel>
+              <TextInput
+                value={pageCount}
+                onChangeText={setPageCount}
+                placeholder="320"
+                keyboardType="numeric"
+                placeholderTextColor={theme.mutedForeground}
+                style={inputStyle}
               />
-            </View>
-
-            {/* Action Buttons */}
-            <View className="flex-row gap-3 pt-2">
-              <Button
-                variant="outline"
-                onPress={handleCancel}
-                disabled={isLoading}
-                className="flex-1"
-              >
-                <Text>Cancel</Text>
-              </Button>
-              <Button
-                onPress={handleSubmit}
-                disabled={isLoading || !title.trim()}
-                className="flex-1 bg-blue-600"
-              >
-                {isLoading && <ActivityIndicator size="small" color="white" />}
-                <Text className="text-white">
-                  {isLoading
-                    ? "Saving..."
-                    : borrowedBy
-                    ? "Add & Lend Book"
-                    : "Add to Library"}
-                </Text>
-              </Button>
             </View>
           </View>
         </View>
+
+        {/* Synopsis + notes */}
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderRadius: 32,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: theme.border,
+            gap: 20,
+          }}
+        >
+          <TinyLabel>Description & Notes</TinyLabel>
+
+          <View style={{ gap: 8 }}>
+            <TinyLabel>Synopsis</TinyLabel>
+            <TextInput
+              value={synopsis}
+              onChangeText={setSynopsis}
+              placeholder="Tell your friends about this book…"
+              placeholderTextColor={theme.mutedForeground}
+              multiline
+              numberOfLines={4}
+              style={[inputStyle, { minHeight: 100, textAlignVertical: "top", paddingTop: 14 }]}
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <TinyLabel>Personal Notes</TinyLabel>
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Condition, reminders, etc."
+              placeholderTextColor={theme.mutedForeground}
+              multiline
+              numberOfLines={2}
+              style={[inputStyle, { minHeight: 60, textAlignVertical: "top", paddingTop: 14 }]}
+            />
+          </View>
+        </View>
+
+        {/* Submit */}
+        <Button
+          onPress={handleSubmit}
+          disabled={isLoading || !title.trim()}
+          style={{ borderRadius: 24 } as any}
+        >
+          {isLoading && <ActivityIndicator size="small" color="#fff" />}
+          <Text className="text-white font-bold">
+            {isLoading ? "Adding…" : "Add to Library"}
+          </Text>
+        </Button>
+
+        <Caption className="text-center">Typically returned in 7–10 days</Caption>
       </ScrollView>
-    </SafeAreaWrapper>
+    </View>
   );
 }

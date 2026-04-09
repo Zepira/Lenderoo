@@ -8,11 +8,17 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  PageHero,
+  LabelStrong,
+  BodyStrong,
+} from "@/components/ui/typography";
 import { router } from "expo-router";
 import { Text } from "@/components/ui/text";
 import { useActiveItems, useBorrowedByMeItems, useItems } from "hooks/useItems";
 import { useFriends } from "hooks/useFriends";
 import { useAuth } from "@/contexts/AuthContext";
+import { resolveAvatarSource } from "@/lib/avatar-service";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -106,12 +112,7 @@ export default function HomeScreen() {
                 }}
               >
                 <View style={{ flex: 1, marginRight: 16 }}>
-                  <Text
-                    className="font-display-bold text-foreground"
-                    style={{ fontSize: 30, lineHeight: 40 }}
-                  >
-                    Hi {firstName}
-                  </Text>
+                  <PageHero>Hi {firstName}</PageHero>
                   <View
                     style={{
                       flexDirection: "row",
@@ -120,24 +121,13 @@ export default function HomeScreen() {
                       gap: 8,
                     }}
                   >
-                    <Text
-                      className="font-sans-bold text-muted-foreground"
-                      style={{ fontSize: 12 }}
-                    >
+                    <LabelStrong className="text-muted-foreground">
                       {borrowedItems.length} borrowed
-                    </Text>
-                    <Text
-                      className="text-primary font-sans-bold"
-                      style={{ fontSize: 12 }}
-                    >
-                      •
-                    </Text>
-                    <Text
-                      className="font-sans-bold text-muted-foreground"
-                      style={{ fontSize: 12 }}
-                    >
+                    </LabelStrong>
+                    <LabelStrong className="text-primary">•</LabelStrong>
+                    <LabelStrong className="text-muted-foreground">
                       {lentOutItems.length} lent
-                    </Text>
+                    </LabelStrong>
                   </View>
                 </View>
 
@@ -154,9 +144,9 @@ export default function HomeScreen() {
                     backgroundColor: theme.muted,
                   }}
                 >
-                  {appUser?.avatarUrl ? (
+                  {resolveAvatarSource(appUser?.avatarUrl) ? (
                     <Image
-                      source={{ uri: appUser.avatarUrl }}
+                      source={resolveAvatarSource(appUser?.avatarUrl)!}
                       style={{ width: "100%", height: "100%" }}
                       resizeMode="cover"
                     />
@@ -169,12 +159,12 @@ export default function HomeScreen() {
                         backgroundColor: THEME.light.primary + "22",
                       }}
                     >
-                      <Text
-                        className="font-sans-bold text-primary"
-                        style={{ fontSize: 18 }}
+                      <BodyStrong
+                        className="text-primary"
+                        style={{ fontSize: 18, lineHeight: 24 }}
                       >
                         {firstName[0]?.toUpperCase()}
-                      </Text>
+                      </BodyStrong>
                     </View>
                   )}
                 </Pressable>

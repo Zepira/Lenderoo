@@ -6,6 +6,7 @@ import {
   Pressable,
   Alert,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -23,6 +24,12 @@ import {
   Monitor,
 } from "lucide-react-native";
 import { Text } from "@/components/ui/text";
+import {
+  PageTitle,
+  SectionHeading,
+  BodyStrong,
+  Caption,
+} from "@/components/ui/typography";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
@@ -31,6 +38,8 @@ import {
   SectionHeader,
 } from "@/components/settings/SettingsItem";
 import * as toast from "@/lib/toast";
+import { AvatarPickerModal } from "@/components/AvatarPickerModal";
+import { resolveAvatarSource, uploadAvatarImage } from "@/lib/avatar-service";
 
 const confirmAsync = (title: string, message: string): Promise<boolean> => {
   if (Platform.OS === "web") {
@@ -45,11 +54,13 @@ const confirmAsync = (title: string, message: string): Promise<boolean> => {
 };
 
 export default function SettingsScreen() {
-  const { appUser, signOut } = useAuth();
+  const { appUser, user, signOut, updateProfile } = useAuth();
   const { themeMode, setThemeMode, activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
   const [signingOut, setSigningOut] = useState(false);
+  const [avatarModalVisible, setAvatarModalVisible] = useState(false);
+  const [updatingAvatar, setUpdatingAvatar] = useState(false);
 
   const firstName = appUser?.name?.split(" ")[0] ?? "";
   const lastName = appUser?.name?.split(" ").slice(1).join(" ") ?? "";
@@ -70,6 +81,34 @@ export default function SettingsScreen() {
       toast.error(error?.message || "Failed to sign out");
     } finally {
       setSigningOut(false);
+    }
+  };
+
+  const handleSelectPreset = async (presetUrl: string) => {
+    try {
+      setUpdatingAvatar(true);
+      await updateProfile({ avatarUrl: presetUrl });
+      setAvatarModalVisible(false);
+      toast.success("Avatar updated");
+    } catch {
+      toast.error("Failed to update avatar");
+    } finally {
+      setUpdatingAvatar(false);
+    }
+  };
+
+  const handleSelectImage = async (uri: string) => {
+    if (!user) return;
+    try {
+      setUpdatingAvatar(true);
+      const url = await uploadAvatarImage(user.id, uri);
+      await updateProfile({ avatarUrl: url });
+      setAvatarModalVisible(false);
+      toast.success("Avatar updated");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to upload photo");
+    } finally {
+      setUpdatingAvatar(false);
     }
   };
 
@@ -112,12 +151,7 @@ export default function SettingsScreen() {
                 paddingBottom: 32,
               }}
             >
-              <Text
-                className="font-display-bold text-foreground mb-8"
-                style={{ fontSize: 26, lineHeight: 34 }}
-              >
-                Settings
-              </Text>
+              <PageTitle className="mb-8">Settings</PageTitle>
 
               {/* Profile */}
               <View style={{ alignItems: "center" }}>
@@ -133,34 +167,37 @@ export default function SettingsScreen() {
                       backgroundColor: theme.muted,
                     }}
                   >
-                    {appUser?.avatarUrl ? (
-                      <Image
-                        source={{ uri: appUser.avatarUrl }}
-                        style={{ width: "100%", height: "100%" }}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View
-                        style={{
-                          flex: 1,
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: THEME.light.primary + "22",
-                        }}
-                      >
-                        <Text
-                          className="font-sans-bold text-primary"
-                          style={{ fontSize: 32, lineHeight: 96 }}
+                    {(() => {
+                      const src = resolveAvatarSource(appUser?.avatarUrl);
+                      return src ? (
+                        <Image
+                          source={src}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View
+                          style={{
+                            flex: 1,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: THEME.light.primary + "22",
+                          }}
                         >
-                          {(appUser?.name?.[0] ?? "?").toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
+                          <BodyStrong
+                            className="text-primary"
+                            style={{ fontSize: 32, lineHeight: 42 }}
+                          >
+                            {(appUser?.name?.[0] ?? "?").toUpperCase()}
+                          </BodyStrong>
+                        </View>
+                      );
+                    })()}
                   </View>
 
                   {/* Camera button */}
                   <Pressable
-                    onPress={() => toast.success("Profile editing coming soon")}
+                    onPress={() => setAvatarModalVisible(true)}
                     style={{
                       position: "absolute",
                       bottom: 0,
@@ -180,22 +217,16 @@ export default function SettingsScreen() {
                       shadowRadius: 4,
                     }}
                   >
-                    <Camera size={15} color="white" />
+                    {updatingAvatar ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Camera size={15} color="white" />
+                    )}
                   </Pressable>
                 </View>
 
-                <Text
-                  className="font-display-bold text-foreground"
-                  style={{ fontSize: 20 }}
-                >
-                  {displayName}
-                </Text>
-                <Text
-                  className="text-muted-foreground font-sans-medium"
-                  style={{ fontSize: 13, marginTop: 2 }}
-                >
-                  {appUser?.email}
-                </Text>
+                <SectionHeading>{displayName}</SectionHeading>
+                <Caption style={{ marginTop: 2 }}>{appUser?.email}</Caption>
               </View>
             </View>
           </SafeAreaView>
@@ -216,12 +247,20 @@ export default function SettingsScreen() {
             <SettingsItem
               icon={<User size={20} color={THEME.light.primary} />}
               label="Edit Profile"
-              onPress={() => toast.success("Coming soon")}
+              badge={{ text: "Coming Soon", color: THEME.light.primary }}
+              onPress={() => {}}
             />
             <SettingsItem
               icon={<Lock size={20} color={THEME.light.primary} />}
               label="Change Password"
-              onPress={() => toast.success("Coming soon")}
+              badge={{ text: "Coming Soon", color: THEME.light.primary }}
+              onPress={() => {}}
+            />
+            <SettingsItem
+              icon={<Lock size={20} color={THEME.light.primary} />}
+              label="Change Password"
+              badge={{ text: "Coming Soon", color: THEME.light.primary }}
+              onPress={() => {}}
             />
             <SettingsItem
               icon={<Users size={20} color={THEME.light.primary} />}
@@ -245,12 +284,13 @@ export default function SettingsScreen() {
             <SettingsItem
               icon={<Bell size={20} color={THEME.light.secondary} />}
               label="Notifications"
-              onPress={() => toast.success("Coming soon")}
+              badge={{ text: "Coming Soon", color: THEME.light.secondary }}
+              onPress={() => {}}
             />
             <SettingsItem
               icon={<CreditCard size={20} color={THEME.light.secondary} />}
               label="Subscription"
-              badge="Coming Soon"
+              badge={{ text: "Coming Soon", color: THEME.light.secondary }}
               onPress={() => {}}
               isLast
             />
@@ -322,7 +362,8 @@ export default function SettingsScreen() {
             <SettingsItem
               icon={<Heart size={20} color={THEME.light.primary} />}
               label="Help Center"
-              onPress={() => toast.success("Coming soon")}
+              badge={{ text: "Coming Soon", color: THEME.light.primary }}
+              onPress={() => {}}
             />
             <SettingsItem
               icon={<LogOut size={20} color={THEME.light.destructive} />}
@@ -333,6 +374,14 @@ export default function SettingsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <AvatarPickerModal
+        visible={avatarModalVisible}
+        onClose={() => !updatingAvatar && setAvatarModalVisible(false)}
+        onSelectPreset={handleSelectPreset}
+        onSelectImage={handleSelectImage}
+        uploading={updatingAvatar}
+      />
     </View>
   );
 }

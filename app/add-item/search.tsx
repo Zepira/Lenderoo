@@ -6,17 +6,22 @@ import {
   Image,
   ActivityIndicator,
   Pressable,
-  TouchableOpacity,
+  TextInput,
 } from "react-native";
-import { Input } from "@/components/ui/input";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ArrowLeft, Search, BookOpen } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { Label } from "@/components/ui/label";
-import { Card, CardHeader } from "@/components/ui/card";
-import { Book, Search } from "lucide-react-native";
-import { FloatingBackButton } from "components/FloatingBackButton";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { THEME } from "@/lib/theme";
+import {
+  PageTitle,
+  TinyLabel,
+  BodyStrong,
+  Caption,
+  LabelStrong,
+} from "@/components/ui/typography";
 import { searchBooks } from "lib/hardcover-api";
-import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 
 interface HardcoverBook {
   id: string;
@@ -36,55 +41,33 @@ interface HardcoverBook {
 
 export default function SearchBookScreen() {
   const router = useRouter();
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
 
-  // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<HardcoverBook[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState("");
 
-  const handleSearchHardcover = async () => {
+  const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-
     try {
       setSearching(true);
-      setErrors({});
-
-      // Use Hardcover API helper to search for books
+      setError("");
       const apiToken = process.env.EXPO_PUBLIC_HARDCOVER_API_TOKEN || "";
       const results = await searchBooks(searchQuery, apiToken);
 
-      console.log("📖 Search results count:", results.length);
-      if (results.length > 0) {
-        console.log("📖 First result sample:", results[0]);
-      }
-
-      // Transform Hardcover results to our format
       const books: HardcoverBook[] = results.map((entry: any) => {
         const book = entry.document;
-        // Extract ISBN
-        const isbn = book.isbn_13 || book.isbn_10 || undefined;
-
-        // Get publication year from release_date
         const publicationYear = book.release_date
           ? new Date(book.release_date).getFullYear()
           : undefined;
-
-        // Get genres from cached_tags (user-generated tags)
         const genres = book.genres || [];
-
-        // Get author - try multiple possible fields
         let author: string[] = [];
-        book.contributions.map((contribution: any) => {
-          if (
-            !contribution.contribution &&
-            contribution.author &&
-            contribution.author.name
-          ) {
-            author.push(contribution.author.name);
-          }
+        book.contributions.map((c: any) => {
+          if (!c.contribution && c.author?.name) author.push(c.author.name);
         });
-
         return {
           id: book.id?.toString() || "",
           title: book.title || "",
@@ -95,7 +78,7 @@ export default function SearchBookScreen() {
           seriesNumber: book.featured_series_position || undefined,
           genre: genres,
           description: book.description || undefined,
-          isbn,
+          isbn: book.isbn_13 || book.isbn_10 || undefined,
           pageCount: book.pages || undefined,
           publicationYear,
           averageRating: book.rating || undefined,
@@ -103,26 +86,17 @@ export default function SearchBookScreen() {
       });
 
       setSearchResults(books);
-
       if (books.length === 0) {
-        setErrors({
-          general: "No books found. Try a different search or enter manually.",
-        });
+        setError("No books found. Try a different search or enter manually.");
       }
-    } catch (error) {
-      console.error("Book search error:", error);
-      setErrors({
-        general:
-          "Failed to search for books. Please try again or fill in manually.",
-      });
+    } catch {
+      setError("Failed to search. Please try again or enter manually.");
     } finally {
       setSearching(false);
     }
   };
 
   const handleSelectBook = (book: HardcoverBook) => {
-    console.log("handleSelectBook:", book);
-    // Navigate to book form with pre-filled data
     const params = new URLSearchParams({
       title: book.title,
       author: book.author.join(", "),
@@ -130,154 +104,210 @@ export default function SearchBookScreen() {
       ...(book.seriesNumber && { seriesNumber: book.seriesNumber }),
       ...(book.seriesId && { seriesId: book.seriesId.toString() }),
       ...(book.coverUrl && { coverUrl: book.coverUrl }),
-      ...(book.genre && {
-        genre: Array.isArray(book.genre) ? book.genre.join(", ") : book.genre,
-      }),
+      ...(book.genre && { genre: Array.isArray(book.genre) ? book.genre.join(", ") : book.genre }),
       ...(book.description && { description: book.description }),
       ...(book.isbn && { isbn: book.isbn }),
       ...(book.pageCount && { pageCount: book.pageCount.toString() }),
-      ...(book.publicationYear && {
-        publicationYear: book.publicationYear.toString(),
-      }),
-      ...(book.averageRating && {
-        averageRating: book.averageRating.toString(),
-      }),
+      ...(book.publicationYear && { publicationYear: book.publicationYear.toString() }),
+      ...(book.averageRating && { averageRating: book.averageRating.toString() }),
       ...(book.id && { hardcoverId: book.id }),
     });
-
     router.push(`/add-item/book?${params.toString()}` as any);
   };
 
-  const handleManualEntry = () => {
-    router.push("/add-item/book" as any);
-  };
-
   return (
-    <SafeAreaWrapper>
-      <FloatingBackButton />
-
-      <ScrollView
-        className="flex-1 bg-background"
-        keyboardShouldPersistTaps="handled"
+    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+      {/* Header */}
+      <View
+        style={{
+          backgroundColor: theme.card,
+          borderBottomLeftRadius: 40,
+          borderBottomRightRadius: 40,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          elevation: 4,
+          marginBottom: 24,
+        }}
       >
-        <View className="p-4 gap-4">
-          {errors.general && (
-            <View className="p-3 bg-red-50 rounded-lg border border-red-200">
-              <Text variant="small" className="text-red-600">
-                {errors.general}
-              </Text>
-            </View>
-          )}
-
-          {/* Search Section */}
-          <View className="gap-3">
-            <View className="gap-2 items-center">
-              <Label className="text-xl font-semibold  px-8">
-                Search for a Book
-              </Label>
-              <Text variant="muted">
-                Search Hardcover to auto-fill book details
-              </Text>
-            </View>
-
-            <View className="flex-row gap-2">
-              <Input
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Enter book title or author..."
-                onSubmitEditing={handleSearchHardcover}
-                className="flex-1"
-                autoFocus
-              />
-              <Button
-                onPress={handleSearchHardcover}
-                disabled={!searchQuery.trim() || searching}
-                className="bg-blue-600"
-              >
-                {searching ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <>
-                    <Search size={16} color="white" />
-                    <Text className="text-white">Search</Text>
-                  </>
-                )}
-              </Button>
-            </View>
-
-            {searchResults.length > 0 && (
-              <View className="gap-2">
-                <Text variant="large" className="font-semibold">
-                  Search Results ({searchResults.length})
-                </Text>
-                {searchResults.map((book, index) => {
-                  console.log("Rendering book item:", book.title);
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        console.log("Touch detected for book:", book.title);
-                        handleSelectBook(book);
-                      }}
-                      style={{ marginBottom: 8 }}
-                    >
-                      <Card pointerEvents="none">
-                        <CardHeader pointerEvents="none">
-                          <View className="flex-row gap-3 items-center">
-                          <View className="w-[50px] h-[75px] rounded overflow-hidden items-center justify-center bg-muted">
-                            {book.coverUrl ? (
-                              <Image
-                                source={{ uri: book.coverUrl }}
-                                style={{ width: 50, height: 75 }}
-                                resizeMode="cover"
-                              />
-                            ) : (
-                              <Book size={24} color="#9ca3af" />
-                            )}
-                          </View>
-                          <View className="flex-1 gap-1">
-                            <Text variant="large" className="font-semibold">
-                              {book.title}
-                            </Text>
-                            <Text variant="muted">
-                              {book.author.join(", ")}
-                            </Text>
-                            {book.seriesName && (
-                              <Text variant="small" className="text-blue-600">
-                                {book.seriesName}{" "}
-                                {book.seriesNumber && `#${book.seriesNumber}`}
-                              </Text>
-                            )}
-                            {book.averageRating && (
-                              <View className="flex-row items-center gap-1">
-                                <Text
-                                  variant="small"
-                                  className="text-yellow-600"
-                                >
-                                  ★ {book.averageRating.toFixed(1)}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                        </View>
-                      </CardHeader>
-                    </Card>
-                  </TouchableOpacity>
-                );
+        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
+          <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+              <Pressable
+                onPress={() => router.back()}
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.6 : 1,
                 })}
-              </View>
-            )}
-
-            {/* Manual Entry Option */}
-            <View className="pt-2">
-              <Button variant="outline" size="sm" onPress={handleManualEntry}>
-                <Text>Can't find it? Enter manually</Text>
-              </Button>
+              >
+                <ArrowLeft size={22} color={theme.mutedForeground} />
+              </Pressable>
+              <PageTitle>Add a Book</PageTitle>
             </View>
           </View>
+        </SafeAreaView>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
+      >
+        {/* Search card */}
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderRadius: 32,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: theme.border,
+            gap: 16,
+          }}
+        >
+          <View style={{ gap: 4 }}>
+            <TinyLabel>Search Hardcover</TinyLabel>
+            <Caption>Find your book to auto-fill all details</Caption>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: isDark ? theme.muted : "#F3F4F6",
+              borderRadius: 16,
+              paddingHorizontal: 14,
+              gap: 10,
+            }}
+          >
+            <Search size={18} color={theme.mutedForeground} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearch}
+              placeholder="Title or author…"
+              placeholderTextColor={theme.mutedForeground}
+              returnKeyType="search"
+              autoFocus
+              style={{
+                flex: 1,
+                paddingVertical: 14,
+                fontSize: 15,
+                color: theme.foreground,
+              }}
+            />
+          </View>
+
+          <Button
+            onPress={handleSearch}
+            disabled={!searchQuery.trim() || searching}
+          >
+            {searching ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text className="text-white font-bold">Search</Text>
+            )}
+          </Button>
+
+          {error ? (
+            <View
+              style={{
+                backgroundColor: theme.destructive + "18",
+                borderRadius: 12,
+                padding: 12,
+                borderWidth: 1,
+                borderColor: theme.destructive + "33",
+              }}
+            >
+              <Caption style={{ color: theme.destructive }}>{error}</Caption>
+            </View>
+          ) : null}
         </View>
+
+        {/* Results */}
+        {searchResults.length > 0 && (
+          <View style={{ gap: 10 }}>
+            <TinyLabel style={{ paddingHorizontal: 4 }}>
+              {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}
+            </TinyLabel>
+            {searchResults.map((book, i) => (
+              <Pressable
+                key={i}
+                onPress={() => handleSelectBook(book)}
+                style={({ pressed }) => ({
+                  backgroundColor: theme.card,
+                  borderRadius: 24,
+                  padding: 16,
+                  flexDirection: "row",
+                  gap: 14,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  opacity: pressed ? 0.75 : 1,
+                })}
+              >
+                {/* Cover */}
+                <View
+                  style={{
+                    width: 54,
+                    height: 78,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    backgroundColor: THEME.light.primary + "18",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  {book.coverUrl ? (
+                    <Image
+                      source={{ uri: book.coverUrl }}
+                      style={{ width: 54, height: 78 }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <BookOpen size={24} color={THEME.light.primary} />
+                  )}
+                </View>
+
+                {/* Info */}
+                <View style={{ flex: 1, justifyContent: "center", gap: 4 }}>
+                  <BodyStrong numberOfLines={2}>{book.title}</BodyStrong>
+                  {book.author.length > 0 && (
+                    <Caption numberOfLines={1}>{book.author.join(", ")}</Caption>
+                  )}
+                  {book.seriesName && (
+                    <LabelStrong style={{ color: THEME.light.primary, fontSize: 11 }} numberOfLines={1}>
+                      {book.seriesName}{book.seriesNumber ? ` #${book.seriesNumber}` : ""}
+                    </LabelStrong>
+                  )}
+                  {book.averageRating && (
+                    <Caption>★ {book.averageRating.toFixed(1)}</Caption>
+                  )}
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* Manual entry */}
+        <Pressable
+          onPress={() => router.push("/add-item/book" as any)}
+          style={({ pressed }) => ({
+            alignItems: "center",
+            paddingVertical: 16,
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Caption style={{ textDecorationLine: "underline" }}>
+            Can't find it? Enter manually
+          </Caption>
+        </Pressable>
       </ScrollView>
-    </SafeAreaWrapper>
+    </View>
   );
 }

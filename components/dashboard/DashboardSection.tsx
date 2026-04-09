@@ -1,6 +1,6 @@
 import { View, ScrollView } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
+import { SectionHeading, BodyStrong } from '@/components/ui/typography';
 import { Button } from '@/components/ui/button';
 import { THEME } from '@/lib/theme';
 import { DashboardItemCard } from './DashboardItemCard';
@@ -28,12 +28,10 @@ export function DashboardSection({
   return (
     <View>
       <View className="flex-row items-center justify-between mb-4">
-        <Text className="font-display-bold text-foreground" style={{ fontSize: 20 }}>
-          {title}
-        </Text>
+        <SectionHeading>{title}</SectionHeading>
         {onViewAll && (
           <Button variant="link" size="sm" onPress={onViewAll} className="-mr-2">
-            <Text className="font-sans-bold text-primary text-sm">View All</Text>
+            <BodyStrong className="text-primary" style={{ fontSize: 14, lineHeight: 20 }}>View All</BodyStrong>
             <ChevronRight size={15} color={THEME.light.primary} />
           </Button>
         )}
@@ -41,7 +39,7 @@ export function DashboardSection({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 16, paddingBottom: 4 }}
+        contentContainerStyle={{ gap: 12, paddingBottom: 4 }}
       >
         {items.map((item) => (
           <DashboardItemCard

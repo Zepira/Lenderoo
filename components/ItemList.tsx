@@ -1,7 +1,7 @@
 /**
  * ItemList Component
  *
- * Scrollable list of items with pull-to-refresh and empty state
+ * Scrollable 2-column grid of items with pull-to-refresh and empty state.
  */
 
 import {
@@ -12,33 +12,25 @@ import {
   ActivityIndicator,
 } from "react-native";
 import type { Item, Friend } from "lib/types";
-import { ItemCard } from "./ItemCard";
+import { ItemTile } from "./ItemTile";
 import { EmptyState } from "./EmptyState";
 import { EMPTY_STATES } from "lib/constants";
+import { THEME } from "@/lib/theme";
 
 interface ItemListProps {
-  /** Array of items to display */
   items: Item[];
-  /** Map of friend ID to Friend object */
   friendsMap: Record<string, Friend>;
-  /** Handler when an item is pressed */
   onItemPress?: (item: Item) => void;
-  /** Handler for pull to refresh */
   onRefresh?: () => void;
-  /** Whether the list is refreshing */
   refreshing?: boolean;
-  /** Whether the list is loading */
   loading?: boolean;
-  /** Custom empty state */
   emptyState?: {
     title: string;
     message: string;
     actionLabel?: string;
     onAction?: () => void;
   };
-  /** Content padding */
   contentPadding?: number;
-  /** Optional header component to render above the list */
   headerComponent?: React.ReactElement;
 }
 
@@ -54,18 +46,16 @@ export function ItemList({
   headerComponent,
 }: ItemListProps) {
   const renderItem = ({ item }: ListRenderItemInfo<Item>) => {
-    // Get friend if item is borrowed (borrowedBy will be undefined for available items)
     const friend = item.borrowedBy ? friendsMap[item.borrowedBy] : undefined;
+    if (item.borrowedBy && !friend) return <View style={{ flex: 1 }} />;
 
-    // For lent items, skip if friend not found (data integrity issue)
-    // For available items, friend will be undefined which is expected
-    if (item.borrowedBy && !friend) return null;
+    const sublabel = friend ? friend.name : undefined;
 
     return (
-      <View className="pb-3">
-        <ItemCard
+      <View style={{ flex: 1 }}>
+        <ItemTile
           item={item}
-          friend={friend}
+          sublabel={sublabel}
           onPress={() => onItemPress?.(item)}
         />
       </View>
@@ -75,43 +65,46 @@ export function ItemList({
   const renderEmpty = () => {
     if (loading) {
       return (
-        <View className="flex-1 items-center justify-center p-6">
-          <ActivityIndicator size="large" color="#3b82f6" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <ActivityIndicator size="large" color={THEME.light.primary} />
         </View>
       );
     }
-
-    const emptyConfig = emptyState || EMPTY_STATES.NO_ITEMS;
-
+    const cfg = emptyState || EMPTY_STATES.NO_ITEMS;
     return (
       <EmptyState
         icon="Package"
-        title={emptyConfig.title}
-        message={emptyConfig.message}
-        actionLabel={emptyConfig.actionLabel}
-        onAction={"onAction" in emptyConfig ? emptyConfig.onAction : undefined}
+        title={cfg.title}
+        message={cfg.message}
+        actionLabel={cfg.actionLabel}
+        onAction={"onAction" in cfg ? cfg.onAction : undefined}
       />
     );
   };
-
-  const keyExtractor = (item: Item) => item.id;
 
   return (
     <FlatList
       data={items}
       renderItem={renderItem}
-      keyExtractor={keyExtractor}
+      keyExtractor={(item) => item.id}
+      numColumns={2}
+      columnWrapperStyle={{ gap: 12 }}
       contentContainerStyle={{
         paddingHorizontal: contentPadding,
-        paddingTop: headerComponent ? 0 : contentPadding,
-        paddingBottom: contentPadding + 80, // Extra padding for FAB
+        paddingTop: contentPadding,
+        paddingBottom: contentPadding + 80,
+        gap: 12,
         flexGrow: 1,
       }}
       ListHeaderComponent={headerComponent}
       ListEmptyComponent={renderEmpty}
       refreshControl={
         onRefresh ? (
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={THEME.light.primary}
+          />
         ) : undefined
       }
       showsVerticalScrollIndicator={false}

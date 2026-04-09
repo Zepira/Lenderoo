@@ -1,16 +1,36 @@
 import { useState, useEffect } from "react";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
-import { ScrollView, View, Alert, Pressable, Platform } from "react-native";
-import { Button } from "@/components/ui/button";
+import {
+  ScrollView,
+  View,
+  Image,
+  Alert,
+  Pressable,
+  Platform,
+  ActivityIndicator,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  ArrowLeft,
+  Trash2,
+  Clock,
+  History,
+  Package,
+  CheckCircle2,
+  Send,
+  BookOpen,
+  Wrench,
+  Shirt,
+  Smartphone,
+  Gamepad2,
+  Trophy,
+  UtensilsCrossed,
+  X,
+} from "lucide-react-native";
 import { Text } from "@/components/ui/text";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import * as LucideIcons from "lucide-react-native";
-import { ItemCard } from "components/ItemCard";
-import { FloatingBackButton } from "components/FloatingBackButton";
-import { getInitials, formatCount } from "lib/utils";
-import type { Item } from "lib/types";
-import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
+import { resolveAvatarSource } from "@/lib/avatar-service";
+import { getInitials } from "lib/utils";
+import type { Item, ItemCategory } from "lib/types";
 import {
   getFriendUserById,
   getItemsBorrowedByFriend,
@@ -25,8 +45,37 @@ import {
 import type { BorrowRequestWithDetails } from "@/lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
+import { THEME } from "@/lib/theme";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import {
+  PageTitle,
+  SectionHeading,
+  StatDisplay,
+  BodyStrong,
+  LabelStrong,
+  Caption,
+  TinyLabel,
+} from "@/components/ui/typography";
 
-// Convert item data from DB to Item type
+// ── Category config (mirrors DashboardItemCard) ───────────────────────────────
+const CATEGORY_CONFIG: Record<
+  ItemCategory,
+  { color: string; Icon: React.ComponentType<{ size: number; color: string }> }
+> = {
+  book:        { color: THEME.light.primary,     Icon: BookOpen },
+  tool:        { color: '#F59E0B',               Icon: Wrench },
+  clothing:    { color: THEME.light.secondary,   Icon: Shirt },
+  electronics: { color: '#8B5CF6',               Icon: Smartphone },
+  game:        { color: THEME.light.destructive, Icon: Gamepad2 },
+  sports:      { color: '#10B981',               Icon: Trophy },
+  kitchen:     { color: '#F97316',               Icon: UtensilsCrossed },
+  other:       { color: '#6B7280',               Icon: Package },
+};
+
+// ── Tab type ──────────────────────────────────────────────────────────────────
+type Tab = 'library' | 'borrowing' | 'history';
+
+// ── DB conversion ─────────────────────────────────────────────────────────────
 function convertItemFromDb(data: any): Item {
   return {
     id: data.id,
@@ -46,264 +95,134 @@ function convertItemFromDb(data: any): Item {
   };
 }
 
+// ── Screen ────────────────────────────────────────────────────────────────────
 export default function FriendDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === 'dark';
+  const theme = isDark ? THEME.dark : THEME.light;
+
+  const [activeTab, setActiveTab] = useState<Tab>('library');
   const [friend, setFriend] = useState<FriendUser | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [ownedItems, setOwnedItems] = useState<Item[]>([]);
-  const [borrowRequests, setBorrowRequests] = useState<
-    Map<string, BorrowRequestWithDetails>
-  >(new Map());
+  const [borrowRequests, setBorrowRequests] = useState<Map<string, BorrowRequestWithDetails>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [itemsLoading, setItemsLoading] = useState(true);
   const [ownedItemsLoading, setOwnedItemsLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [requestingItemId, setRequestingItemId] = useState<string | null>(null);
 
-  // Load friend data
+  // Load friend
   useEffect(() => {
     async function loadFriend() {
       if (!id) return;
-
       try {
         setLoading(true);
-        const friendData = await getFriendUserById(id);
-
-        if (!friendData) {
-          // Friend not found, go back using history
-          router.back();
-          return;
-        }
-
-        setFriend(friendData);
-      } catch (error) {
-        console.error("Error loading friend:", error);
-        toast.error("Failed to load friend details");
+        const data = await getFriendUserById(id);
+        if (!data) { router.back(); return; }
+        setFriend(data);
+      } catch {
+        toast.error('Failed to load friend details');
       } finally {
         setLoading(false);
       }
     }
-    console.log("loading friend");
     loadFriend();
   }, [id, router, navigation]);
 
-  // Load items borrowed by friend
+  // Load items borrowed by friend (from me)
   useEffect(() => {
     async function loadItems() {
       if (!id) return;
-
       try {
-        setItemsLoading(true);
-        const itemsData = await getItemsBorrowedByFriend(id);
-        const convertedItems = itemsData.map(convertItemFromDb);
-        setItems(convertedItems);
-      } catch (error) {
-        console.error("Error loading items:", error);
-      } finally {
-        setItemsLoading(false);
-      }
+        const data = await getItemsBorrowedByFriend(id);
+        setItems(data.map(convertItemFromDb));
+      } catch {}
     }
-
     loadItems();
-
     if (!id) return;
-
-    // Subscribe to realtime updates for items
-    const channel = supabase
-      .channel(`friend-${id}-borrowed-items`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'items',
-        },
-        (payload) => {
-          console.log('📡 Friend borrowed items realtime update:', payload);
-          loadItems();
-        }
-      )
+    const ch = supabase.channel(`friend-${id}-borrowed-items`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, loadItems)
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(ch); };
   }, [id]);
 
   // Load items owned by friend
   useEffect(() => {
     async function loadOwnedItems() {
       if (!id) return;
-
       try {
         setOwnedItemsLoading(true);
-        const itemsData = await getItemsOwnedByFriend(id);
-        const convertedItems = itemsData.map(convertItemFromDb);
-        setOwnedItems(convertedItems);
-
-        // Load borrow requests for each item
-        const requestsMap = new Map<string, BorrowRequestWithDetails>();
-        for (const item of convertedItems) {
+        const data = await getItemsOwnedByFriend(id);
+        const converted = data.map(convertItemFromDb);
+        setOwnedItems(converted);
+        const map = new Map<string, BorrowRequestWithDetails>();
+        for (const item of converted) {
           try {
-            const requests = await getBorrowRequestsForItem(item.id);
-            const myPendingRequest = requests.find(
-              (r) => r.status === "pending"
-            );
-            if (myPendingRequest) {
-              requestsMap.set(item.id, myPendingRequest);
-            }
-          } catch (error) {
-            console.error(`Error loading requests for item ${item.id}:`, error);
-          }
+            const reqs = await getBorrowRequestsForItem(item.id);
+            const pending = reqs.find(r => r.status === 'pending');
+            if (pending) map.set(item.id, pending);
+          } catch {}
         }
-        setBorrowRequests(requestsMap);
-      } catch (error) {
-        console.error("Error loading owned items:", error);
-      } finally {
+        setBorrowRequests(map);
+      } catch {} finally {
         setOwnedItemsLoading(false);
       }
     }
-
     loadOwnedItems();
-
     if (!id) return;
-
-    // Subscribe to realtime updates for items and borrow requests
-    const itemsChannel = supabase
-      .channel(`friend-${id}-owned-items`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'items',
-        },
-        (payload) => {
-          console.log('📡 Friend owned items realtime update:', payload);
-          loadOwnedItems();
-        }
-      )
+    const ich = supabase.channel(`friend-${id}-owned-items`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, loadOwnedItems)
       .subscribe();
-
-    const requestsChannel = supabase
-      .channel(`friend-${id}-borrow-requests`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'borrow_requests',
-        },
-        (payload) => {
-          console.log('📡 Borrow requests realtime update:', payload);
-          loadOwnedItems(); // Reload to update borrow requests
-        }
-      )
+    const rch = supabase.channel(`friend-${id}-borrow-requests`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_requests' }, loadOwnedItems)
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(itemsChannel);
-      supabase.removeChannel(requestsChannel);
-    };
+    return () => { supabase.removeChannel(ich); supabase.removeChannel(rch); };
   }, [id]);
 
-  if (loading || !friend) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <Text variant="muted">Loading...</Text>
-      </View>
-    );
-  }
-
-  const activeItems = items.filter((item) => !item.returnedDate);
-  const returnedItems = items.filter((item) => item.returnedDate);
-  const totalItemsBorrowed = items.length;
-  const currentItemsBorrowed = activeItems.length;
+  const activeItems   = items.filter(i => !i.returnedDate);
+  const returnedItems = items.filter(i => i.returnedDate);
 
   const handleDelete = async () => {
     if (!friend) return;
-
     if (activeItems.length > 0) {
-      const message = `Cannot delete ${friend.name} because they still have ${
-        activeItems.length
-      } unreturned item${
-        activeItems.length !== 1 ? "s" : ""
-      }.\n\nPlease mark items as returned before deleting this friend.`;
-
-      if (Platform.OS === "web") {
-        alert(message);
-      } else {
-        Alert.alert("Cannot Delete Friend", message, [{ text: "OK" }]);
-      }
+      const msg = `Cannot remove ${friend.name} — they still have ${activeItems.length} unreturned item${activeItems.length !== 1 ? 's' : ''}.`;
+      Platform.OS === 'web' ? alert(msg) : Alert.alert('Cannot Remove', msg, [{ text: 'OK' }]);
       return;
     }
-
-    const confirmMessage = `Are you sure you want to remove ${friend.name} from your friends? This action cannot be undone.`;
-
-    const confirmed = await (async () => {
-      if (Platform.OS === "web") {
-        return confirm(confirmMessage);
-      } else {
-        return new Promise<boolean>((resolve) => {
-          Alert.alert("Remove Friend", confirmMessage, [
-            { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-            {
-              text: "Remove",
-              style: "destructive",
-              onPress: () => resolve(true),
-            },
-          ]);
-        });
-      }
-    })();
-
+    const msg = `Remove ${friend.name} from your friends? This cannot be undone.`;
+    const confirmed = await (Platform.OS === 'web'
+      ? Promise.resolve(confirm(msg))
+      : new Promise<boolean>(res => Alert.alert('Remove Friend', msg, [
+          { text: 'Cancel', style: 'cancel', onPress: () => res(false) },
+          { text: 'Remove', style: 'destructive', onPress: () => res(true) },
+        ])));
     if (!confirmed) return;
-
     try {
       setDeleting(true);
       await removeFriend(friend.id);
-      toast.success(`Removed ${friend.name} from friends`);
+      toast.success(`Removed ${friend.name}`);
       router.back();
-    } catch (error) {
-      console.error("Failed to remove friend:", error);
-      toast.error("Failed to remove friend");
+    } catch {
+      toast.error('Failed to remove friend');
     } finally {
       setDeleting(false);
     }
   };
 
-  const handleItemPress = (item: Item) => {
-    router.push(`/library/${item.id}` as any);
-  };
-
   const handleRequestBorrow = async (item: Item) => {
     if (!friend) return;
-
     try {
       setRequestingItemId(item.id);
       await createBorrowRequest(item.id, friend.id);
       toast.success(`Request sent to ${friend.name}`);
-
-      // Reload owned items and requests
-      const itemsData = await getItemsOwnedByFriend(friend.id);
-      const convertedItems = itemsData.map(convertItemFromDb);
-      setOwnedItems(convertedItems);
-
-      // Reload requests
-      const requests = await getBorrowRequestsForItem(item.id);
-      const myPendingRequest = requests.find((r) => r.status === "pending");
-      setBorrowRequests((prev) => {
-        const newMap = new Map(prev);
-        if (myPendingRequest) {
-          newMap.set(item.id, myPendingRequest);
-        }
-        return newMap;
-      });
-    } catch (error: any) {
-      console.error("Error requesting item:", error);
-      toast.error(error.message || "Failed to send request");
+      const reqs = await getBorrowRequestsForItem(item.id);
+      const pending = reqs.find(r => r.status === 'pending');
+      setBorrowRequests(prev => { const m = new Map(prev); if (pending) m.set(item.id, pending); return m; });
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to send request');
     } finally {
       setRequestingItemId(null);
     }
@@ -312,284 +231,448 @@ export default function FriendDetailScreen() {
   const handleCancelRequest = async (item: Item) => {
     const request = borrowRequests.get(item.id);
     if (!request) return;
-
     try {
       setRequestingItemId(item.id);
-      // Import the cancel function
-      const { cancelBorrowRequest } = await import(
-        "@/lib/borrow-requests-service"
-      );
+      const { cancelBorrowRequest } = await import('@/lib/borrow-requests-service');
       await cancelBorrowRequest(request.id);
-      toast.success("Request cancelled");
-
-      // Remove from requests map
-      setBorrowRequests((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(item.id);
-        return newMap;
-      });
-    } catch (error: any) {
-      console.error("Error cancelling request:", error);
-      toast.error(error.message || "Failed to cancel request");
+      toast.success('Request cancelled');
+      setBorrowRequests(prev => { const m = new Map(prev); m.delete(item.id); return m; });
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to cancel request');
     } finally {
       setRequestingItemId(null);
     }
   };
 
-  const getItemStatus = (item: Item) => {
-    const hasPendingRequest = borrowRequests.has(item.id);
+  // ── Loading state ────────────────────────────────────────────────────────────
+  if (loading || !friend) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background }}>
+        <ActivityIndicator size="large" color={THEME.light.primary} />
+      </View>
+    );
+  }
 
-    if (item.borrowedBy && !item.returnedDate) {
-      return {
-        text: `Borrowed by ${item.borrowedBy === id ? "them" : "someone"}`,
-        color: "text-gray-500",
-      };
-    }
-    if (hasPendingRequest) {
-      return { text: "Request Pending", color: "text-blue-600" };
-    }
-    return { text: "Available", color: "text-green-600" };
-  };
+  const firstName = friend.name.split(' ')[0];
+  const avatarSrc = resolveAvatarSource(friend.avatarUrl);
+
+  const TABS: { key: Tab; label: string; count: number }[] = [
+    { key: 'library',  label: 'Library',   count: ownedItems.length },
+    { key: 'borrowing', label: 'Borrowed',  count: activeItems.length },
+    { key: 'history',  label: 'History',   count: returnedItems.length },
+  ];
 
   return (
-    <SafeAreaWrapper>
-      <FloatingBackButton />
+    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : '#F3F4F6' }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 160 }}>
 
-      <ScrollView className="flex-1 bg-background">
-        <View className="gap-4">
-          {/* Friend Header */}
-          <View className="items-center gap-4 p-6 bg-muted">
-            <Avatar className="w-24 h-24" alt={friend.name}>
-              {friend.avatarUrl ? (
-                <AvatarImage source={{ uri: friend.avatarUrl }} />
-              ) : (
-                <AvatarFallback>
-                  <Text variant="h1" className="font-bold">
-                    {getInitials(friend.name)}
-                  </Text>
-                </AvatarFallback>
-              )}
-            </Avatar>
+        {/* ── Header card ── */}
+        <View style={{
+          backgroundColor: theme.card,
+          borderBottomLeftRadius: 40,
+          borderBottomRightRadius: 40,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          elevation: 4,
+          marginBottom: 24,
+        }}>
+          <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+            <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28 }}>
 
-            <View className="items-center gap-2">
-              <Text variant="h1" className="font-bold">
-                {friend.name}
-              </Text>
+              {/* Top row: back + delete */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <Pressable
+                  onPress={() => router.back()}
+                  style={({ pressed }) => ({
+                    width: 40, height: 40, borderRadius: 12,
+                    backgroundColor: isDark ? theme.muted : '#F3F4F6',
+                    alignItems: 'center', justifyContent: 'center',
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <ArrowLeft size={22} color={theme.mutedForeground} />
+                </Pressable>
+                <Pressable
+                  onPress={handleDelete}
+                  disabled={deleting}
+                  style={({ pressed }) => ({
+                    width: 40, height: 40, borderRadius: 12,
+                    backgroundColor: THEME.light.destructive + '15',
+                    alignItems: 'center', justifyContent: 'center',
+                    opacity: pressed || deleting ? 0.6 : 1,
+                  })}
+                >
+                  <Trash2 size={18} color={THEME.light.destructive} />
+                </Pressable>
+              </View>
 
-              {/* Contact Info */}
-              {friend.email && (
-                <View className="items-center gap-1">
-                  {friend.email && (
-                    <View className="flex-row gap-2 items-center">
-                      <LucideIcons.Mail size={16} color="#9ca3af" />
-                      <Text variant="small" className="text-muted-foreground">
-                        {friend.email}
-                      </Text>
+              {/* Avatar + name */}
+              <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                <View style={{
+                  width: 96, height: 96,
+                  borderRadius: 32,
+                  overflow: 'hidden',
+                  borderWidth: 3,
+                  borderColor: THEME.light.primary + '33',
+                  backgroundColor: THEME.light.primary + '22',
+                  marginBottom: 12,
+                }}>
+                  {avatarSrc ? (
+                    <Image source={avatarSrc} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                      <BodyStrong className="text-primary" style={{ fontSize: 32, lineHeight: 42 }}>
+                        {getInitials(friend.name)}
+                      </BodyStrong>
                     </View>
                   )}
                 </View>
-              )}
+                <SectionHeading>{friend.name}</SectionHeading>
+                {friend.email && (
+                  <Caption style={{ marginTop: 4 }}>{friend.email}</Caption>
+                )}
+              </View>
+
+              {/* Stats row */}
+              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 32 }}>
+                <View style={{ alignItems: 'center' }}>
+                  <StatDisplay>{ownedItems.length}</StatDisplay>
+                  <TinyLabel>Items</TinyLabel>
+                </View>
+                <View style={{ width: 1, backgroundColor: theme.border }} />
+                <View style={{ alignItems: 'center' }}>
+                  <StatDisplay className="text-secondary">{activeItems.length}</StatDisplay>
+                  <TinyLabel>Borrowed</TinyLabel>
+                </View>
+                <View style={{ width: 1, backgroundColor: theme.border }} />
+                <View style={{ alignItems: 'center' }}>
+                  <StatDisplay className="text-muted-foreground">{returnedItems.length}</StatDisplay>
+                  <TinyLabel>Returned</TinyLabel>
+                </View>
+              </View>
+
             </View>
+          </SafeAreaView>
+        </View>
+
+        <View style={{ paddingHorizontal: 24, gap: 20 }}>
+
+          {/* ── Tab switcher ── */}
+          <View style={{
+            backgroundColor: theme.card,
+            borderRadius: 20,
+            padding: 6,
+            flexDirection: 'row',
+            gap: 4,
+            borderWidth: 1,
+            borderColor: theme.border,
+          }}>
+            {TABS.map(({ key, label, count }) => {
+              const active = activeTab === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => setActiveTab(key)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: 14,
+                    alignItems: 'center',
+                    backgroundColor: active ? THEME.light.primary : 'transparent',
+                  }}
+                >
+                  <TinyLabel
+                    style={{ color: active ? 'white' : theme.mutedForeground }}
+                    className="normal-case tracking-normal"
+                  >
+                    {label}
+                  </TinyLabel>
+                  {count > 0 && (
+                    <TinyLabel
+                      style={{
+                        color: active ? 'rgba(255,255,255,0.7)' : theme.mutedForeground,
+                        fontSize: 9,
+                      }}
+                    >
+                      {count}
+                    </TinyLabel>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
 
-          <View className="p-4 gap-4">
-            {/* Statistics */}
-            <View className="gap-3">
-              <Text variant="h3" className="font-semibold">
-                Statistics
-              </Text>
-
-              <View className="flex-row gap-3">
-                <View className="flex-1 gap-2 p-4 bg-blue-50 border border-blue-200 rounded-lg items-center">
-                  <Text className="text-4xl font-bold text-blue-600">
-                    {currentItemsBorrowed}
-                  </Text>
-                  <Text
-                    variant="small"
-                    className="text-muted-foreground text-center"
-                  >
-                    Currently Borrowed
-                  </Text>
-                </View>
-
-                <View className="flex-1 gap-2 p-4 bg-muted border border-border rounded-lg items-center">
-                  <Text className="text-4xl font-bold">
-                    {totalItemsBorrowed}
-                  </Text>
-                  <Text
-                    variant="small"
-                    className="text-muted-foreground text-center"
-                  >
-                    Total Borrowed
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <Separator />
-
-            {/* Their Items Section */}
-            <View className="gap-3">
-              <View className="flex-row justify-between items-center">
-                <Text variant="h3" className="font-semibold">
-                  Their Items
-                </Text>
-                <Text variant="small" className="text-muted-foreground">
-                  {formatCount(ownedItems.length, "item")}
-                </Text>
-              </View>
-
+          {/* ── Library tab ── */}
+          {activeTab === 'library' && (
+            <View>
               {ownedItemsLoading ? (
-                <View className="p-4 items-center">
-                  <Text variant="small" className="text-muted-foreground">
-                    Loading...
-                  </Text>
+                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                  <ActivityIndicator color={THEME.light.primary} />
                 </View>
               ) : ownedItems.length === 0 ? (
-                <View className="p-4 items-center gap-2">
-                  <LucideIcons.Package size={40} color="#9ca3af" />
-                  <Text
-                    variant="default"
-                    className="text-muted-foreground text-center"
-                  >
-                    {friend.name.split(" ")[0]} hasn't added any items yet
-                  </Text>
-                </View>
+                <EmptyState icon={<Package size={40} color={theme.mutedForeground} />}
+                  message={`${firstName} hasn't added any items yet`} />
               ) : (
-                <View className="gap-3">
-                  {ownedItems.map((item) => {
-                    const status = getItemStatus(item);
-                    const hasPendingRequest = borrowRequests.has(item.id);
-                    console.log("aaas", item.borrowedBy, hasPendingRequest);
-                    const isAvailable = !item.borrowedBy && !hasPendingRequest;
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                  {ownedItems.map(item => {
+                    const hasPending = borrowRequests.has(item.id);
+                    const isUnavailable = !!(item.borrowedBy && !item.returnedDate);
                     const isRequesting = requestingItemId === item.id;
+                    const cfg = CATEGORY_CONFIG[item.category] ?? CATEGORY_CONFIG.other;
+                    const imageUrl = item.images?.[0] ?? (item as any).imageUrl;
+
+                    let statusLabel = 'Available';
+                    let statusColor = THEME.light.primary;
+                    if (hasPending) { statusLabel = 'Requested'; statusColor = THEME.light.secondary; }
+                    else if (isUnavailable) { statusLabel = 'Borrowed'; statusColor = '#6B7280'; }
 
                     return (
-                      <View key={item.id} className="gap-2">
-                        <ItemCard item={item} onPress={() => {}} />
-                        <View className="flex-row items-center justify-between px-2">
-                          <Text variant="small" className={status.color}>
-                            {status.text}
-                          </Text>
-                          {isAvailable && (
-                            <Button
-                              size="sm"
-                              onPress={() => handleRequestBorrow(item)}
-                              disabled={isRequesting}
-                            >
-                              <LucideIcons.Send size={14} />
-                              <Text>Request to Borrow</Text>
-                            </Button>
+                      <View key={item.id} style={{
+                        width: '47%',
+                        backgroundColor: theme.card,
+                        borderRadius: 24,
+                        padding: 12,
+                        borderWidth: 1,
+                        borderColor: theme.border,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.04,
+                        shadowRadius: 4,
+                        elevation: 2,
+                      }}>
+                        {/* Image */}
+                        <View style={{
+                          aspectRatio: 3 / 4,
+                          borderRadius: 16,
+                          overflow: 'hidden',
+                          backgroundColor: cfg.color + '18',
+                          marginBottom: 10,
+                        }}>
+                          {imageUrl ? (
+                            <Image source={{ uri: imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                          ) : (
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                              <cfg.Icon size={36} color={cfg.color} />
+                            </View>
                           )}
-                          {hasPendingRequest && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onPress={() => handleCancelRequest(item)}
-                              disabled={isRequesting}
-                            >
-                              <Text>Cancel Request</Text>
-                            </Button>
-                          )}
+                          {/* Status badge */}
+                          <View style={{
+                            position: 'absolute', top: 8, right: 8,
+                            backgroundColor: statusColor + 'EE',
+                            borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3,
+                          }}>
+                            <TinyLabel style={{ color: 'white', fontSize: 8 }} className="normal-case tracking-normal">
+                              {statusLabel}
+                            </TinyLabel>
+                          </View>
                         </View>
+
+                        <BodyStrong style={{ fontSize: 13, lineHeight: 18, marginBottom: 8 }} numberOfLines={2}>
+                          {item.name}
+                        </BodyStrong>
+
+                        {/* Action button */}
+                        {!isUnavailable && !hasPending && (
+                          <Pressable
+                            onPress={() => handleRequestBorrow(item)}
+                            disabled={isRequesting}
+                            style={({ pressed }) => ({
+                              backgroundColor: THEME.light.primary + '18',
+                              borderRadius: 12,
+                              paddingVertical: 8,
+                              alignItems: 'center',
+                              flexDirection: 'row',
+                              justifyContent: 'center',
+                              gap: 4,
+                              opacity: pressed || isRequesting ? 0.6 : 1,
+                            })}
+                          >
+                            {isRequesting
+                              ? <ActivityIndicator size="small" color={THEME.light.primary} />
+                              : <>
+                                  <Send size={12} color={THEME.light.primary} />
+                                  <TinyLabel style={{ color: THEME.light.primary }} className="normal-case tracking-normal">
+                                    Borrow
+                                  </TinyLabel>
+                                </>
+                            }
+                          </Pressable>
+                        )}
+                        {hasPending && (
+                          <Pressable
+                            onPress={() => handleCancelRequest(item)}
+                            disabled={isRequesting}
+                            style={({ pressed }) => ({
+                              backgroundColor: isDark ? theme.muted : '#F3F4F6',
+                              borderRadius: 12,
+                              paddingVertical: 8,
+                              alignItems: 'center',
+                              flexDirection: 'row',
+                              justifyContent: 'center',
+                              gap: 4,
+                              opacity: pressed || isRequesting ? 0.6 : 1,
+                            })}
+                          >
+                            <X size={12} color={theme.mutedForeground} />
+                            <TinyLabel style={{ color: theme.mutedForeground }} className="normal-case tracking-normal">
+                              Cancel Request
+                            </TinyLabel>
+                          </Pressable>
+                        )}
+                        {isUnavailable && (
+                          <View style={{
+                            backgroundColor: isDark ? theme.muted : '#F3F4F6',
+                            borderRadius: 12, paddingVertical: 8,
+                            alignItems: 'center',
+                          }}>
+                            <TinyLabel className="normal-case tracking-normal" style={{ color: theme.mutedForeground }}>
+                              Unavailable
+                            </TinyLabel>
+                          </View>
+                        )}
                       </View>
                     );
                   })}
                 </View>
               )}
             </View>
+          )}
 
-            <Separator />
-
-            {/* Currently Borrowed Items */}
-            <View className="gap-3">
-              <View className="flex-row justify-between items-center">
-                <Text variant="h3" className="font-semibold">
-                  Currently Borrowed
-                </Text>
-                <Text variant="small" className="text-muted-foreground">
-                  {formatCount(activeItems.length, "item")}
-                </Text>
-              </View>
-
+          {/* ── Borrowing tab ── */}
+          {activeTab === 'borrowing' && (
+            <View style={{ gap: 12 }}>
               {activeItems.length === 0 ? (
-                <View className="p-4 items-center gap-2">
-                  <LucideIcons.CheckCircle size={40} color="#22c55e" />
-                  <Text
-                    variant="default"
-                    className="text-muted-foreground text-center"
-                  >
-                    {friend.name.split(" ")[0]} doesn't have any of your items
-                    right now
-                  </Text>
-                </View>
+                <EmptyState
+                  icon={<CheckCircle2 size={40} color={THEME.light.primary} />}
+                  message={`${firstName} doesn't have any of your items right now`}
+                />
               ) : (
-                <View className="gap-3">
-                  {activeItems.map((item) => (
-                    <ItemCard
-                      key={item.id}
-                      item={item}
-                      friend={friend}
-                      onPress={() => handleItemPress(item)}
-                    />
-                  ))}
-                </View>
+                activeItems.map(item => (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => router.push(`/library/${item.id}` as any)}
+                    style={({ pressed }) => ({
+                      backgroundColor: theme.card,
+                      borderRadius: 24,
+                      padding: 16,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      opacity: pressed ? 0.7 : 1,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.04,
+                      shadowRadius: 4,
+                      elevation: 2,
+                    })}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                      <View style={{
+                        width: 44, height: 44, borderRadius: 14,
+                        backgroundColor: THEME.light.secondary + '18',
+                        alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Clock size={20} color={THEME.light.secondary} />
+                      </View>
+                      <View>
+                        <BodyStrong numberOfLines={1}>{item.name}</BodyStrong>
+                        <Caption style={{ marginTop: 2 }}>
+                          {item.dueDate
+                            ? `Due ${item.dueDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
+                            : 'No due date set'}
+                        </Caption>
+                      </View>
+                    </View>
+                    <TinyLabel
+                      className="normal-case tracking-normal"
+                      style={{ color: THEME.light.secondary }}
+                    >
+                      Active
+                    </TinyLabel>
+                  </Pressable>
+                ))
               )}
             </View>
+          )}
 
-            {returnedItems.length > 0 && (
-              <>
-                <Separator />
-
-                {/* Previously Borrowed Items */}
-                <View className="gap-3">
-                  <View className="flex-row justify-between items-center">
-                    <Text variant="h3" className="font-semibold">
-                      Previously Borrowed
-                    </Text>
-                    <Text variant="small" className="text-muted-foreground">
-                      {formatCount(returnedItems.length, "item")}
-                    </Text>
-                  </View>
-
-                  <View className="gap-3">
-                    {returnedItems.map((item) => (
-                      <ItemCard
-                        key={item.id}
-                        item={item}
-                        friend={friend}
-                        onPress={() => handleItemPress(item)}
-                      />
-                    ))}
-                  </View>
-                </View>
-              </>
-            )}
-
-            <Separator />
-
-            {/* Metadata */}
-            <View className="gap-2">
-              <Text variant="small" className="text-muted-foreground">
-                Added {new Date(friend.createdAt).toLocaleDateString()}
-              </Text>
+          {/* ── History tab ── */}
+          {activeTab === 'history' && (
+            <View style={{ gap: 12 }}>
+              {returnedItems.length === 0 ? (
+                <EmptyState
+                  icon={<History size={40} color={theme.mutedForeground} />}
+                  message="No borrowing history yet"
+                />
+              ) : (
+                returnedItems.map(item => (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => router.push(`/library/${item.id}` as any)}
+                    style={({ pressed }) => ({
+                      backgroundColor: theme.card,
+                      borderRadius: 24,
+                      padding: 16,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      opacity: pressed ? 0.6 : 0.75,
+                    })}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                      <View style={{
+                        width: 44, height: 44, borderRadius: 14,
+                        backgroundColor: isDark ? theme.muted : '#F3F4F6',
+                        alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <History size={20} color={theme.mutedForeground} />
+                      </View>
+                      <View>
+                        <BodyStrong numberOfLines={1}>{item.name}</BodyStrong>
+                        <Caption style={{ marginTop: 2 }}>
+                          {item.returnedDate
+                            ? `Returned ${item.returnedDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                            : 'Returned'}
+                        </Caption>
+                      </View>
+                    </View>
+                    <TinyLabel className="normal-case tracking-normal">
+                      Done
+                    </TinyLabel>
+                  </Pressable>
+                ))
+              )}
             </View>
+          )}
 
-            {/* Action Buttons */}
-            <View className="gap-3 pt-2">
-              <Button
-                variant="outline"
-                onPress={handleDelete}
-                disabled={deleting}
-                className="border-red-200"
-              >
-                <LucideIcons.Trash2 size={16} color="#ef4444" />
-                <Text className="text-red-600">Delete Friend</Text>
-              </Button>
-            </View>
-          </View>
         </View>
       </ScrollView>
-    </SafeAreaWrapper>
+    </View>
+  );
+}
+
+// ── Small helper ──────────────────────────────────────────────────────────────
+function EmptyState({ icon, message }: { icon: React.ReactNode; message: string }) {
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === 'dark';
+  const theme = isDark ? THEME.dark : THEME.light;
+  return (
+    <View style={{
+      backgroundColor: theme.card,
+      borderRadius: 24,
+      padding: 32,
+      alignItems: 'center',
+      gap: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+    }}>
+      {icon}
+      <Caption className="text-center">{message}</Caption>
+    </View>
   );
 }

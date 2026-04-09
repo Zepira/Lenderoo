@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { StatDisplay, TinyLabel } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 
 interface StatCardProps {
@@ -25,23 +25,21 @@ export function StatCard({ label, value, unit, className }: StatCardProps) {
         elevation: 2,
       }}
     >
-      <Text
-        className="font-sans-bold text-muted-foreground text-center leading-tight mb-2"
-        style={{ fontSize: 10, minHeight: 24 }}
+      <TinyLabel
+        className="text-center mb-2"
+        style={{ minHeight: 24 }}
         numberOfLines={2}
       >
         {label}
-      </Text>
-      <Text className="font-display-bold text-primary" style={{ fontSize: 24, lineHeight: 32 }}>
-        {String(value)}
-      </Text>
-      <Text
-        className="font-sans-bold text-muted-foreground uppercase text-center mt-1"
+      </TinyLabel>
+      <StatDisplay>{String(value)}</StatDisplay>
+      <TinyLabel
+        className="text-center mt-1"
         style={{ fontSize: 8, letterSpacing: 0.5 }}
         numberOfLines={1}
       >
         {unit}
-      </Text>
+      </TinyLabel>
     </View>
   );
 }

@@ -8,6 +8,7 @@ import { View, Pressable, TouchableOpacity } from "react-native";
 import { Mail, Phone, Package, Library } from "lucide-react-native";
 import type { Friend } from "lib/types";
 import { getInitials, formatCount } from "lib/utils";
+import { resolveAvatarSource } from "@/lib/avatar-service";
 import { Card, CardHeader, CardFooter } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -38,8 +39,8 @@ export function FriendCard({
           <View className="flex-row gap-3 items-center">
             {/* Friend Avatar */}
             <Avatar className="w-12 h-12" alt={friend.name}>
-              {friend.avatarUrl ? (
-                <AvatarImage source={{ uri: friend.avatarUrl }} />
+              {resolveAvatarSource(friend.avatarUrl) ? (
+                <AvatarImage source={resolveAvatarSource(friend.avatarUrl)!} />
               ) : (
                 <AvatarFallback className="">
                   <Text variant="large" className=" font-semibold">

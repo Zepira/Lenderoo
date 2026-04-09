@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { View, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Text } from '@/components/ui/text';
+import { PageHero } from '@/components/ui/typography';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -110,7 +111,7 @@ export default function SignUpScreen() {
           {/* Header */}
           <View className="mb-8">
             <AuthIconBox />
-            <Text className="font-display-bold text-3xl mb-2">Create account</Text>
+            <PageHero className="mb-2">Create account</PageHero>
             <Text className="text-muted-foreground text-base">
               Sign up to start tracking your items
             </Text>

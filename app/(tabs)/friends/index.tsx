@@ -26,9 +26,16 @@ import {
 import { FriendRequests } from "components/FriendRequests";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
+import {
+  PageTitle,
+  BodyStrong,
+  LabelStrong,
+  Caption,
+} from "@/components/ui/typography";
 import { supabase } from "@/lib/supabase";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
+import { resolveAvatarSource } from "@/lib/avatar-service";
 
 export default function FriendsScreen() {
   const { activeTheme } = useThemeContext();
@@ -179,12 +186,7 @@ export default function FriendsScreen() {
                 >
                   <ArrowLeft size={22} color={theme.mutedForeground} />
                 </Pressable>
-                <Text
-                  className="font-display-bold text-foreground"
-                  style={{ fontSize: 26, lineHeight: 34 }}
-                >
-                  My Friends
-                </Text>
+                <PageTitle>My Friends</PageTitle>
               </View>
             </View>
           </SafeAreaView>
@@ -256,12 +258,9 @@ export default function FriendsScreen() {
               }}
             >
               <Users size={40} color={theme.mutedForeground} />
-              <Text
-                className="text-muted-foreground font-sans-medium text-center"
-                style={{ fontSize: 14 }}
-              >
+              <Caption className="text-center" style={{ fontSize: 14 }}>
                 {search ? "No friends match your search" : "No friends yet"}
-              </Text>
+              </Caption>
             </View>
           ) : (
             <View style={{ gap: 12 }}>
@@ -302,9 +301,9 @@ export default function FriendsScreen() {
                         backgroundColor: THEME.light.primary + "22",
                       }}
                     >
-                      {friend.avatarUrl ? (
+                      {resolveAvatarSource(friend.avatarUrl) ? (
                         <Image
-                          source={{ uri: friend.avatarUrl }}
+                          source={resolveAvatarSource(friend.avatarUrl)!}
                           style={{ width: "100%", height: "100%" }}
                           resizeMode="cover"
                         />
@@ -316,28 +315,23 @@ export default function FriendsScreen() {
                             justifyContent: "center",
                           }}
                         >
-                          <Text
-                            className="font-sans-bold text-primary"
-                            style={{ fontSize: 18 }}
+                          <BodyStrong
+                            className="text-primary"
+                            style={{ fontSize: 18, lineHeight: 24 }}
                           >
                             {friend.name[0]?.toUpperCase()}
-                          </Text>
+                          </BodyStrong>
                         </View>
                       )}
                     </View>
                     <View>
-                      <Text
-                        className="font-sans-bold text-foreground"
-                        style={{ fontSize: 15 }}
-                      >
-                        {friend.name}
-                      </Text>
-                      <Text
-                        className="text-muted-foreground font-sans-medium"
-                        style={{ fontSize: 12, marginTop: 1 }}
+                      <BodyStrong>{friend.name}</BodyStrong>
+                      <LabelStrong
+                        className="text-muted-foreground"
+                        style={{ marginTop: 1 }}
                       >
                         {itemCounts[friend.id] ?? 0} items shared
-                      </Text>
+                      </LabelStrong>
                     </View>
                   </View>
                   <ChevronRight size={18} color={theme.border} />
@@ -347,27 +341,10 @@ export default function FriendsScreen() {
           )}
 
           {/* Add friend button */}
-          <Pressable
-            onPress={() => router.push("/(tabs)/friends/add-user-friend")}
-            style={({ pressed }) => ({
-              backgroundColor: THEME.light.primary + "18",
-              borderRadius: 18,
-              paddingVertical: 18,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Plus size={20} color={THEME.light.primary} />
-            <Text
-              className="font-sans-bold text-primary"
-              style={{ fontSize: 15 }}
-            >
-              Add New Friend
-            </Text>
-          </Pressable>
+          <Button onPress={() => router.push("/(tabs)/friends/add-user-friend")}>
+            <Plus size={18} color="#fff" />
+            <Text>Add New Friend</Text>
+          </Button>
         </View>
       </ScrollView>
     </View>

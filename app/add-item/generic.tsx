@@ -1,98 +1,134 @@
 import { useState, useRef } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ScrollView, View, Alert, ActivityIndicator } from "react-native";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  ScrollView,
+  View,
+  Alert,
+  ActivityIndicator,
+  Pressable,
+  TextInput,
+  Platform,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ArrowLeft, Camera, ChevronDown, UserCircle } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { Label } from "@/components/ui/label";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { THEME } from "@/lib/theme";
+import {
+  PageTitle,
+  TinyLabel,
+  BodyStrong,
+  Caption,
+} from "@/components/ui/typography";
 import { useFriends, useCreateItem, useItems } from "hooks";
-import { CATEGORY_CONFIG, type ItemCategory } from "lib/constants";
+import { CATEGORY_CONFIG } from "@/components/ItemTile";
 import { createItemSchema } from "lib/validation";
-import { FloatingBackButton } from "components/FloatingBackButton";
 import { ImagePicker } from "components/ImagePicker";
-import { cn } from "lib/utils";
-import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 import { uploadItemImage, validateImage } from "@/lib/storage-service";
 import { supabase } from "@/lib/supabase";
 import * as toast from "@/lib/toast";
+import type { ItemCategory } from "lib/types";
+
+const CATEGORY_LABELS: Record<ItemCategory, string> = {
+  book: "Book",
+  tool: "Tool",
+  clothing: "Clothing",
+  electronics: "Electronics",
+  game: "Game",
+  sports: "Sports",
+  kitchen: "Kitchen",
+  other: "Item",
+};
+
+const PLACEHOLDERS: Partial<Record<ItemCategory, string>> = {
+  tool: "e.g. Power Drill",
+  clothing: "e.g. Winter Jacket",
+  electronics: "e.g. iPad",
+  game: "e.g. Settlers of Catan",
+  sports: "e.g. Tennis Racket",
+  kitchen: "e.g. Stand Mixer",
+};
 
 export default function AddGenericItemScreen() {
-  const { category: categoryParam } = useLocalSearchParams<{
-    category: string;
-  }>();
+  const { category: categoryParam } = useLocalSearchParams<{ category: string }>();
   const category = (categoryParam || "other") as ItemCategory;
   const router = useRouter();
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
+
   const { friends } = useFriends();
   const { createItem, loading } = useCreateItem();
   const { items: existingItems } = useItems();
   const isSubmitting = useRef<boolean>(false);
 
-  // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [borrowedBy, setBorrowedBy] = useState("");
   const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
-
-  // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showImagePicker, setShowImagePicker] = useState(false);
+
+  const cfg = CATEGORY_CONFIG[category] ?? CATEGORY_CONFIG.other;
+  const categoryLabel = CATEGORY_LABELS[category] ?? "Item";
+  const selectedFriend = friends.find((f) => f.id === borrowedBy);
+
+  const handleSelectFriend = () => {
+    if (friends.length === 0) return;
+    Alert.alert(
+      "Lend to a Friend",
+      "Choose who to lend this item to",
+      [
+        ...friends.map((f) => ({
+          text: f.name,
+          onPress: () => setBorrowedBy(f.id),
+        })),
+        { text: "Don't lend out", onPress: () => setBorrowedBy("") },
+        { text: "Cancel", style: "cancel" as const },
+      ],
+      { cancelable: true }
+    );
+  };
 
   const handleSubmit = async () => {
-    // Prevent double submission
-    if (loading || uploading || isSubmitting.current) {
-      console.log("⚠️ Already submitting, ignoring duplicate submission");
-      return;
-    }
-
+    if (loading || uploading || isSubmitting.current) return;
     isSubmitting.current = true;
 
     try {
       setErrors({});
       setUploading(true);
 
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("Not authenticated");
-      }
+      if (!user) throw new Error("Not authenticated");
 
-      // Check for duplicates
-      const duplicates = existingItems.filter((item) => {
-        return (
+      const duplicates = existingItems.filter(
+        (item) =>
           item.category === category &&
           item.name.toLowerCase().trim() === name.toLowerCase().trim()
-        );
-      });
+      );
 
       if (duplicates.length > 0) {
-        const duplicate = duplicates[0];
-
         Alert.alert(
           "Duplicate Item",
-          `"${duplicate.name}" is already in your library. You cannot add the same item twice.`,
+          `"${duplicates[0].name}" is already in your library.`,
           [{ text: "OK" }]
         );
-
         setErrors({ name: "This item is already in your library" });
         setUploading(false);
         isSubmitting.current = false;
         return;
       }
 
-      // Upload image if one was selected
       let uploadedImageUrl: string | undefined;
-      if (imageUrl && !imageUrl.startsWith('http')) {
-        // It's a local file URI, need to upload
+      if (imageUrl && !imageUrl.startsWith("http")) {
         try {
-          toast.success("Uploading image...");
           await validateImage(imageUrl);
           uploadedImageUrl = await uploadItemImage(imageUrl, user.id);
-          console.log("✅ Image uploaded:", uploadedImageUrl);
-        } catch (error: any) {
-          console.error("❌ Image upload failed:", error);
-          toast.error(error.message || "Failed to upload image");
+        } catch (err: any) {
+          toast.error(err.message || "Failed to upload image");
           setUploading(false);
           isSubmitting.current = false;
           return;
@@ -112,34 +148,24 @@ export default function AddGenericItemScreen() {
       };
 
       createItemSchema.parse(itemData);
-
-      await createItem({
-        ...itemData,
-        userId: user.id,
-      });
-
+      await createItem({ ...itemData, userId: user.id });
       toast.success("Item added successfully!");
       router.back();
-      router.back(); // Go back twice to return to items list
+      router.back();
     } catch (error) {
       isSubmitting.current = false;
       if (error && typeof error === "object" && "issues" in error) {
-        const zodError = error as {
-          issues: Array<{ path: Array<string | number>; message: string }>;
-        };
+        const zodError = error as { issues: Array<{ path: Array<string | number>; message: string }> };
         const fieldErrors: Record<string, string> = {};
         zodError.issues.forEach((err) => {
-          if (err.path.length > 0) {
-            fieldErrors[err.path[0] as string] = err.message;
-          }
+          if (err.path.length > 0) fieldErrors[err.path[0] as string] = err.message;
         });
         setErrors(fieldErrors);
         toast.error("Please fix the errors");
       } else {
-        console.error("Failed to create item:", error);
-        const errorMessage = error instanceof Error ? error.message : "Failed to add item. Please try again.";
-        setErrors({ general: errorMessage });
-        toast.error(errorMessage);
+        const msg = error instanceof Error ? error.message : "Failed to add item. Please try again.";
+        setErrors({ general: msg });
+        toast.error(msg);
       }
     } finally {
       setUploading(false);
@@ -147,201 +173,257 @@ export default function AddGenericItemScreen() {
     }
   };
 
-  const handleCancel = () => {
-    router.back();
-  };
-
-  const categoryLabel = CATEGORY_CONFIG[category]?.label || "Item";
-
-  const selectedFriend = friends.find((f) => f.id === borrowedBy);
-
-  const handleSelectFriend = () => {
-    if (friends.length === 0) return;
-
-    Alert.alert(
-      "Select Friend",
-      "Choose who to lend this item to",
-      [
-        ...friends.map((friend) => ({
-          text: friend.name,
-          onPress: () => setBorrowedBy(friend.id),
-        })),
-        {
-          text: "Don't lend out (add to library)",
-          onPress: () => setBorrowedBy(""),
-        },
-        { text: "Cancel", style: "cancel" },
-      ],
-      { cancelable: true }
-    );
+  const inputStyle = {
+    backgroundColor: isDark ? theme.muted : "#F3F4F6",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: theme.foreground,
+    fontFamily: "Inter-Medium",
   };
 
   return (
-    <SafeAreaWrapper>
-      <FloatingBackButton />
-
-      <ScrollView className="flex-1 bg-background">
-        <View className="p-4 gap-4">
-          {errors.general && (
-            <View className="p-3 bg-red-50 rounded-lg border border-red-200">
-              <Text variant="small" className="text-red-600">
-                {errors.general}
-              </Text>
+    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+      {/* Header */}
+      <View
+        style={{
+          backgroundColor: theme.card,
+          borderBottomLeftRadius: 40,
+          borderBottomRightRadius: 40,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          elevation: 4,
+          marginBottom: 24,
+        }}
+      >
+        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
+          <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+              <Pressable
+                onPress={() => router.back()}
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <ArrowLeft size={22} color={theme.mutedForeground} />
+              </Pressable>
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: cfg.color + "18",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <cfg.Icon size={18} color={cfg.color} />
+              </View>
+              <PageTitle>Add {categoryLabel}</PageTitle>
             </View>
+          </View>
+        </SafeAreaView>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
+      >
+        {errors.general && (
+          <View
+            style={{
+              backgroundColor: theme.destructive + "18",
+              borderRadius: 16,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: theme.destructive + "33",
+            }}
+          >
+            <Caption style={{ color: theme.destructive }}>{errors.general}</Caption>
+          </View>
+        )}
+
+        {/* Main form card */}
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderRadius: 32,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: theme.border,
+            gap: 20,
+          }}
+        >
+          {/* Photo picker */}
+          {showImagePicker ? (
+            <ImagePicker
+              imageUrl={imageUrl}
+              onImageSelected={(uri) => { setImageUrl(uri); setShowImagePicker(false); }}
+              onImageRemoved={() => { setImageUrl(""); setShowImagePicker(false); }}
+            />
+          ) : (
+            <Pressable
+              onPress={() => setShowImagePicker(true)}
+              style={({ pressed }) => ({
+                borderWidth: 2,
+                borderStyle: "dashed",
+                borderColor: pressed ? cfg.color + "88" : theme.border,
+                borderRadius: 20,
+                paddingVertical: 28,
+                alignItems: "center",
+                gap: 10,
+                backgroundColor: imageUrl ? cfg.color + "08" : pressed ? cfg.color + "08" : "transparent",
+              })}
+            >
+              {imageUrl ? (
+                <>
+                  <cfg.Icon size={28} color={cfg.color} />
+                  <Caption style={{ color: cfg.color }}>Photo selected — tap to change</Caption>
+                </>
+              ) : (
+                <>
+                  <Camera size={28} color={theme.mutedForeground} />
+                  <TinyLabel>Add Photo (Optional)</TinyLabel>
+                </>
+              )}
+            </Pressable>
           )}
 
-          {/* Item Name */}
-          <View className="gap-2">
-            <Label nativeID="name" className="font-semibold">
-              {categoryLabel} Name *
-            </Label>
-            <Input
+          {/* Name */}
+          <View style={{ gap: 8 }}>
+            <TinyLabel>{categoryLabel} Name *</TinyLabel>
+            <TextInput
               value={name}
               onChangeText={setName}
-              placeholder={`e.g., ${
-                category === "tool"
-                  ? "Power Drill"
-                  : category === "clothing"
-                  ? "Winter Jacket"
-                  : "Item name"
-              }`}
-              className={cn(errors.name && "border-red-500")}
-              editable={!loading}
+              placeholder={PLACEHOLDERS[category] || `e.g. My ${categoryLabel}`}
+              placeholderTextColor={theme.mutedForeground}
               autoFocus
+              style={[
+                inputStyle,
+                errors.name ? { borderWidth: 1.5, borderColor: theme.destructive } : {},
+              ]}
             />
-            {errors.name && (
-              <Text variant="muted" className="text-red-600">
-                {errors.name}
-              </Text>
-            )}
+            {errors.name && <Caption style={{ color: theme.destructive }}>{errors.name}</Caption>}
           </View>
 
           {/* Description */}
-          <View className="gap-2">
-            <Label nativeID="description" className="font-semibold">
-              Description
-            </Label>
-            <Textarea
+          <View style={{ gap: 8 }}>
+            <TinyLabel>Description</TinyLabel>
+            <TextInput
               value={description}
               onChangeText={setDescription}
-              placeholder="Add any details about the item..."
+              placeholder="Tell your friends about this item…"
+              placeholderTextColor={theme.mutedForeground}
+              multiline
               numberOfLines={3}
-              className={cn(errors.description && "border-red-500")}
-              editable={!loading}
+              style={[inputStyle, { minHeight: 90, textAlignVertical: "top", paddingTop: 14 }]}
             />
-            {errors.description && (
-              <Text variant="muted" className="text-red-600">
-                {errors.description}
-              </Text>
-            )}
-          </View>
-
-          {/* Item Image */}
-          <View className="gap-2">
-            <Label className="font-semibold">Item Photo (Optional)</Label>
-            <ImagePicker
-              imageUrl={imageUrl}
-              onImageSelected={(uri) => setImageUrl(uri)}
-              onImageRemoved={() => setImageUrl("")}
-            />
-            <Text variant="small" className="text-muted-foreground">
-              Take a photo or choose from your library
-            </Text>
-          </View>
-
-          {/* Friend Selector */}
-          <View className="gap-2">
-            <Label nativeID="borrowedBy" className="font-semibold">
-              Lending To (Optional)
-            </Label>
-            <Text variant="muted">
-              Leave empty to add to your library without lending it out
-            </Text>
-            {friends.length === 0 ? (
-              <View className="gap-2 p-3 bg-muted rounded-lg">
-                <Text variant="muted">
-                  You haven't added any friends yet. You can add this item to
-                  your library now and lend it out later.
-                </Text>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onPress={() => router.push("/add-friend" as any)}
-                >
-                  <Text>Add a Friend</Text>
-                </Button>
-              </View>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  onPress={handleSelectFriend}
-                  disabled={loading}
-                >
-                  <Text>
-                    {selectedFriend
-                      ? selectedFriend.name
-                      : "Add to library (don't lend out)"}
-                  </Text>
-                </Button>
-                {errors.borrowedBy && (
-                  <Text variant="muted" className="text-red-600">
-                    {errors.borrowedBy}
-                  </Text>
-                )}
-              </>
-            )}
-          </View>
-
-          {/* Notes */}
-          <View className="gap-2">
-            <Label nativeID="notes" className="font-semibold">
-              Notes
-            </Label>
-            <Textarea
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Any additional notes or conditions..."
-              numberOfLines={2}
-              className={cn(errors.notes && "border-red-500")}
-              editable={!loading}
-            />
-            {errors.notes && (
-              <Text variant="muted" className="text-red-600">
-                {errors.notes}
-              </Text>
-            )}
-          </View>
-
-          {/* Action Buttons */}
-          <View className="flex-row gap-3 pt-4">
-            <Button
-              variant="outline"
-              onPress={handleCancel}
-              disabled={loading || uploading}
-              className="flex-1"
-            >
-              <Text>Cancel</Text>
-            </Button>
-            <Button
-              onPress={handleSubmit}
-              disabled={loading || uploading || !name.trim()}
-              className="flex-1 bg-blue-600"
-            >
-              {uploading && <ActivityIndicator size="small" color="#fff" />}
-              <Text className="text-white">
-                {uploading
-                  ? "Uploading..."
-                  : loading
-                  ? "Saving..."
-                  : borrowedBy
-                  ? `Add & Lend ${categoryLabel}`
-                  : `Add to Library`}
-              </Text>
-            </Button>
           </View>
         </View>
+
+        {/* Lend to card */}
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderRadius: 32,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: theme.border,
+            gap: 16,
+          }}
+        >
+          <View style={{ gap: 4 }}>
+            <TinyLabel>Lend To (Optional)</TinyLabel>
+            <Caption>Leave empty to add without lending out</Caption>
+          </View>
+
+          {friends.length === 0 ? (
+            <View style={{ gap: 12 }}>
+              <Caption>No friends yet — add friends to lend items to them.</Caption>
+              <Button variant="outline" onPress={() => router.push("/add-friend" as any)}>
+                <Text>Add a Friend</Text>
+              </Button>
+            </View>
+          ) : (
+            <Pressable
+              onPress={handleSelectFriend}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                borderRadius: 16,
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <UserCircle size={20} color={selectedFriend ? theme.primary : theme.mutedForeground} />
+              <BodyStrong
+                style={{
+                  flex: 1,
+                  fontSize: 15,
+                  color: selectedFriend ? theme.foreground : theme.mutedForeground,
+                }}
+              >
+                {selectedFriend ? selectedFriend.name : "Select a friend…"}
+              </BodyStrong>
+              <ChevronDown size={18} color={theme.mutedForeground} />
+            </Pressable>
+          )}
+        </View>
+
+        {/* Notes card */}
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderRadius: 32,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: theme.border,
+            gap: 12,
+          }}
+        >
+          <TinyLabel>Notes</TinyLabel>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Condition, reminders, etc."
+            placeholderTextColor={theme.mutedForeground}
+            multiline
+            numberOfLines={2}
+            style={[inputStyle, { minHeight: 60, textAlignVertical: "top", paddingTop: 14 }]}
+          />
+        </View>
+
+        {/* Submit */}
+        <Button
+          onPress={handleSubmit}
+          disabled={loading || uploading || !name.trim()}
+          style={{ borderRadius: 24 } as any}
+        >
+          {(uploading || loading) && <ActivityIndicator size="small" color="#fff" />}
+          <Text className="text-white font-bold">
+            {uploading
+              ? "Uploading…"
+              : loading
+              ? "Saving…"
+              : selectedFriend
+              ? `Add & Lend ${categoryLabel}`
+              : "Add to Library"}
+          </Text>
+        </Button>
       </ScrollView>
-    </SafeAreaWrapper>
+    </View>
   );
 }

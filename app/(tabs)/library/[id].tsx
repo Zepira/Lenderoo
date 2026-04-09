@@ -9,11 +9,25 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import * as LucideIcons from "lucide-react-native";
+import {
+  ArrowLeft,
+  Check,
+  ChevronRight,
+  Clock,
+  Edit,
+  Info,
+  Package,
+  Tag,
+  Trash2,
+  User,
+  BookOpen,
+} from "lucide-react-native";
 import {
   useItem,
   useDeleteItem,
@@ -21,9 +35,7 @@ import {
   useItems,
 } from "hooks/useItems";
 import { useFriend, useFriends } from "hooks/useFriends";
-import { CategoryBadge } from "components/CategoryBadge";
-import { StatusBadge } from "components/StatusBadge";
-import { FloatingBackButton } from "components/FloatingBackButton";
+import { CATEGORY_CONFIG } from "components/ItemTile";
 import {
   formatDate,
   formatRelativeTime,
@@ -33,24 +45,34 @@ import {
   calculateItemStatus,
 } from "lib/utils";
 import * as toast from "@/lib/toast";
+import { resolveAvatarSource } from "@/lib/avatar-service";
 import { useAuth } from "@/contexts/AuthContext";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { THEME } from "@/lib/theme";
+import {
+  PageHero,
+  SectionHeading,
+  BodyStrong,
+  BodyText,
+  Caption,
+  TinyLabel,
+  LabelStrong,
+} from "@/components/ui/typography";
 import type { ItemStatus, BookMetadata } from "lib/types";
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
   const { item, loading, refresh } = useItem(id!);
 
-  // Determine if the current user is the borrower (viewing an item they borrowed)
-  // Only consider them a borrower if the item hasn't been returned yet
   const isBorrower = item && user && item.borrowedBy === user.id && !item.returnedDate;
-  // Determine if the current user is the owner
   const isOwner = item && user && item.userId === user.id;
-
-  // Only look up friend if the current user is NOT the borrower
-  // (If you're the borrower, borrowedBy is YOUR id, not a friend's id)
   const friendId = item?.borrowedBy && !isBorrower ? item.borrowedBy : null;
   const { friend } = useFriend(friendId);
 
@@ -59,27 +81,21 @@ export default function ItemDetailScreen() {
   const { items: allItems } = useItems();
   const { friends } = useFriends();
 
-  // Refresh item data when screen comes into focus (e.g., after editing)
   useFocusEffect(
     useCallback(() => {
       refresh();
     }, [refresh])
   );
 
-  // Find other users who own the same book (for books only)
   const communityOwners = useMemo(() => {
     if (!item || item.category !== "book" || !item.metadata) return [];
-
     const bookMetadata = item.metadata as BookMetadata;
     if (!bookMetadata.author) return [];
-
-    // Find other books with same title and author
     return allItems
       .filter((otherItem) => {
-        if (otherItem.id === item.id) return false; // Exclude current item
+        if (otherItem.id === item.id) return false;
         if (otherItem.category !== "book") return false;
         if (!otherItem.metadata) return false;
-
         const otherMeta = otherItem.metadata as BookMetadata;
         return (
           otherItem.name.toLowerCase() === item.name.toLowerCase() &&
@@ -88,27 +104,21 @@ export default function ItemDetailScreen() {
       })
       .map((otherItem) => {
         const owner = friends.find((f) => otherItem.userId === "demo-user");
-        return {
-          item: otherItem,
-          owner: owner || null,
-        };
+        return { item: otherItem, owner: owner || null };
       })
-      .filter((o) => o.owner !== null); // Only show if we found the owner
+      .filter((o) => o.owner !== null);
   }, [item, allItems, friends]);
 
   useEffect(() => {
     if (!loading && !item) {
-      // Item not found, go back using history
       router.back();
     }
   }, [loading, item, router]);
 
-  // Show loading if still loading or if item is borrowed by someone else but friend data isn't loaded yet
-  // Don't wait for friend data if you're the borrower (you don't need friend lookup for yourself)
   if (loading || !item || (item.borrowedBy && !isBorrower && !friend)) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <Text variant="muted">Loading...</Text>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: theme.background }}>
+        <Caption>Loading…</Caption>
       </View>
     );
   }
@@ -121,14 +131,20 @@ export default function ItemDetailScreen() {
     ? daysBorrowed(item.borrowedDate, item.returnedDate)
     : 0;
 
+  const cfg = CATEGORY_CONFIG[item.category] ?? CATEGORY_CONFIG.other;
+  const imageUrl = item.images?.[0] ?? (item as any).imageUrls?.[0] ?? (item as any).imageUrl;
+  const bookMeta = item.category === "book" ? (item.metadata as BookMetadata) : null;
+
+  const statusLabel = isAvailable ? "Available" : isOverdue ? "Overdue" : "Lent Out";
+  const statusColor = isAvailable ? theme.primary : isOverdue ? theme.destructive : theme.secondary;
+
   const handleMarkReturned = async () => {
     const actionText = isBorrower ? "returned to owner" : "marked as returned";
     try {
       await markReturned(item.id);
       toast.success(`"${item.name}" has been ${actionText}`);
       router.back();
-    } catch (error) {
-      console.error("Failed to mark item as returned:", error);
+    } catch {
       toast.error(`Failed to ${actionText.replace("has been ", "")}`);
     }
   };
@@ -138,495 +154,536 @@ export default function ItemDetailScreen() {
   };
 
   const handleDelete = async () => {
-    console.log("🗑️ Delete button pressed");
+    const confirmed =
+      Platform.OS === "web"
+        ? window.confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`)
+        : await new Promise<boolean>((resolve) => {
+            Alert.alert(
+              "Delete Item",
+              `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
+              [
+                { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+                { text: "Delete", style: "destructive", onPress: () => resolve(true) },
+              ]
+            );
+          });
 
-    // Web doesn't support Alert.alert with buttons, use window.confirm
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`)
-      : await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            "Delete Item",
-            `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
-            [
-              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-              { text: "Delete", style: "destructive", onPress: () => resolve(true) },
-            ]
-          );
-        });
+    if (!confirmed) return;
 
-    if (!confirmed) {
-      console.log("🚫 Delete cancelled");
-      return;
-    }
-
-    console.log("🗑️ Delete confirmed, deleting item...");
     try {
       await deleteItem(item.id);
-      console.log("✅ Item deleted successfully");
       toast.success(`"${item.name}" has been deleted`);
       router.back();
-    } catch (error) {
-      console.error("❌ Failed to delete item:", error);
+    } catch {
       toast.error("Failed to delete item");
     }
   };
 
   return (
-    <View className="flex-1 bg-background">
-      <FloatingBackButton />
+    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+        {/* ── Hero Image ── */}
+        <View style={{ height: 400, width: "100%" }}>
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="cover"
+            />
+          ) : (
+            <View
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: cfg.color + "22",
+              }}
+            >
+              <cfg.Icon size={80} color={cfg.color} />
+            </View>
+          )}
 
-      <ScrollView className="flex-1 bg-background">
-        <View className="gap-4">
-          {/* Item Image */}
-          <View className="w-full h-[300px] bg-muted items-center justify-center">
-            {(item.images?.[0] || item.imageUrls?.[0] || item.imageUrl) ? (
-              <Image
-                source={{ uri: item.images?.[0] || item.imageUrls?.[0] || item.imageUrl }}
-                style={{ width: "100%", height: 300 }}
-                resizeMode="cover"
-              />
-            ) : (
-              <LucideIcons.Package size={80} color="#9ca3af" />
+          {/* Gradient overlay */}
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.65)"]}
+            locations={[0.35, 1]}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+          />
+
+          {/* Back button */}
+          <Pressable
+            onPress={() => navigation.canGoBack() ? router.back() : router.push("/(tabs)" as any)}
+            style={({ pressed }) => ({
+              position: "absolute",
+              top: insets.top + 12,
+              left: 20,
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              backgroundColor: "rgba(0,0,0,0.45)",
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <ArrowLeft size={22} color="#fff" />
+          </Pressable>
+
+          {/* Floating info */}
+          <View
+            style={{
+              position: "absolute",
+              bottom: 28,
+              left: 20,
+              right: 20,
+            }}
+          >
+            {/* Badges */}
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  backgroundColor: cfg.color + "EE",
+                  borderRadius: 8,
+                }}
+              >
+                <TinyLabel style={{ color: "#fff" }} className="normal-case tracking-normal">
+                  {item.category}
+                </TinyLabel>
+              </View>
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  backgroundColor: statusColor + "EE",
+                  borderRadius: 8,
+                }}
+              >
+                <TinyLabel style={{ color: "#fff" }} className="normal-case tracking-normal">
+                  {statusLabel}
+                </TinyLabel>
+              </View>
+            </View>
+
+            {/* Item name */}
+            <PageHero style={{ color: "#fff", lineHeight: 40 }} numberOfLines={2}>
+              {item.name}
+            </PageHero>
+
+            {/* Author (books) */}
+            {bookMeta?.author && (
+              <Caption style={{ color: "rgba(255,255,255,0.8)", marginTop: 4 }}>
+                by {bookMeta.author}
+              </Caption>
             )}
           </View>
+        </View>
 
-          <View className="p-4 gap-4">
-            {/* Header Info */}
-            <View className="gap-3">
-              <View className="flex-row justify-between items-start gap-3">
-                <View className="flex-1 gap-2">
-                  <Text variant="h1" className="font-bold">
-                    {item.name}
-                  </Text>
-                  <View className="flex-row gap-2 items-center">
-                    <CategoryBadge category={item.category} size="md" />
-                    <StatusBadge status={status} size="md" />
-                  </View>
-                </View>
-              </View>
+        {/* ── Content card ── */}
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderTopLeftRadius: 40,
+            borderTopRightRadius: 40,
+            marginTop: -24,
+            paddingTop: 32,
+            paddingHorizontal: 24,
+            paddingBottom: 8,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.06,
+            shadowRadius: 16,
+            elevation: 8,
+          }}
+        >
+          {/* ── Quick stats row ── */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-around",
+              paddingBottom: 24,
+              marginBottom: 24,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.border,
+            }}
+          >
+            {/* Lent to / borrowed from */}
+            <View style={{ alignItems: "center", flex: 1 }}>
+              <TinyLabel style={{ marginBottom: 4 }}>
+                {isBorrower ? "Owner" : friend ? "Lent To" : "Status"}
+              </TinyLabel>
+              <LabelStrong numberOfLines={1}>
+                {isBorrower ? "You borrowed" : friend ? friend.name : "Available"}
+              </LabelStrong>
+            </View>
 
-              {/* Book Metadata */}
-              {item.category === "book" && item.metadata && (
-                <View className="gap-2">
-                  {(item.metadata as BookMetadata).author && (
-                    <View className="flex-row gap-2 items-center">
-                      <LucideIcons.User size={16} color="#9ca3af" />
-                      <Text variant="default" className="text-muted-foreground">
-                        <Text className="font-semibold">Author:</Text>{" "}
-                        {(item.metadata as BookMetadata).author}
-                      </Text>
-                    </View>
-                  )}
-                  {(item.metadata as BookMetadata).seriesName && (
-                    <View className="flex-row gap-2 items-center">
-                      <LucideIcons.BookOpen size={16} color="#9ca3af" />
-                      <Text variant="default" className="text-muted-foreground">
-                        <Text className="font-semibold">Series:</Text>{" "}
-                        {(item.metadata as BookMetadata).seriesName}
-                        {(item.metadata as BookMetadata).seriesNumber &&
-                          ` (Book ${
-                            (item.metadata as BookMetadata).seriesNumber
-                          })`}
-                      </Text>
-                    </View>
-                  )}
-                  {(item.metadata as BookMetadata).genre && (
-                    <View className="gap-2">
-                      <View className="flex-row gap-2 items-center">
-                        <LucideIcons.Tag size={16} color="#9ca3af" />
-                        <Text variant="default" className="font-semibold">
-                          Genres
-                        </Text>
-                      </View>
-                      <View className="flex-row flex-wrap gap-2 pl-6">
-                        {(Array.isArray((item.metadata as BookMetadata).genre)
-                          ? (item.metadata as BookMetadata).genre
-                          : typeof (item.metadata as BookMetadata).genre ===
-                            "string"
-                          ? (item.metadata as BookMetadata).genre.split(",")
-                          : (item.metadata as BookMetadata).genre
-                        )?.map((genre: string, index: number) => (
-                          <TouchableOpacity
-                            key={index}
-                            className="px-3 py-1 bg-blue-50 rounded-full active:bg-blue-100"
+            <View style={{ width: 1, backgroundColor: theme.border }} />
+
+            {/* Book rating / days borrowed */}
+            <View style={{ alignItems: "center", flex: 1 }}>
+              <TinyLabel style={{ marginBottom: 4 }}>
+                {bookMeta?.averageRating ? "Rating" : "Duration"}
+              </TinyLabel>
+              <LabelStrong>
+                {bookMeta?.averageRating
+                  ? `${bookMeta.averageRating.toFixed(1)}/5`
+                  : daysSinceBorrowed > 0
+                  ? `${daysSinceBorrowed}d`
+                  : "—"}
+              </LabelStrong>
+            </View>
+
+            <View style={{ width: 1, backgroundColor: theme.border }} />
+
+            {/* Due date or condition */}
+            <View style={{ alignItems: "center", flex: 1 }}>
+              <TinyLabel style={{ marginBottom: 4 }}>
+                {item.dueDate ? "Due" : "Added"}
+              </TinyLabel>
+              <LabelStrong
+                style={{ color: isOverdue ? theme.destructive : theme.foreground }}
+                numberOfLines={1}
+              >
+                {item.dueDate
+                  ? formatDate(item.dueDate)
+                  : formatDate(item.createdAt)}
+              </LabelStrong>
+            </View>
+          </View>
+
+          {/* ── Book metadata ── */}
+          {bookMeta && (
+            <View style={{ gap: 20, marginBottom: 24 }}>
+              {/* Genre + Series row */}
+              {(bookMeta.genre || bookMeta.seriesName) && (
+                <View style={{ flexDirection: "row", gap: 24 }}>
+                  {bookMeta.genre && (
+                    <View style={{ flex: 1 }}>
+                      <TinyLabel style={{ marginBottom: 6 }}>Genre</TinyLabel>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                        {(Array.isArray(bookMeta.genre)
+                          ? bookMeta.genre
+                          : String(bookMeta.genre).split(",")
+                        ).map((g: string, i: number) => (
+                          <View
+                            key={i}
+                            style={{
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                              backgroundColor: theme.primary + "18",
+                              borderRadius: 8,
+                            }}
                           >
-                            <Text variant="small" className="text-blue-600">
-                              {genre.trim()}
-                            </Text>
-                          </TouchableOpacity>
+                            <Caption style={{ color: theme.primary }}>{g.trim()}</Caption>
+                          </View>
                         ))}
                       </View>
                     </View>
                   )}
-                  {(item.metadata as BookMetadata).averageRating && (
-                    <View className="flex-row gap-2 items-center">
-                      <Text
-                        variant="default"
-                        className="text-yellow-500 text-lg"
-                      >
-                        ★★★★★
-                      </Text>
-                      <Text variant="default" className="text-muted-foreground">
-                        {(
-                          (item.metadata as BookMetadata).averageRating ?? 0
-                        ).toFixed(2)}{" "}
-                        / 5.00
-                      </Text>
+                  {bookMeta.seriesName && (
+                    <View style={{ flex: 1 }}>
+                      <TinyLabel style={{ marginBottom: 6 }}>Series</TinyLabel>
+                      <BodyText>
+                        {bookMeta.seriesName}
+                        {bookMeta.seriesNumber ? ` #${bookMeta.seriesNumber}` : ""}
+                      </BodyText>
                     </View>
                   )}
-                  {((item.metadata as BookMetadata).pageCount ||
-                    (item.metadata as BookMetadata).publicationYear) && (
-                    <View className="flex-row gap-2 items-center">
-                      <LucideIcons.Info size={16} color="#9ca3af" />
-                      <Text variant="default" className="text-muted-foreground">
-                        {(item.metadata as BookMetadata).publicationYear && (
-                          <Text>
-                            Published{" "}
-                            {(item.metadata as BookMetadata).publicationYear}
-                          </Text>
-                        )}
-                        {(item.metadata as BookMetadata).publicationYear &&
-                          (item.metadata as BookMetadata).pageCount &&
-                          " • "}
-                        {(item.metadata as BookMetadata).pageCount && (
-                          <Text>
-                            {(item.metadata as BookMetadata).pageCount} pages
-                          </Text>
-                        )}
-                      </Text>
+                </View>
+              )}
+
+              {/* Publication info */}
+              {(bookMeta.publicationYear || bookMeta.pageCount) && (
+                <View style={{ flexDirection: "row", gap: 24 }}>
+                  {bookMeta.publicationYear && (
+                    <View style={{ flex: 1 }}>
+                      <TinyLabel style={{ marginBottom: 4 }}>Published</TinyLabel>
+                      <BodyText>{bookMeta.publicationYear}</BodyText>
                     </View>
                   )}
+                  {bookMeta.pageCount && (
+                    <View style={{ flex: 1 }}>
+                      <TinyLabel style={{ marginBottom: 4 }}>Pages</TinyLabel>
+                      <BodyText>{bookMeta.pageCount}</BodyText>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Synopsis */}
+              {bookMeta.synopsis && (
+                <View>
+                  <TinyLabel style={{ marginBottom: 8 }}>Synopsis</TinyLabel>
+                  <BodyText style={{ color: theme.mutedForeground, lineHeight: 22 }}>
+                    {bookMeta.synopsis}
+                  </BodyText>
                 </View>
               )}
             </View>
+          )}
 
-            {/* Book Synopsis */}
-            {item.category === "book" &&
-              item.metadata &&
-              (item.metadata as BookMetadata).synopsis && (
-                <>
-                  <Separator />
-                  <View className="gap-3">
-                    <Text variant="h3" className="font-semibold">
-                      Synopsis
-                    </Text>
-                    <Text
-                      variant="default"
-                      className="text-muted-foreground leading-6"
-                    >
-                      {(item.metadata as BookMetadata).synopsis}
-                    </Text>
-                  </View>
-                </>
-              )}
-
-            {/* Community Ownership - only show for owned items */}
-            {!isBorrower && item.category === "book" && communityOwners.length > 0 && (
-              <>
-                <Separator />
-                <View className="gap-3">
-                  <Text variant="h3" className="font-semibold">
-                    Also in the Community
-                  </Text>
-                  <Text variant="small" className="text-muted-foreground">
-                    {communityOwners.length}{" "}
-                    {communityOwners.length === 1 ? "person" : "people"} in your
-                    network {communityOwners.length === 1 ? "owns" : "own"} this
-                    book
-                  </Text>
-                  <View className="gap-2">
-                    {communityOwners.map(({ item: otherItem, owner }) => (
-                      <View
-                        key={otherItem.id}
-                        className="flex-row gap-3 items-center p-3 bg-muted rounded-lg"
-                      >
-                        <Avatar className="w-10 h-10">
-                          {owner?.avatarUrl ? (
-                            <AvatarImage source={{ uri: owner.avatarUrl }} />
-                          ) : (
-                            <AvatarFallback className="bg-blue-100">
-                              <Text
-                                variant="small"
-                                className="text-blue-600 font-semibold"
-                              >
-                                {owner ? getInitials(owner.name) : "?"}
-                              </Text>
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <View className="flex-1 gap-1">
-                          <Text variant="default" className="font-semibold">
-                            {owner?.name || "Unknown"}
-                          </Text>
-                          {!otherItem.borrowedBy && !otherItem.returnedDate && (
-                            <Text variant="small" className="text-green-600">
-                              Available
-                            </Text>
-                          )}
-                          {otherItem.borrowedBy && !otherItem.returnedDate && (
-                            <Text variant="small" className="text-orange-600">
-                              Currently lent out
-                            </Text>
-                          )}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
+          {/* ── Lent-out info panel ── */}
+          {!isAvailable && friend && (
+            <>
+              <Separator style={{ marginBottom: 20 }} />
+              <TouchableOpacity
+                onPress={() => router.push(`/friends/${friend.id}` as any)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 14,
+                  padding: 16,
+                  backgroundColor: theme.secondary + "18",
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: theme.secondary + "33",
+                  marginBottom: 24,
+                }}
+                activeOpacity={0.75}
+              >
+                <Avatar className="w-12 h-12" alt={friend.name}>
+                  {friend.avatarUrl ? (
+                    <AvatarImage source={resolveAvatarSource(friend.avatarUrl) ?? { uri: "" }} />
+                  ) : (
+                    <AvatarFallback>
+                      <BodyStrong style={{ color: theme.secondary }}>
+                        {getInitials(friend.name)}
+                      </BodyStrong>
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <View style={{ flex: 1 }}>
+                  <TinyLabel style={{ marginBottom: 2 }}>Currently Lent To</TinyLabel>
+                  <BodyStrong>{friend.name}</BodyStrong>
+                  {friend.email && <Caption>{friend.email}</Caption>}
                 </View>
-              </>
-            )}
+                <ChevronRight size={18} color={theme.mutedForeground} />
+              </TouchableOpacity>
+            </>
+          )}
 
-            <Separator />
-
-            {/* Borrower/Owner Info or Availability Status */}
-            <View className="gap-3">
-              <Text variant="h3" className="font-semibold">
-                {isBorrower
-                  ? "Owner"
-                  : friend
-                  ? "Borrowed By"
-                  : "Status"}
-              </Text>
-              {isBorrower ? (
-                <View className="flex-row gap-3 items-center p-3 bg-blue-50 rounded-lg">
-                  <LucideIcons.User size={24} color="#3b82f6" />
-                  <View className="flex-1 gap-1">
-                    <Text
-                      variant="default"
-                      className="text-blue-600 font-semibold"
-                    >
-                      Borrowed from someone
-                    </Text>
-                    <Text variant="small" className="text-blue-600">
-                      You borrowed this item
-                    </Text>
-                  </View>
-                </View>
-              ) : friend ? (
-                <TouchableOpacity
-                  onPress={() => router.push(`/friend/${friend.id}` as any)}
+          {/* ── Borrower info (you borrowed this) ── */}
+          {isBorrower && (
+            <>
+              <Separator style={{ marginBottom: 20 }} />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: 16,
+                  backgroundColor: theme.primary + "12",
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: theme.primary + "30",
+                  marginBottom: 24,
+                }}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 14,
+                    backgroundColor: theme.primary + "22",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  <View className="flex-row gap-3 items-center p-3 bg-muted rounded-lg active:bg-muted/80">
-                    <Avatar className="w-12 h-12">
-                      {friend.avatarUrl ? (
-                        <AvatarImage source={{ uri: friend.avatarUrl }} />
-                      ) : (
-                        <AvatarFallback className="bg-blue-100">
-                          <Text
-                            variant="default"
-                            className="text-blue-600 font-semibold"
-                          >
-                            {getInitials(friend.name)}
-                          </Text>
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    <View className="flex-1 gap-1">
-                      <Text variant="default" className="font-semibold">
-                        {friend.name}
-                      </Text>
-                      {friend.email && (
-                        <Text variant="small" className="text-muted-foreground">
-                          {friend.email}
-                        </Text>
-                      )}
-                    </View>
-                    <LucideIcons.ChevronRight size={20} color="#9ca3af" />
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                <View className="flex-row gap-3 items-center p-3 bg-green-50 rounded-lg">
-                  <LucideIcons.Package size={24} color="#22c55e" />
-                  <View className="flex-1 gap-1">
-                    <Text
-                      variant="default"
-                      className="text-green-600 font-semibold"
-                    >
-                      Available
-                    </Text>
-                    <Text variant="small" className="text-green-600">
-                      This item is not currently lent out
-                    </Text>
-                  </View>
+                  <Info size={20} color={theme.primary} />
                 </View>
-              )}
-            </View>
+                <View style={{ flex: 1 }}>
+                  <TinyLabel style={{ color: theme.primary, marginBottom: 2 }}>Currently Borrowing</TinyLabel>
+                  <BodyText>You borrowed this item</BodyText>
+                </View>
+              </View>
+            </>
+          )}
 
-            <Separator />
-
-            {/* Date Information - only show for borrowed/returned items */}
-            {(item.borrowedDate || item.returnedDate) && (
-              <View className="gap-3">
-                <Text variant="h3" className="font-semibold">
-                  Timeline
-                </Text>
-
+          {/* ── Timeline ── */}
+          {(item.borrowedDate || item.returnedDate) && (
+            <>
+              <Separator style={{ marginBottom: 20 }} />
+              <SectionHeading style={{ marginBottom: 16 }}>Timeline</SectionHeading>
+              <View style={{ gap: 14, marginBottom: 24 }}>
                 {item.borrowedDate && (
-                  <View className="gap-2">
-                    <View className="flex-row justify-between items-center">
-                      <Text variant="default" className="text-muted-foreground">
-                        Borrowed Date
-                      </Text>
-                      <Text variant="default" className="font-medium">
-                        {formatDate(item.borrowedDate)}
-                      </Text>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Caption>Borrowed</Caption>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <BodyStrong style={{ fontSize: 13 }}>{formatDate(item.borrowedDate)}</BodyStrong>
+                      <Caption>{formatRelativeTime(item.borrowedDate)}</Caption>
                     </View>
-                    <Text variant="small" className="text-muted-foreground">
-                      {formatRelativeTime(item.borrowedDate)}
-                    </Text>
                   </View>
                 )}
-
                 {item.dueDate && (
-                  <View className="gap-2">
-                    <View className="flex-row justify-between items-center">
-                      <Text variant="default" className="text-muted-foreground">
-                        Due Date
-                      </Text>
-                      <Text
-                        variant="default"
-                        className={`font-medium ${
-                          isOverdue ? "text-red-600" : ""
-                        }`}
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Caption>Due Date</Caption>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <BodyStrong
+                        style={{ fontSize: 13, color: isOverdue ? theme.destructive : theme.foreground }}
                       >
                         {formatDate(item.dueDate)}
-                      </Text>
+                      </BodyStrong>
+                      {!isAvailable && daysUntil !== undefined && (
+                        <Caption style={{ color: isOverdue ? theme.destructive : theme.mutedForeground }}>
+                          {isOverdue
+                            ? `Overdue by ${Math.abs(daysUntil)}d`
+                            : `Due in ${daysUntil}d`}
+                        </Caption>
+                      )}
                     </View>
-                    {!isAvailable && daysUntil !== undefined && (
-                      <Text
-                        variant="small"
-                        className={
-                          isOverdue ? "text-red-600" : "text-muted-foreground"
-                        }
-                      >
-                        {isOverdue
-                          ? `Overdue by ${Math.abs(daysUntil)} day${
-                              Math.abs(daysUntil) !== 1 ? "s" : ""
-                            }`
-                          : `Due in ${daysUntil} day${
-                              daysUntil !== 1 ? "s" : ""
-                            }`}
-                      </Text>
-                    )}
                   </View>
                 )}
-
                 {item.returnedDate && (
-                  <View className="gap-2">
-                    <View className="flex-row justify-between items-center">
-                      <Text variant="default" className="text-muted-foreground">
-                        Returned Date
-                      </Text>
-                      <Text
-                        variant="default"
-                        className="font-medium text-green-600"
-                      >
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Caption>Returned</Caption>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <BodyStrong style={{ fontSize: 13, color: theme.primary }}>
                         {formatDate(item.returnedDate)}
-                      </Text>
+                      </BodyStrong>
+                      <Caption>{formatRelativeTime(item.returnedDate)}</Caption>
                     </View>
-                    <Text variant="small" className="text-muted-foreground">
-                      {formatRelativeTime(item.returnedDate)}
-                    </Text>
                   </View>
                 )}
-
                 {daysSinceBorrowed > 0 && (
-                  <View className="flex-row justify-between items-center">
-                    <Text variant="default" className="text-muted-foreground">
-                      Duration
-                    </Text>
-                    <Text variant="default" className="font-medium">
-                      {daysSinceBorrowed} day
-                      {daysSinceBorrowed !== 1 ? "s" : ""}
-                    </Text>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Caption>Duration</Caption>
+                    <BodyStrong style={{ fontSize: 13 }}>
+                      {daysSinceBorrowed} day{daysSinceBorrowed !== 1 ? "s" : ""}
+                    </BodyStrong>
                   </View>
                 )}
               </View>
-            )}
+            </>
+          )}
 
-            {(item.borrowedDate || item.returnedDate) && <Separator />}
+          {/* ── Notes ── */}
+          {item.notes && (
+            <>
+              <Separator style={{ marginBottom: 20 }} />
+              <SectionHeading style={{ marginBottom: 12 }}>Notes</SectionHeading>
+              <View
+                style={{
+                  backgroundColor: theme.muted,
+                  borderRadius: 16,
+                  padding: 16,
+                  borderLeftWidth: 3,
+                  borderLeftColor: theme.primary,
+                  marginBottom: 24,
+                }}
+              >
+                <BodyText style={{ color: theme.mutedForeground }}>{item.notes}</BodyText>
+              </View>
+            </>
+          )}
 
-            {item.notes && (
-              <>
-                <View className="gap-3">
-                  <Text variant="h3" className="font-semibold">
-                    Notes
-                  </Text>
-                  <Text variant="default" className="text-muted-foreground">
-                    {item.notes}
-                  </Text>
-                </View>
-                <Separator />
-              </>
-            )}
+          {/* ── Community Ownership ── */}
+          {!isBorrower && communityOwners.length > 0 && (
+            <>
+              <Separator style={{ marginBottom: 20 }} />
+              <SectionHeading style={{ marginBottom: 4 }}>Also in the Community</SectionHeading>
+              <Caption style={{ marginBottom: 16 }}>
+                {communityOwners.length} {communityOwners.length === 1 ? "person" : "people"} in your network{" "}
+                {communityOwners.length === 1 ? "owns" : "own"} this book
+              </Caption>
+              <View style={{ gap: 10, marginBottom: 24 }}>
+                {communityOwners.map(({ item: otherItem, owner }) => (
+                  <View
+                    key={otherItem.id}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: 14,
+                      backgroundColor: theme.muted,
+                      borderRadius: 16,
+                    }}
+                  >
+                    <Avatar className="w-10 h-10" alt={owner?.name ?? "?"}>
+                      {owner?.avatarUrl ? (
+                        <AvatarImage source={resolveAvatarSource(owner.avatarUrl) ?? { uri: "" }} />
+                      ) : (
+                        <AvatarFallback>
+                          <Caption>{owner ? getInitials(owner.name) : "?"}</Caption>
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <View style={{ flex: 1 }}>
+                      <BodyStrong style={{ fontSize: 13 }}>{owner?.name ?? "Unknown"}</BodyStrong>
+                      {!otherItem.borrowedBy && !otherItem.returnedDate ? (
+                        <Caption style={{ color: theme.primary }}>Available</Caption>
+                      ) : otherItem.borrowedBy && !otherItem.returnedDate ? (
+                        <Caption style={{ color: theme.secondary }}>Currently lent out</Caption>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
 
-            {/* Metadata */}
-            <View className="gap-2">
-              <Text variant="small" className="text-muted-foreground">
-                Created {formatRelativeTime(item.createdAt)}
-              </Text>
-              {item.createdAt.getTime() !== item.updatedAt.getTime() && (
-                <Text variant="small" className="text-muted-foreground">
-                  Updated {formatRelativeTime(item.updatedAt)}
+          {/* ── Meta ── */}
+          <Separator style={{ marginBottom: 16 }} />
+          <Caption style={{ marginBottom: 4 }}>Added {formatRelativeTime(item.createdAt)}</Caption>
+          {item.createdAt.getTime() !== item.updatedAt.getTime() && (
+            <Caption>Updated {formatRelativeTime(item.updatedAt)}</Caption>
+          )}
+
+          {/* ── Action Buttons ── */}
+          <View style={{ gap: 12, marginTop: 28 }}>
+            {isBorrower ? (
+              <Button
+                onPress={handleMarkReturned}
+                disabled={returning}
+                style={{ borderRadius: 24, paddingVertical: 18 } as any}
+              >
+                <Check size={18} color="#fff" />
+                <Text className="text-white font-bold">
+                  {returning ? "Returning…" : "Return to Owner"}
                 </Text>
-              )}
-            </View>
-
-            {/* Action Buttons */}
-            <View className="gap-3 pt-2">
-              {isBorrower ? (
-                // Buttons for borrowed items (you're the borrower)
-                <>
+              </Button>
+            ) : (
+              <>
+                {!isAvailable && item.borrowedBy && (
                   <Button
                     onPress={handleMarkReturned}
-                    disabled={returning}
-                    className="bg-green-600"
+                    disabled={returning || deleting}
+                    style={{ borderRadius: 24, paddingVertical: 18 } as any}
                   >
-                    <LucideIcons.Check size={16} color="white" />
-                    <Text className="text-white">
-                      {returning ? "Returning..." : "Return to Owner"}
+                    <Check size={18} color="#fff" />
+                    <Text className="text-white font-bold">
+                      {returning ? "Marking…" : "Mark as Returned"}
                     </Text>
                   </Button>
-                </>
-              ) : (
-                // Buttons for owned items
-                <>
-                  {!isAvailable && item.borrowedBy && (
-                    <Button
-                      onPress={handleMarkReturned}
-                      disabled={returning || deleting}
-                      className="bg-green-600"
-                    >
-                      <LucideIcons.Check size={16} color="white" />
-                      <Text className="text-white">
-                        {returning ? "Marking as Returned..." : "Mark as Returned"}
-                      </Text>
-                    </Button>
-                  )}
+                )}
 
-                  <Button
-                    variant="outline"
-                    onPress={handleEdit}
-                    disabled={deleting || returning}
-                    className="border-blue-200"
-                  >
-                    <LucideIcons.Edit size={16} color="#3b82f6" />
-                    <Text className="text-blue-600">Edit Item</Text>
-                  </Button>
+                <Button
+                  variant="outline"
+                  onPress={handleEdit}
+                  disabled={deleting || returning}
+                  style={{ borderRadius: 24, borderColor: theme.border } as any}
+                >
+                  <Edit size={16} color={theme.foreground} />
+                  <Text>Edit Item</Text>
+                </Button>
 
-                  <Button
-                    variant="outline"
-                    onPress={handleDelete}
-                    disabled={deleting || returning}
-                    className="border-red-200"
-                  >
-                    <LucideIcons.Trash2 size={16} color="#ef4444" />
-                    <Text className="text-red-600">Delete Item</Text>
-                  </Button>
-                </>
-              )}
-            </View>
+                <Button
+                  variant="outline"
+                  onPress={handleDelete}
+                  disabled={deleting || returning}
+                  style={{ borderRadius: 24, borderColor: theme.destructive + "44" } as any}
+                >
+                  <Trash2 size={16} color={theme.destructive} />
+                  <Text style={{ color: theme.destructive }}>
+                    {deleting ? "Deleting…" : "Delete Item"}
+                  </Text>
+                </Button>
+              </>
+            )}
           </View>
+          <Caption className="text-center" style={{ marginTop: 16, marginBottom: 8 }}>
+            Typically returned in 7–10 days
+          </Caption>
         </View>
       </ScrollView>
     </View>

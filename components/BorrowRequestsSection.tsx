@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import * as LucideIcons from "lucide-react-native";
 import { formatDistanceToNow } from "date-fns";
 import { getInitials } from "@/lib/utils";
+import { resolveAvatarSource } from "@/lib/avatar-service";
 import type { BorrowRequestWithDetails } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
 
@@ -147,7 +148,7 @@ export function BorrowRequestsSection({
                 <View className="flex-row gap-2 items-center">
                   <Avatar className="w-6 h-6" alt={request.requesterName}>
                     {request.requesterAvatarUrl ? (
-                      <AvatarImage source={{ uri: request.requesterAvatarUrl }} />
+                      <AvatarImage source={resolveAvatarSource(request.requesterAvatarUrl) ?? { uri: '' }} />
                     ) : (
                       <AvatarFallback>
                         <Text variant="small" className="text-xs">

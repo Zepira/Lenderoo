@@ -17,6 +17,7 @@ import { Eye, EyeOff, LogIn } from "lucide-react-native";
 import { AuthIconBox } from "@/components/AuthIconBox";
 import { Link, router } from "expo-router";
 import { Text } from "@/components/ui/text";
+import { PageHero } from "@/components/ui/typography";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -82,9 +83,7 @@ export default function SignInScreen() {
           {/* Header */}
           <View className="mb-8">
             <AuthIconBox />
-            <Text className="font-display-bold text-3xl mb-2">
-              Welcome back
-            </Text>
+            <PageHero className="mb-2">Welcome back</PageHero>
             <Text className="text-muted-foreground text-base">
               Sign in to continue tracking your items
             </Text>

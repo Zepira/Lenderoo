@@ -1,95 +1,184 @@
 import { useRouter } from "expo-router";
-import { ScrollView, View, TouchableOpacity } from "react-native";
-import { Card, CardHeader } from "@/components/ui/card";
-import { Text } from "@/components/ui/text";
-import { FloatingBackButton } from "components/FloatingBackButton";
-import * as LucideIcons from "lucide-react-native";
-import { CATEGORY_CONFIG, type ItemCategory } from "lib/constants";
-import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
+import { View, Pressable, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ArrowLeft } from "lucide-react-native";
+import { CATEGORY_CONFIG } from "@/components/ItemTile";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { THEME } from "@/lib/theme";
+import {
+  PageTitle,
+  SectionHeading,
+  TinyLabel,
+  BodyText,
+  Caption,
+} from "@/components/ui/typography";
+import type { ItemCategory } from "lib/types";
 
-const CATEGORY_ICONS_MAP: Record<ItemCategory, keyof typeof LucideIcons> = {
+const CATEGORIES = Object.keys(CATEGORY_CONFIG) as ItemCategory[];
+
+// Split into two rows of 4
+const ROW1 = CATEGORIES.slice(0, 4);
+const ROW2 = CATEGORIES.slice(4);
+
+const CATEGORY_LABELS: Record<ItemCategory, string> = {
   book: "Book",
-  tool: "Wrench",
-  clothing: "Shirt",
-  electronics: "Laptop",
-  game: "Gamepad2",
-  sports: "Dumbbell",
-  kitchen: "ChefHat",
-  other: "Package",
+  tool: "Tool",
+  clothing: "Clothing",
+  electronics: "Electronics",
+  game: "Game",
+  sports: "Sports",
+  kitchen: "Kitchen",
+  other: "Other",
 };
 
 export default function SelectCategoryScreen() {
   const router = useRouter();
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
 
   const handleCategorySelect = (category: ItemCategory) => {
-    // For books, use search flow
     if (category === "book") {
       router.push("/add-item/search" as any);
     } else {
-      // For other categories, use generic form
       router.push(`/add-item/generic?category=${category}` as any);
     }
   };
 
-  return (
-    <SafeAreaWrapper>
-      <FloatingBackButton />
+  const renderCategoryButton = (category: ItemCategory) => {
+    const cfg = CATEGORY_CONFIG[category];
+    return (
+      <Pressable
+        key={category}
+        onPress={() => handleCategorySelect(category)}
+        style={({ pressed }) => ({
+          flex: 1,
+          alignItems: "center",
+          gap: 8,
+          paddingVertical: 14,
+          paddingHorizontal: 8,
+          borderRadius: 20,
+          backgroundColor: pressed ? cfg.color + "22" : cfg.color + "14",
+          borderWidth: 1.5,
+          borderColor: cfg.color + "40",
+          opacity: pressed ? 0.8 : 1,
+        })}
+      >
+        <cfg.Icon size={24} color={cfg.color} />
+        <TinyLabel
+          style={{ color: cfg.color, fontSize: 9 }}
+          className="normal-case tracking-normal"
+        >
+          {CATEGORY_LABELS[category]}
+        </TinyLabel>
+      </Pressable>
+    );
+  };
 
-      <ScrollView className="flex-1 bg-background">
-        <View className="p-4 gap-4">
-          <View className="gap-2 items-center ">
-            <Text variant="h1" className="font-bold px-8">
-              What are you lending?
-            </Text>
-            <Text variant="muted">Select the type of item to get started</Text>
+  return (
+    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+      {/* Header */}
+      <View
+        style={{
+          backgroundColor: theme.card,
+          borderBottomLeftRadius: 40,
+          borderBottomRightRadius: 40,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          elevation: 4,
+          marginBottom: 24,
+        }}
+      >
+        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
+          <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+              <Pressable
+                onPress={() => router.back()}
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <ArrowLeft size={22} color={theme.mutedForeground} />
+              </Pressable>
+              <PageTitle>Add New Item</PageTitle>
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
+      >
+        {/* Category picker */}
+        <View
+          style={{
+            backgroundColor: theme.card,
+            borderRadius: 32,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: theme.border,
+            gap: 16,
+          }}
+        >
+          <View style={{ gap: 4 }}>
+            <TinyLabel>Item Category</TinyLabel>
+            <Caption>What kind of item are you adding?</Caption>
           </View>
 
-          <View className="gap-3 pt-2">
-            {Object.entries(CATEGORY_CONFIG).map(([key, config]) => {
-              const category = key as ItemCategory;
-              const IconComponent = (LucideIcons as any)[
-                CATEGORY_ICONS_MAP[category]
-              ];
+          <View style={{ gap: 10 }}>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {ROW1.map(renderCategoryButton)}
+            </View>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {ROW2.map(renderCategoryButton)}
+            </View>
+          </View>
+        </View>
 
-              return (
-                <TouchableOpacity
-                  key={category}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    handleCategorySelect(category);
-                  }}
-                >
-                  <Card>
-                    <CardHeader>
-                      <View className="flex-row gap-4 items-center">
-                        <View className="w-[60px] h-[60px] rounded-lg bg-blue-50 border border-blue-200 items-center justify-center">
-                          <IconComponent size={32} color="#3b82f6" />
-                        </View>
-
-                        <View className="flex-1 gap-1">
-                          <Text variant="large" className="font-semibold">
-                            {config.label}
-                          </Text>
-                          {category === "book" && (
-                            <Text
-                              variant="small"
-                              className="text-blue-600 font-medium"
-                            >
-                              Auto-fill from Hardcover
-                            </Text>
-                          )}
-                        </View>
-
-                        <LucideIcons.ChevronRight size={24} color="#9ca3af" />
-                      </View>
-                    </CardHeader>
-                  </Card>
-                </TouchableOpacity>
-              );
-            })}
+        {/* Book hint */}
+        <View
+          style={{
+            backgroundColor: THEME.light.primary + "12",
+            borderRadius: 20,
+            padding: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            borderWidth: 1,
+            borderColor: THEME.light.primary + "30",
+          }}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              backgroundColor: THEME.light.primary + "22",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CATEGORY_CONFIG.book.Icon size={18} color={THEME.light.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <BodyText style={{ fontSize: 13, color: THEME.light.primary }}>
+              Books auto-fill from Hardcover
+            </BodyText>
+            <Caption style={{ fontSize: 11 }}>
+              Search by title or author to pre-fill all details
+            </Caption>
           </View>
         </View>
       </ScrollView>
-    </SafeAreaWrapper>
+    </View>
   );
 }

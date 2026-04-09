@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
+import { resolveAvatarSource } from "@/lib/avatar-service";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 interface ItemCardProps {
@@ -109,7 +110,7 @@ export function ItemCard({
               {friend && (
                 <View className="flex-row gap-2 items-center">
                   <Avatar alt={`${friend.name}'s Avatar`}>
-                    <AvatarImage source={{ uri: friend.avatarUrl }} />
+                    <AvatarImage source={resolveAvatarSource(friend.avatarUrl) ?? { uri: '' }} />
                     <AvatarFallback>
                       <Text> {getInitials(friend.name)}</Text>
                     </AvatarFallback>
