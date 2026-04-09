@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { View, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, X } from "lucide-react-native";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
@@ -76,7 +76,15 @@ export default function SelectCategoryScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: isDark ? theme.muted : "#F3F4F6",
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+        overflow: "hidden",
+      }}
+    >
       {/* Header */}
       <View
         style={{
@@ -91,9 +99,16 @@ export default function SelectCategoryScreen() {
           marginBottom: 24,
         }}
       >
-        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-          <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+        <SafeAreaView
+          edges={["top"]}
+          style={{ backgroundColor: "transparent" }}
+        >
+          <View
+            style={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 28 }}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 16 }}
+            >
               <Pressable
                 onPress={() => router.back()}
                 style={({ pressed }) => ({
@@ -108,7 +123,21 @@ export default function SelectCategoryScreen() {
               >
                 <ArrowLeft size={22} color={theme.mutedForeground} />
               </Pressable>
-              <PageTitle>Add New Item</PageTitle>
+              <PageTitle style={{ flex: 1 }}>Add New Item</PageTitle>
+              <Pressable
+                onPress={() => router.dismiss()}
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <X size={20} color={theme.mutedForeground} />
+              </Pressable>
             </View>
           </View>
         </SafeAreaView>
@@ -116,7 +145,11 @@ export default function SelectCategoryScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingBottom: 48,
+          gap: 16,
+        }}
       >
         {/* Category picker */}
         <View

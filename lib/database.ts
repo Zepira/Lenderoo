@@ -186,10 +186,8 @@ export async function getOverdueItems(): Promise<Item[]> {
   });
 }
 
-export async function markItemReturned(
-  id: string,
-): Promise<Item | null> {
-  return updateItem(id, {
+export async function markItemReturned(id: string): Promise<void> {
+  await updateItem(id, {
     borrowedBy: undefined,
     borrowedDate: undefined,
     dueDate: undefined,

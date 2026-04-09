@@ -9,7 +9,7 @@ import {
   TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Search, BookOpen } from "lucide-react-native";
+import { ArrowLeft, Search, BookOpen, X } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -116,7 +116,7 @@ export default function SearchBookScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6", borderTopLeftRadius: 40, borderTopRightRadius: 40, overflow: "hidden" }}>
       {/* Header */}
       <View
         style={{
@@ -132,7 +132,7 @@ export default function SearchBookScreen() {
         }}
       >
         <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-          <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28 }}>
+          <View style={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 28 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
               <Pressable
                 onPress={() => router.back()}
@@ -148,7 +148,21 @@ export default function SearchBookScreen() {
               >
                 <ArrowLeft size={22} color={theme.mutedForeground} />
               </Pressable>
-              <PageTitle>Add a Book</PageTitle>
+              <PageTitle style={{ flex: 1 }}>Add a Book</PageTitle>
+              <Pressable
+                onPress={() => router.dismiss()}
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <X size={20} color={theme.mutedForeground} />
+              </Pressable>
             </View>
           </View>
         </SafeAreaView>

@@ -10,7 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Camera, ChevronDown, UserCircle } from "lucide-react-native";
+import { ArrowLeft, Camera, ChevronDown, UserCircle, X } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -150,8 +150,7 @@ export default function AddGenericItemScreen() {
       createItemSchema.parse(itemData);
       await createItem({ ...itemData, userId: user.id });
       toast.success("Item added successfully!");
-      router.back();
-      router.back();
+      router.replace("/(tabs)/library");
     } catch (error) {
       isSubmitting.current = false;
       if (error && typeof error === "object" && "issues" in error) {
@@ -184,7 +183,7 @@ export default function AddGenericItemScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6", borderTopLeftRadius: 40, borderTopRightRadius: 40, overflow: "hidden" }}>
       {/* Header */}
       <View
         style={{
@@ -200,7 +199,7 @@ export default function AddGenericItemScreen() {
         }}
       >
         <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-          <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28 }}>
+          <View style={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 28 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
               <Pressable
                 onPress={() => router.back()}
@@ -228,7 +227,21 @@ export default function AddGenericItemScreen() {
               >
                 <cfg.Icon size={18} color={cfg.color} />
               </View>
-              <PageTitle>Add {categoryLabel}</PageTitle>
+              <PageTitle style={{ flex: 1 }}>Add {categoryLabel}</PageTitle>
+              <Pressable
+                onPress={() => router.dismiss()}
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <X size={20} color={theme.mutedForeground} />
+              </Pressable>
             </View>
           </View>
         </SafeAreaView>

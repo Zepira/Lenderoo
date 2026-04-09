@@ -6,9 +6,7 @@ import { View, LogBox } from "react-native";
 // Suppress the SafeAreaView deprecation warning produced by expo-router's
 // internal components (DefaultNavigator, ErrorBoundary).  Our own code
 // already imports SafeAreaView from react-native-safe-area-context.
-LogBox.ignoreLogs([
-  "SafeAreaView has been deprecated",
-]);
+LogBox.ignoreLogs(["SafeAreaView has been deprecated"]);
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import {
@@ -29,9 +27,7 @@ import { Provider } from "components/Provider";
 import { useThemeContext } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 
-export {
-  ErrorBoundary,
-} from "expo-router";
+export { ErrorBoundary } from "expo-router";
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -45,19 +41,26 @@ function RootLayoutContent() {
   const isDark = activeTheme === "dark";
   const router = useRouter();
   const segments = useSegments();
+  const splashHidden = React.useRef(false);
 
   const stackScreenOptions = React.useMemo(
     () => ({
       contentStyle: { backgroundColor: isDark ? "#0a0a0a" : "#ffffff" },
     }),
-    [isDark]
+    [isDark],
   );
 
   // Hide the native splash once auth and theme are ready, then navigate.
   React.useEffect(() => {
     if (themeLoading || authLoading) return;
 
-    SplashScreen.hideAsync().catch(() => {});
+    // Guard: hideAsync must only be called once — subsequent calls on iOS
+    // throw "no native splash screen registered for given view controller"
+    // because each modal/new view controller gets a fresh native context.
+    if (!splashHidden.current) {
+      splashHidden.current = true;
+      SplashScreen.hideAsync().catch(() => {});
+    }
 
     const inAuthGroup = segments[0] === "(auth)";
     if (!user && !inAuthGroup) {
@@ -86,6 +89,7 @@ function RootLayoutContent() {
             animation: "slide_from_bottom",
             gestureEnabled: true,
             gestureDirection: "vertical",
+            contentStyle: { backgroundColor: "transparent" },
           }}
         />
         <Stack.Screen name="item" options={{ headerShown: false }} />

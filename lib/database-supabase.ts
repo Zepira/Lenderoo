@@ -318,19 +318,33 @@ export async function getBorrowedByMeItems(): Promise<Item[]> {
   return (data || []).map(convertItemFromDb);
 }
 
-export async function markItemReturned(
-  id: string,
-): Promise<Item | null> {
-  // Clear all borrow-related fields so the item returns to a clean available
-  // state. Setting returnedDate would cause the item to be filtered out of
-  // both "available" (requires returned_date IS NULL) and "lent" queries,
-  // leaving it in a broken limbo state.
-  return updateItem(id, {
-    borrowedBy: undefined,
-    borrowedDate: undefined,
-    dueDate: undefined,
-    returnedDate: undefined,
-  });
+export async function markItemReturned(id: string): Promise<void> {
+  // Bypass updateItem (which pre-fetches via getItemById and silently returns
+  // null if RLS blocks the borrower from reading it). Do a direct update
+  // instead so RLS errors surface as thrown exceptions.
+  const { error } = await supabase
+    .from("items")
+    .update({
+      borrowed_by: null,
+      borrowed_date: null,
+      due_date: null,
+      returned_date: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) throw error;
+
+  // Mark the approved borrow request as cancelled so it no longer shows as
+  // active. 'cancelled' is a valid status in the DB CHECK constraint and
+  // getMyBorrowRequestForItem only queries for ['pending', 'approved'].
+  // Both requester and owner have UPDATE permission via existing RLS policies.
+  // Ignore errors — the item fields are already cleared, so a failure here
+  // is non-critical.
+  await supabase
+    .from("borrow_requests")
+    .update({ status: "cancelled" })
+    .eq("item_id", id)
+    .eq("status", "approved");
 }
 
 export async function queryItems(filters?: ItemFilters): Promise<Item[]> {

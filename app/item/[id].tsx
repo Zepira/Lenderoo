@@ -105,7 +105,9 @@ export default function ItemDetailScreen() {
   const ownerName = isOwner ? "Me" : (ownerFriend?.name ?? "Unknown");
 
   // Borrow request state (for friend-viewer actions)
-  const [borrowRequest, setBorrowRequest] = useState<BorrowRequest | null>(null);
+  const [borrowRequest, setBorrowRequest] = useState<BorrowRequest | null>(
+    null,
+  );
   const [requesting, setRequesting] = useState(false);
 
   const loadBorrowRequest = useCallback(async () => {
@@ -445,11 +447,22 @@ export default function ItemDetailScreen() {
           >
             {/* Owner */}
             <View style={{ alignItems: "center", flex: 1 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
                 {!isOwner && (
-                  <Avatar style={{ width: 28, height: 28, borderRadius: 8 }} alt={ownerName}>
+                  <Avatar
+                    style={{ width: 28, height: 28, borderRadius: 8 }}
+                    alt={ownerName}
+                  >
                     {ownerFriend?.avatarUrl ? (
-                      <AvatarImage source={resolveAvatarSource(ownerFriend.avatarUrl) ?? { uri: "" }} />
+                      <AvatarImage
+                        source={
+                          resolveAvatarSource(ownerFriend.avatarUrl) ?? {
+                            uri: "",
+                          }
+                        }
+                      />
                     ) : (
                       <AvatarFallback>
                         <Caption>{getInitials(ownerName)}</Caption>
@@ -507,7 +520,9 @@ export default function ItemDetailScreen() {
               {bookMeta.genre && (
                 <View>
                   <TinyLabel style={{ marginBottom: 6 }}>Genre</TinyLabel>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  <View
+                    style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}
+                  >
                     {(Array.isArray(bookMeta.genre)
                       ? bookMeta.genre
                       : String(bookMeta.genre).split(",")
@@ -923,7 +938,7 @@ export default function ItemDetailScreen() {
                     </Text>
                   </Button>
                 )}
-                {!isAvailable && !isBorrower && !borrowRequest && (
+                {!isAvailable && !borrowRequest && (
                   <Button
                     disabled
                     style={{ backgroundColor: theme.destructive } as any}

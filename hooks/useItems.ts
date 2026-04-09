@@ -190,8 +190,7 @@ export function useMarkItemReturned() {
     try {
       setLoading(true)
       setError(null)
-      const updatedItem = await db.markItemReturned(id)
-      return updatedItem
+      await db.markItemReturned(id)
     } catch (err) {
       setError(err as Error)
       throw err

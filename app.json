@@ -12,15 +12,19 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lenderoo.lenderoo",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "associatedDomains": ["applinks:mobile.lenderoo.app"]
+      "associatedDomains": [
+        "applinks:mobile.lenderoo.app",
+        "applinks:mobile.lenderoo.app"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -38,7 +42,24 @@
               "host": "mobile.lenderoo.app"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "mobile.lenderoo.app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -72,6 +93,12 @@
         "projectId": "c0ac397d-ebc2-4651-91ce-6c6a8206aefc"
       }
     },
-    "owner": "lenderoo"
+    "owner": "lenderoo",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c0ac397d-ebc2-4651-91ce-6c6a8206aefc"
+    }
   }
 }
