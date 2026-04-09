@@ -186,7 +186,7 @@ export default function ItemsScreen() {
         renderItem={({ item }) => (
           <ItemCard
             item={item}
-            onPress={() => router.push(`/library/${item.id}` as any)}
+            onPress={() => router.push(`/item/${item.id}` as any)}
             style={{ flex: 1 }}
           />
         )}

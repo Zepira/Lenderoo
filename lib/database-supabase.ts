@@ -320,13 +320,16 @@ export async function getBorrowedByMeItems(): Promise<Item[]> {
 
 export async function markItemReturned(
   id: string,
-  returnedDate?: Date
 ): Promise<Item | null> {
+  // Clear all borrow-related fields so the item returns to a clean available
+  // state. Setting returnedDate would cause the item to be filtered out of
+  // both "available" (requires returned_date IS NULL) and "lent" queries,
+  // leaving it in a broken limbo state.
   return updateItem(id, {
-    borrowedBy: undefined, // Clear the borrower
-    borrowedDate: undefined, // Clear borrowed date
-    dueDate: undefined, // Clear due date
-    returnedDate: returnedDate || new Date(),
+    borrowedBy: undefined,
+    borrowedDate: undefined,
+    dueDate: undefined,
+    returnedDate: undefined,
   });
 }
 

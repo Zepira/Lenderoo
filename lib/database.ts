@@ -188,10 +188,12 @@ export async function getOverdueItems(): Promise<Item[]> {
 
 export async function markItemReturned(
   id: string,
-  returnedDate?: Date
 ): Promise<Item | null> {
   return updateItem(id, {
-    returnedDate: returnedDate || new Date(),
+    borrowedBy: undefined,
+    borrowedDate: undefined,
+    dueDate: undefined,
+    returnedDate: undefined,
   });
 }
 

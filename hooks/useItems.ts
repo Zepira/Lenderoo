@@ -186,11 +186,11 @@ export function useMarkItemReturned() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const markReturned = useCallback(async (id: string, returnedDate?: Date) => {
+  const markReturned = useCallback(async (id: string) => {
     try {
       setLoading(true)
       setError(null)
-      const updatedItem = await db.markItemReturned(id, returnedDate)
+      const updatedItem = await db.markItemReturned(id)
       return updatedItem
     } catch (err) {
       setError(err as Error)

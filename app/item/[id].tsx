@@ -26,12 +26,14 @@ import {
   ChevronRight,
   Clock,
   Edit,
-  Info,
   Package,
+  RotateCcw,
+  Send,
   Tag,
   Trash2,
   User,
   BookOpen,
+  X,
 } from "lucide-react-native";
 import {
   useItem,
@@ -50,6 +52,12 @@ import {
   calculateItemStatus,
   toProperCase,
 } from "lib/utils";
+import {
+  createBorrowRequest,
+  getMyBorrowRequestForItem,
+  cancelBorrowRequest,
+} from "@/lib/borrow-requests-service";
+import type { BorrowRequest } from "lib/types";
 import * as toast from "@/lib/toast";
 import { resolveAvatarSource } from "@/lib/avatar-service";
 import { useAuth } from "@/contexts/AuthContext";
@@ -70,7 +78,7 @@ export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const { user } = useAuth();
+  const { user, appUser } = useAuth();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
@@ -79,18 +87,40 @@ export default function ItemDetailScreen() {
   const isBorrower =
     item && user && item.borrowedBy === user.id && !item.returnedDate;
   const isOwner = item && user && item.userId === user.id;
-  const friendId = item?.borrowedBy && !isBorrower ? item.borrowedBy : null;
-  const { friend } = useFriend(friendId);
+  // Load the borrower's friend profile only when the viewer is not the borrower
+  // (querying the friendship table with your own ID causes an error)
+  const borrowerFriendId =
+    item?.borrowedBy && !item.returnedDate && !isBorrower
+      ? item.borrowedBy
+      : null;
+  const { friend } = useFriend(borrowerFriendId);
 
   const { deleteItem, loading: deleting } = useDeleteItem();
   const { markReturned, loading: returning } = useMarkItemReturned();
   const { items: allItems } = useItems();
   const { friends } = useFriends();
 
+  // Owner name: "Me" if current user owns it, otherwise look up in friends list
+  const ownerFriend = friends.find((f) => f.id === item?.userId);
+  const ownerName = isOwner ? "Me" : (ownerFriend?.name ?? "Unknown");
+
+  // Borrow request state (for friend-viewer actions)
+  const [borrowRequest, setBorrowRequest] = useState<BorrowRequest | null>(null);
+  const [requesting, setRequesting] = useState(false);
+
+  const loadBorrowRequest = useCallback(async () => {
+    if (!item || isOwner || isBorrower) return;
+    try {
+      const req = await getMyBorrowRequestForItem(item.id);
+      setBorrowRequest(req);
+    } catch {}
+  }, [item?.id, isOwner, isBorrower]);
+
   useFocusEffect(
     useCallback(() => {
       refresh();
-    }, [refresh]),
+      loadBorrowRequest();
+    }, [refresh, loadBorrowRequest]),
   );
 
   const communityOwners = useMemo(() => {
@@ -124,7 +154,35 @@ export default function ItemDetailScreen() {
   const goBack = () =>
     navigation.canGoBack() ? router.back() : router.push("/(tabs)" as any);
 
-  if (loading || !item || (item.borrowedBy && !isBorrower && !friend)) {
+  const handleBorrow = async () => {
+    if (!item) return;
+    try {
+      setRequesting(true);
+      await createBorrowRequest(item.id, item.userId);
+      toast.success("Borrow request sent!");
+      await loadBorrowRequest();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send request");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    if (!borrowRequest) return;
+    try {
+      setRequesting(true);
+      await cancelBorrowRequest(borrowRequest.id);
+      toast.success("Request cancelled");
+      setBorrowRequest(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to cancel request");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  if (loading || !item) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <SafeAreaView
@@ -385,18 +443,25 @@ export default function ItemDetailScreen() {
               borderBottomColor: theme.border,
             }}
           >
-            {/* Lent to / borrowed from */}
+            {/* Owner */}
             <View style={{ alignItems: "center", flex: 1 }}>
-              <TinyLabel style={{ marginBottom: 4 }}>
-                {isBorrower ? "Owner" : friend ? "Lent To" : "Status"}
-              </TinyLabel>
-              <LabelStrong numberOfLines={1}>
-                {isBorrower
-                  ? "You borrowed"
-                  : friend
-                    ? friend.name
-                    : "Available"}
-              </LabelStrong>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {!isOwner && (
+                  <Avatar style={{ width: 28, height: 28, borderRadius: 8 }} alt={ownerName}>
+                    {ownerFriend?.avatarUrl ? (
+                      <AvatarImage source={resolveAvatarSource(ownerFriend.avatarUrl) ?? { uri: "" }} />
+                    ) : (
+                      <AvatarFallback>
+                        <Caption>{getInitials(ownerName)}</Caption>
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                )}
+                <View style={{ alignItems: "center" }}>
+                  <TinyLabel style={{ marginBottom: 4 }}>Owner</TinyLabel>
+                  <LabelStrong numberOfLines={1}>{ownerName}</LabelStrong>
+                </View>
+              </View>
             </View>
 
             <View style={{ width: 1, backgroundColor: theme.border }} />
@@ -438,51 +503,41 @@ export default function ItemDetailScreen() {
           {/* ── Book metadata ── */}
           {bookMeta && (
             <View style={{ gap: 20, marginBottom: 24 }}>
-              {/* Genre + Series row */}
-              {(bookMeta.genre || bookMeta.seriesName) && (
-                <View style={{ flexDirection: "row", gap: 24 }}>
-                  {bookMeta.genre && (
-                    <View style={{ flex: 1 }}>
-                      <TinyLabel style={{ marginBottom: 6 }}>Genre</TinyLabel>
+              {/* Genre — full width, wrapping */}
+              {bookMeta.genre && (
+                <View>
+                  <TinyLabel style={{ marginBottom: 6 }}>Genre</TinyLabel>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                    {(Array.isArray(bookMeta.genre)
+                      ? bookMeta.genre
+                      : String(bookMeta.genre).split(",")
+                    ).map((g: string, i: number) => (
                       <View
+                        key={i}
                         style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          gap: 6,
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          backgroundColor: theme.primary + "18",
+                          borderRadius: 8,
                         }}
                       >
-                        {(Array.isArray(bookMeta.genre)
-                          ? bookMeta.genre
-                          : String(bookMeta.genre).split(",")
-                        ).map((g: string, i: number) => (
-                          <View
-                            key={i}
-                            style={{
-                              paddingHorizontal: 10,
-                              paddingVertical: 4,
-                              backgroundColor: theme.primary + "18",
-                              borderRadius: 8,
-                            }}
-                          >
-                            <Caption style={{ color: theme.primary }}>
-                              {g.trim()}
-                            </Caption>
-                          </View>
-                        ))}
+                        <Caption style={{ color: theme.primary }}>
+                          {g.trim()}
+                        </Caption>
                       </View>
-                    </View>
-                  )}
-                  {bookMeta.seriesName && (
-                    <View style={{ flex: 1 }}>
-                      <TinyLabel style={{ marginBottom: 6 }}>Series</TinyLabel>
-                      <BodyText>
-                        {bookMeta.seriesName}
-                        {bookMeta.seriesNumber
-                          ? ` #${bookMeta.seriesNumber}`
-                          : ""}
-                      </BodyText>
-                    </View>
-                  )}
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Series */}
+              {bookMeta.seriesName && (
+                <View>
+                  <TinyLabel style={{ marginBottom: 6 }}>Series</TinyLabel>
+                  <BodyText>
+                    {bookMeta.seriesName}
+                    {bookMeta.seriesNumber ? ` #${bookMeta.seriesNumber}` : ""}
+                  </BodyText>
                 </View>
               )}
 
@@ -520,88 +575,89 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
-          {/* ── Lent-out info panel ── */}
-          {!isAvailable && friend && (
+          {/* ── Lent-out info panel ── always shown when item is lent out ── */}
+          {!isAvailable && item.borrowedBy && (
             <>
               <Separator style={{ marginBottom: 20 }} />
-              <TouchableOpacity
-                onPress={() => router.push(`/friends/${friend.id}` as any)}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 14,
-                  padding: 16,
-                  backgroundColor: theme.secondary + "18",
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: theme.secondary + "33",
-                  marginBottom: 24,
-                }}
-                activeOpacity={0.75}
-              >
-                <Avatar className="w-12 h-12" alt={friend.name}>
-                  {friend.avatarUrl ? (
-                    <AvatarImage
-                      source={
-                        resolveAvatarSource(friend.avatarUrl) ?? { uri: "" }
-                      }
-                    />
-                  ) : (
-                    <AvatarFallback>
-                      <BodyStrong style={{ color: theme.secondary }}>
-                        {getInitials(friend.name)}
-                      </BodyStrong>
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <View style={{ flex: 1 }}>
-                  <TinyLabel style={{ marginBottom: 2 }}>
-                    Currently Lent To
-                  </TinyLabel>
-                  <BodyStrong>{friend.name}</BodyStrong>
-                  {friend.email && <Caption>{friend.email}</Caption>}
-                </View>
-                <ChevronRight size={18} color={theme.mutedForeground} />
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* ── Borrower info (you borrowed this) ── */}
-          {isBorrower && (
-            <>
-              <Separator style={{ marginBottom: 20 }} />
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: 16,
-                  backgroundColor: theme.primary + "12",
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: theme.primary + "30",
-                  marginBottom: 24,
-                }}
-              >
+              {isBorrower ? (
+                // Viewer is the borrower — show "You" panel
                 <View
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 14,
-                    backgroundColor: theme.primary + "22",
+                    flexDirection: "row",
                     alignItems: "center",
-                    justifyContent: "center",
+                    gap: 14,
+                    padding: 16,
+                    backgroundColor: theme.secondary + "18",
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: theme.secondary + "33",
+                    marginBottom: 24,
                   }}
                 >
-                  <Info size={20} color={theme.primary} />
+                  <Avatar className="w-12 h-12" alt="You">
+                    {appUser?.avatarUrl ? (
+                      <AvatarImage
+                        source={
+                          resolveAvatarSource(appUser.avatarUrl) ?? { uri: "" }
+                        }
+                      />
+                    ) : (
+                      <AvatarFallback>
+                        <BodyStrong style={{ color: theme.secondary }}>
+                          {getInitials(appUser?.name)}
+                        </BodyStrong>
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <View style={{ flex: 1 }}>
+                    <TinyLabel style={{ marginBottom: 2 }}>
+                      Currently Lent To
+                    </TinyLabel>
+                    <BodyStrong>You</BodyStrong>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <TinyLabel style={{ color: theme.primary, marginBottom: 2 }}>
-                    Currently Borrowing
-                  </TinyLabel>
-                  <BodyText>You borrowed this item</BodyText>
-                </View>
-              </View>
+              ) : friend ? (
+                // Viewer is the owner — show borrower with link to friend profile
+                <TouchableOpacity
+                  onPress={() => router.push(`/friends/${friend.id}` as any)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: 16,
+                    backgroundColor: theme.secondary + "18",
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: theme.secondary + "33",
+                    marginBottom: 24,
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Avatar className="w-12 h-12" alt={friend.name}>
+                    {friend.avatarUrl ? (
+                      <AvatarImage
+                        source={
+                          resolveAvatarSource(friend.avatarUrl) ?? { uri: "" }
+                        }
+                      />
+                    ) : (
+                      <AvatarFallback>
+                        <BodyStrong style={{ color: theme.secondary }}>
+                          {getInitials(friend.name)}
+                        </BodyStrong>
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <View style={{ flex: 1 }}>
+                    <TinyLabel style={{ marginBottom: 2 }}>
+                      Currently Lent To
+                    </TinyLabel>
+                    <BodyStrong>{friend.name}</BodyStrong>
+                    {friend.email && <Caption>{friend.email}</Caption>}
+                  </View>
+                  <ChevronRight size={18} color={theme.mutedForeground} />
+                </TouchableOpacity>
+              ) : null}
             </>
           )}
 
@@ -801,19 +857,20 @@ export default function ItemDetailScreen() {
           {/* ── Action Buttons ── */}
           <View style={{ gap: 12, marginTop: 28 }}>
             {isBorrower ? (
+              /* Viewer is the borrower — return the item */
               <Button onPress={handleMarkReturned} disabled={returning}>
-                <Check size={18} color="#fff" />
+                <RotateCcw size={18} color="#fff" />
                 <Text className="text-white font-bold">
                   {returning ? "Returning…" : "Return to Owner"}
                 </Text>
               </Button>
-            ) : (
+            ) : isOwner ? (
+              /* Viewer is the owner — owner management actions */
               <>
                 {!isAvailable && item.borrowedBy && (
                   <Button
                     onPress={handleMarkReturned}
                     disabled={returning || deleting}
-                    style={{ borderRadius: 24 } as any}
                   >
                     <Check size={18} color="#fff" />
                     <Text className="text-white font-bold">
@@ -821,27 +878,20 @@ export default function ItemDetailScreen() {
                     </Text>
                   </Button>
                 )}
-
                 <Button
                   variant="outline"
                   onPress={handleEdit}
                   disabled={deleting || returning}
-                  style={{ borderRadius: 24, borderColor: theme.border } as any}
+                  style={{ borderColor: theme.border } as any}
                 >
                   <Edit size={16} color={theme.foreground} />
                   <Text>Edit Item</Text>
                 </Button>
-
                 <Button
                   variant="outline"
                   onPress={handleDelete}
                   disabled={deleting || returning}
-                  style={
-                    {
-                      borderRadius: 24,
-                      borderColor: theme.destructive + "44",
-                    } as any
-                  }
+                  style={{ borderColor: theme.destructive + "44" } as any}
                 >
                   <Trash2 size={16} color={theme.destructive} />
                   <Text style={{ color: theme.destructive }}>
@@ -849,14 +899,49 @@ export default function ItemDetailScreen() {
                   </Text>
                 </Button>
               </>
+            ) : (
+              /* Viewer is a friend — borrow/request actions */
+              <>
+                {isAvailable && !borrowRequest && (
+                  <Button onPress={handleBorrow} disabled={requesting}>
+                    <Send size={16} color="#fff" />
+                    <Text className="text-white font-bold">
+                      {requesting ? "Sending…" : "Borrow"}
+                    </Text>
+                  </Button>
+                )}
+                {borrowRequest?.status === "pending" && (
+                  <Button
+                    variant="outline"
+                    onPress={handleCancelRequest}
+                    disabled={requesting}
+                    style={{ borderColor: theme.border } as any}
+                  >
+                    <X size={16} color={theme.mutedForeground} />
+                    <Text style={{ color: theme.mutedForeground }}>
+                      {requesting ? "Cancelling…" : "Cancel Request"}
+                    </Text>
+                  </Button>
+                )}
+                {!isAvailable && !isBorrower && !borrowRequest && (
+                  <Button
+                    disabled
+                    style={{ backgroundColor: theme.destructive } as any}
+                  >
+                    <Text className="text-white font-bold">Request Next</Text>
+                  </Button>
+                )}
+              </>
             )}
           </View>
-          <Caption
-            className="text-center"
-            style={{ marginTop: 16, marginBottom: 8 }}
-          >
-            Typically returned in 7–10 days
-          </Caption>
+          {!isOwner && isAvailable && (
+            <Caption
+              className="text-center"
+              style={{ marginTop: 16, marginBottom: 8 }}
+            >
+              Typically returned in 7–10 days
+            </Caption>
+          )}
         </View>
       </ScrollView>
     </View>

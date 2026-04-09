@@ -23,7 +23,7 @@ export function calcCardLayout(screenWidth: number) {
     (screenWidth - H_PADDING - COL_GAP * (numColumns - 1)) / numColumns;
   return { numColumns, cardWidth };
 }
-import { Send, X } from "lucide-react-native";
+import { Send, X, RotateCcw } from "lucide-react-native";
 import type { Item, BorrowRequest } from "lib/types";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { THEME } from "@/lib/theme";
@@ -42,6 +42,10 @@ interface ItemCardProps {
   onBorrow?: () => void;
   /** Called when the user taps Cancel Request. */
   onCancel?: () => void;
+  /** True when the current user is the one borrowing this item. */
+  isBorrowedByMe?: boolean;
+  /** Called when the user taps Return (only shown when isBorrowedByMe). */
+  onReturn?: () => void;
   /** Called when the card itself is tapped (library screen navigation). */
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
@@ -53,6 +57,8 @@ export function ItemCard({
   isRequesting = false,
   onBorrow,
   onCancel,
+  isBorrowedByMe = false,
+  onReturn,
   onPress,
   style,
 }: ItemCardProps) {
@@ -219,8 +225,31 @@ export function ItemCard({
           </Pressable>
         )}
 
-        {/* Request Next button */}
+        {/* Return button — shown when the current user is the borrower */}
+        {isUnavailable && isBorrowedByMe && onReturn && (
+          <Button
+            variant="default"
+            onPress={onReturn}
+            disabled={isRequesting}
+            className="h-9 rounded-xl"
+            style={{ backgroundColor: THEME.light.secondary } as any}
+          >
+            {isRequesting ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <RotateCcw size={12} color="white" />
+                <Text className="text-xs normal-case tracking-normal text-primary-foreground">
+                  Return
+                </Text>
+              </>
+            )}
+          </Button>
+        )}
+
+        {/* Request Next button — shown when item is unavailable and not borrowed by me */}
         {isUnavailable &&
+          !isBorrowedByMe &&
           (onBorrow !== undefined || onCancel !== undefined) && (
             <View
               style={{

@@ -88,6 +88,7 @@ function RootLayoutContent() {
             gestureDirection: "vertical",
           }}
         />
+        <Stack.Screen name="item" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen
           name="modal"

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
+import { useState, useEffect, useCallback } from "react";
+import { useLocalSearchParams, useRouter, useNavigation, useFocusEffect } from "expo-router";
 import {
   ScrollView,
   View,
@@ -35,6 +35,9 @@ import {
   getBorrowRequestsForItem,
   getMyBorrowRequestForItem,
 } from "@/lib/borrow-requests-service";
+import { useMarkItemReturned } from "hooks/useItems";
+import { useAuth } from "@/contexts/AuthContext";
+
 import type { BorrowRequest, BorrowRequestWithDetails } from "@/lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
@@ -81,6 +84,9 @@ export default function FriendDetailScreen() {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
+
+  const { user } = useAuth();
+  const { markReturned, loading: returning } = useMarkItemReturned();
 
   const [activeTab, setActiveTab] = useState<Tab>("library");
   const [friend, setFriend] = useState<FriendUser | null>(null);
@@ -139,32 +145,33 @@ export default function FriendDetailScreen() {
     };
   }, [id]);
 
-  // Load items owned by friend
-  useEffect(() => {
-    async function loadOwnedItems() {
-      if (!id) return;
-      try {
-        setOwnedItemsLoading(true);
-        const data = await getItemsOwnedByFriend(id);
-        const converted = data.map(convertItemFromDb);
-        setOwnedItems(converted);
-        // For each item, fetch the current user's own active request directly
-        // from borrow_requests (not the view) to avoid any RLS/view edge cases.
-        const map = new Map<string, BorrowRequest>();
-        await Promise.all(
-          converted.map(async (item) => {
-            try {
-              const req = await getMyBorrowRequestForItem(item.id);
-              if (req) map.set(item.id, req);
-            } catch {}
-          }),
-        );
-        setBorrowRequests(map);
-      } catch {
-      } finally {
-        setOwnedItemsLoading(false);
-      }
+  // Load items owned by friend (extracted to component scope so handleReturn can call it)
+  const loadOwnedItems = useCallback(async () => {
+    if (!id) return;
+    try {
+      setOwnedItemsLoading(true);
+      const data = await getItemsOwnedByFriend(id);
+      const converted = data.map(convertItemFromDb);
+      setOwnedItems(converted);
+      // For each item, fetch the current user's own active request directly
+      // from borrow_requests (not the view) to avoid any RLS/view edge cases.
+      const map = new Map<string, BorrowRequest>();
+      await Promise.all(
+        converted.map(async (item) => {
+          try {
+            const req = await getMyBorrowRequestForItem(item.id);
+            if (req) map.set(item.id, req);
+          } catch {}
+        }),
+      );
+      setBorrowRequests(map);
+    } catch {
+    } finally {
+      setOwnedItemsLoading(false);
     }
+  }, [id]);
+
+  useEffect(() => {
     loadOwnedItems();
     if (!id) return;
     const ich = supabase
@@ -187,7 +194,15 @@ export default function FriendDetailScreen() {
       supabase.removeChannel(ich);
       supabase.removeChannel(rch);
     };
-  }, [id]);
+  }, [id, loadOwnedItems]);
+
+  // Refresh owned items whenever this screen comes back into focus
+  // (e.g. after returning an item from the item detail screen)
+  useFocusEffect(
+    useCallback(() => {
+      loadOwnedItems();
+    }, [loadOwnedItems]),
+  );
 
   const activeItems = items.filter((i) => !i.returnedDate);
   const returnedItems = items.filter((i) => i.returnedDate);
@@ -258,6 +273,19 @@ export default function FriendDetailScreen() {
       });
     } catch (e: any) {
       toast.error(e?.message || "Failed to cancel request");
+    } finally {
+      setRequestingItemId(null);
+    }
+  };
+
+  const handleReturn = async (item: Item) => {
+    try {
+      setRequestingItemId(item.id);
+      await markReturned(item.id);
+      toast.success(`"${item.name}" marked as returned`);
+      await loadOwnedItems();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to mark as returned");
     } finally {
       setRequestingItemId(null);
     }
@@ -504,15 +532,21 @@ export default function FriendDetailScreen() {
                   style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}
                 >
                   {ownedItems.map((item) => {
+                    const borrowedByMe =
+                      !!user &&
+                      item.borrowedBy === user.id &&
+                      !item.returnedDate;
                     return (
                       <ItemCard
                         key={item.id}
                         item={item}
                         request={borrowRequests.get(item.id)}
                         isRequesting={requestingItemId === item.id}
-                        onPress={() => router.push(`/library/${item.id}` as any)}
-                        onBorrow={() => handleRequestBorrow(item)}
-                        onCancel={() => handleCancelRequest(item)}
+                        isBorrowedByMe={borrowedByMe}
+                        onPress={() => router.push(`/item/${item.id}` as any)}
+                        onBorrow={borrowedByMe ? undefined : () => handleRequestBorrow(item)}
+                        onCancel={borrowedByMe ? undefined : () => handleCancelRequest(item)}
+                        onReturn={borrowedByMe ? () => handleReturn(item) : undefined}
                       />
                     );
                   })}
@@ -533,7 +567,7 @@ export default function FriendDetailScreen() {
                 activeItems.map((item) => (
                   <Pressable
                     key={item.id}
-                    onPress={() => router.push(`/library/${item.id}` as any)}
+                    onPress={() => router.push(`/item/${item.id}` as any)}
                     style={({ pressed }) => ({
                       backgroundColor: theme.card,
                       borderRadius: 24,
@@ -603,7 +637,7 @@ export default function FriendDetailScreen() {
                 returnedItems.map((item) => (
                   <Pressable
                     key={item.id}
-                    onPress={() => router.push(`/library/${item.id}` as any)}
+                    onPress={() => router.push(`/item/${item.id}` as any)}
                     style={({ pressed }) => ({
                       backgroundColor: theme.card,
                       borderRadius: 24,

@@ -12,7 +12,8 @@ import {
   LabelStrong,
   BodyStrong,
 } from "@/components/ui/typography";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback } from "react";
 import { useActiveItems, useBorrowedByMeItems, useItems } from "hooks/useItems";
 import { useAuth } from "@/contexts/AuthContext";
 import { resolveAvatarSource } from "@/lib/avatar-service";
@@ -37,15 +38,21 @@ export default function HomeScreen() {
     loading: borrowedLoading,
     refresh: refreshBorrowed,
   } = useBorrowedByMeItems();
-  const { items: allItems } = useItems();
+  const { items: allItems, refresh: refreshAll } = useItems();
 
   const loading = lentLoading || borrowedLoading;
 
   const firstName = appUser?.name?.split(" ")[0] ?? "there";
 
   const refresh = async () => {
-    await Promise.all([refreshLent(), refreshBorrowed()]);
+    await Promise.all([refreshLent(), refreshBorrowed(), refreshAll()]);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refreshLent, refreshBorrowed, refreshAll]),
+  );
 
   return (
     <View
@@ -186,7 +193,7 @@ export default function HomeScreen() {
                 title="Borrowed"
                 items={borrowedItems}
                 onItemPress={(item) =>
-                  router.push(`/library/${item.id}` as any)
+                  router.push(`/item/${item.id}` as any)
                 }
                 onViewAll={() => router.push("/(tabs)/library")}
               />
@@ -194,7 +201,7 @@ export default function HomeScreen() {
                 title="Lent Out"
                 items={lentOutItems}
                 onItemPress={(item) =>
-                  router.push(`/library/${item.id}` as any)
+                  router.push(`/item/${item.id}` as any)
                 }
                 onViewAll={() => router.push("/(tabs)/library")}
               />

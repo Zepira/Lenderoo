@@ -15,7 +15,7 @@ export default function WelcomeScreen() {
       <View className="px-8 pb-10 gap-3">
         <Button
           onPress={() => router.push("/(auth)/sign-up")}
-          className="bg-white"
+          className="bg-primary"
         >
           <Text className="font-sans-bold text-base text-primary">
             Get Started

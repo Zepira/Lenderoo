@@ -8,7 +8,6 @@ export default function LibraryLayout() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Screen name="[id]" />
     </Stack>
   );
 }
