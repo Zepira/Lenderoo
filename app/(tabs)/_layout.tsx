@@ -75,6 +75,7 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   return (
     <View
+      pointerEvents="box-none"
       style={{
         position: "absolute",
         bottom: insets.bottom + 8,

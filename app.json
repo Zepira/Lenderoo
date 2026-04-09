@@ -68,6 +68,10 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+    "experiments": {
+      "typedRoutes": true,
+      "baseUrl": "/Lenderoo"
+    },
     "plugins": [
       "expo-router",
       "expo-font",
@@ -84,9 +88,6 @@
       ],
       "expo-web-browser"
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "router": {},
       "eas": {

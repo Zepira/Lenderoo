@@ -14,7 +14,7 @@ export type ThemeMode = "light" | "dark" | "system";
 
 export function useTheme() {
   const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>("system");
+  const [themeMode, setThemeModeState] = useState<ThemeMode>("light");
   const [isLoading, setIsLoading] = useState(true);
 
   // Load theme preference on mount
