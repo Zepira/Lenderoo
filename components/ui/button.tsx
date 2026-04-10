@@ -42,6 +42,11 @@ const buttonVariants = cva(
           "active:bg-muted dark:active:bg-muted/50",
           Platform.select({ web: "hover:bg-muted dark:hover:bg-muted/50" }),
         ),
+        // Outline White — transparent bg, white border, for use on coloured backgrounds
+        "outline-white": cn(
+          "border-2 border-white active:bg-white/10",
+          Platform.select({ web: "hover:bg-white/10" }),
+        ),
         // Link
         link: "",
       },
@@ -82,6 +87,7 @@ const buttonTextVariants = cva(
         ),
         secondary: "text-secondary-foreground",
         ghost: "text-foreground group-active:text-foreground",
+        "outline-white": "text-white",
         link: cn(
           "text-primary group-active:underline",
           Platform.select({
@@ -127,7 +133,8 @@ function Button({
     if (variant === "default" || variant == null) return theme.primary;
     if (variant === "secondary") return theme.secondary;
     if (variant === "destructive") return theme.destructive;
-    if (variant === "outline") return "white/0";
+    if (variant === "outline") return Platform.OS === "web" ? undefined : "transparent";
+    if (variant === "outline-white") return Platform.OS === "web" ? undefined : "transparent";
     return undefined;
   };
 

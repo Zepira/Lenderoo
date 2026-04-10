@@ -47,6 +47,9 @@ jobs:
           EXPO_PUBLIC_HARDCOVER_API_TOKEN: ${{ secrets.EXPO_PUBLIC_HARDCOVER_API_TOKEN }}
         run: npx expo export --platform web
 
+      - name: Copy CNAME for custom domain
+        run: cp CNAME dist/CNAME
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
