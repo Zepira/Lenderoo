@@ -1,199 +1,127 @@
-/**
- * useFriends Hook
- *
- * React hooks for managing friends data
- */
-
-import { useState, useEffect, useCallback } from 'react'
+import { useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Friend, FriendFilters } from 'lib/types'
-import { getMyFriends, type FriendUser } from 'lib/friends-service'
+import {
+  getMyFriends,
+  getFriendUserById,
+  addFriendByCode,
+  removeFriend,
+  getItemsBorrowedByFriend,
+  type FriendUser,
+} from 'lib/friends-service'
+import { queryKeys } from 'lib/query-client'
 
-// Convert FriendUser to Friend for backward compatibility
 function convertFriendUserToFriend(friendUser: FriendUser): Friend {
   return {
     id: friendUser.id,
-    userId: '', // Not applicable for user-to-user friends
+    userId: '',
     name: friendUser.name,
     email: friendUser.email,
     avatarUrl: friendUser.avatarUrl,
-    totalItemsBorrowed: 0, // Not tracked in new system
-    currentItemsBorrowed: 0, // Not tracked in new system
+    totalItemsBorrowed: 0,
+    currentItemsBorrowed: 0,
     createdAt: friendUser.friendsSince,
     updatedAt: friendUser.friendsSince,
   }
 }
 
 export function useFriends(filters?: FriendFilters) {
-  const [friends, setFriends] = useState<Friend[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  const loadFriends = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
+  const result = useQuery({
+    queryKey: queryKeys.friends.all,
+    queryFn: async () => {
       const data = await getMyFriends()
-      let friendsList = data.map(convertFriendUserToFriend)
+      return data.map(convertFriendUserToFriend)
+    },
+  })
 
-      // Apply client-side search filter if needed
-      if (filters?.searchQuery) {
-        const query = filters.searchQuery.toLowerCase()
-        friendsList = friendsList.filter(
-          (friend) =>
-            friend.name.toLowerCase().includes(query) ||
-            friend.email?.toLowerCase().includes(query)
-        )
-      }
+  // Search filter is applied client-side so the base list stays cached
+  const friends = useMemo(() => {
+    const list = result.data ?? []
+    if (!filters?.searchQuery) return list
+    const q = filters.searchQuery.toLowerCase()
+    return list.filter(
+      (f) =>
+        f.name.toLowerCase().includes(q) ||
+        f.email?.toLowerCase().includes(q),
+    )
+  }, [result.data, filters?.searchQuery])
 
-      setFriends(friendsList)
-    } catch (err) {
-      setError(err as Error)
-    } finally {
-      setLoading(false)
-    }
-  }, [filters])
-
-  useEffect(() => {
-    loadFriends()
-  }, [loadFriends])
-
-  const refresh = useCallback(() => {
-    return loadFriends()
-  }, [loadFriends])
-
-  return { friends, loading, error, refresh }
+  return {
+    friends,
+    loading: result.isLoading,
+    error: result.error,
+    refresh: result.refetch,
+  }
 }
 
 export function useFriend(id: string | null) {
-  const [friend, setFriend] = useState<Friend | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  useEffect(() => {
-    if (!id) {
-      setFriend(null)
-      setLoading(false)
-      return
-    }
-
-    const loadFriend = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const { getFriendUserById } = await import('lib/friends-service')
-        const data = await getFriendUserById(id)
-        setFriend(data ? convertFriendUserToFriend(data) : null)
-      } catch (err) {
-        setError(err as Error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadFriend()
-  }, [id])
-
-  return { friend, loading, error }
+  const result = useQuery({
+    queryKey: queryKeys.friends.detail(id ?? ''),
+    queryFn: async () => {
+      const data = await getFriendUserById(id!)
+      return data ? convertFriendUserToFriend(data) : null
+    },
+    enabled: !!id,
+  })
+  return {
+    friend: result.data ?? null,
+    loading: result.isLoading,
+    error: result.error,
+  }
 }
 
 export function useCreateFriend() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-
-  const createFriend = useCallback(async (friendCode: string) => {
-    try {
-      setLoading(true)
-      setError(null)
-      const { addFriendByCode } = await import('lib/friends-service')
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: async (friendCode: string) => {
       const result = await addFriendByCode(friendCode)
-      if (!result.success) {
-        throw new Error(result.message)
-      }
+      if (!result.success) throw new Error(result.message)
       return result
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  return { createFriend, loading, error }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.friends.all })
+    },
+  })
+  return {
+    createFriend: mutation.mutateAsync,
+    loading: mutation.isPending,
+    error: mutation.error,
+  }
 }
 
 export function useUpdateFriend() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-
-  const updateFriend = useCallback(async (id: string, updates: Partial<Friend>) => {
-    try {
-      setLoading(true)
-      setError(null)
-      // Friend updates are not supported in the new system
-      // Users manage their own profiles
-      console.warn('Friend updates are not supported in the new system')
-      return null
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  return { updateFriend, loading, error }
+  // Friend updates are not supported — users manage their own profiles
+  return {
+    updateFriend: async (_id: string, _updates: Partial<Friend>) => null,
+    loading: false,
+    error: null,
+  }
 }
 
 export function useDeleteFriend() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-
-  const deleteFriend = useCallback(async (id: string) => {
-    try {
-      setLoading(true)
-      setError(null)
-      const { removeFriend } = await import('lib/friends-service')
-      await removeFriend(id)
-      return true
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  return { deleteFriend, loading, error }
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: (id: string) => removeFriend(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.friends.all })
+    },
+  })
+  return {
+    deleteFriend: mutation.mutateAsync,
+    loading: mutation.isPending,
+    error: mutation.error,
+  }
 }
 
 export function useFriendItems(friendId: string | null) {
-  const [items, setItems] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  useEffect(() => {
-    if (!friendId) {
-      setItems([])
-      setLoading(false)
-      return
-    }
-
-    const loadItems = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const { getItemsBorrowedByFriend } = await import('lib/friends-service')
-        const data = await getItemsBorrowedByFriend(friendId)
-        setItems(data)
-      } catch (err) {
-        setError(err as Error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadItems()
-  }, [friendId])
-
-  return { items, loading, error }
+  const result = useQuery({
+    queryKey: queryKeys.friends.items(friendId ?? ''),
+    queryFn: () => getItemsBorrowedByFriend(friendId!),
+    enabled: !!friendId,
+  })
+  return {
+    items: result.data ?? [],
+    loading: result.isLoading,
+    error: result.error,
+  }
 }

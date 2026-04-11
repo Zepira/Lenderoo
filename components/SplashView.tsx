@@ -1,14 +1,11 @@
-import { View, Image } from "react-native";
+import { View } from "react-native";
+import { Image } from "expo-image";
 import { Text } from "@/components/ui/text";
 
 /**
  * Shared splash screen visuals — used both as the app loading state
  * and as the background for the auth welcome screen.
  * Callers are responsible for the outer container (SafeAreaView, bg colour, etc).
- *
- * Font families and image dimensions are applied via inline styles to avoid
- * relying on NativeWind's custom class transformation, which is unreliable
- * for custom fontFamily values on native.
  */
 export function SplashView() {
   return (
@@ -16,10 +13,10 @@ export function SplashView() {
       <Image
         source={require("../assets/images/kangaroo.png")}
         style={{ width: 450, height: 450, marginBottom: -50 }}
-        resizeMode="contain"
+        contentFit="contain"
+        cachePolicy="memory-disk"
       />
 
-      {/* Outfit Bold 40px */}
       <Text
         className="text-center text-white"
         style={{
@@ -32,7 +29,6 @@ export function SplashView() {
         Lenderoo
       </Text>
 
-      {/* Inter Medium 16px, light teal */}
       <Text
         className="text-center"
         style={{

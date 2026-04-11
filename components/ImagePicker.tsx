@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, Image, Alert, Pressable } from "react-native";
+import { View, Alert, Pressable, Platform } from "react-native";
+import { Image } from "expo-image";
 import * as ImagePickerExpo from "expo-image-picker";
 import { Camera, ImageIcon, X } from "lucide-react-native";
 import { Button } from "./ui/button";
@@ -18,7 +19,7 @@ export function ImagePicker({
 }: ImagePickerProps) {
   const [loading, setLoading] = useState(false);
 
-  const requestPermissions = async (type: "camera" | "library") => {
+  const requestNativePermission = async (type: "camera" | "library") => {
     if (type === "camera") {
       const { status } = await ImagePickerExpo.requestCameraPermissionsAsync();
       if (status !== "granted") {
@@ -47,17 +48,14 @@ export function ImagePicker({
   const takePhoto = async () => {
     try {
       setLoading(true);
-
-      const hasPermission = await requestPermissions("camera");
+      const hasPermission = await requestNativePermission("camera");
       if (!hasPermission) return;
-
       const result = await ImagePickerExpo.launchCameraAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [3, 4],
         quality: 0.8,
       });
-
       if (!result.canceled && result.assets[0]) {
         onImageSelected(result.assets[0].uri);
       }
@@ -72,17 +70,18 @@ export function ImagePicker({
   const chooseFromLibrary = async () => {
     try {
       setLoading(true);
-
-      const hasPermission = await requestPermissions("library");
-      if (!hasPermission) return;
-
+      // On web the browser manages permissions natively — skip the explicit request
+      if (Platform.OS !== "web") {
+        const hasPermission = await requestNativePermission("library");
+        if (!hasPermission) return;
+      }
       const result = await ImagePickerExpo.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
+        // allowsEditing is not supported on web
+        allowsEditing: Platform.OS !== "web",
         aspect: [3, 4],
         quality: 0.8,
       });
-
       if (!result.canceled && result.assets[0]) {
         onImageSelected(result.assets[0].uri);
       }
@@ -95,22 +94,19 @@ export function ImagePicker({
   };
 
   const handleAddImage = () => {
+    // On web, Alert.alert with custom buttons isn't supported — mobile browsers
+    // present their own camera/gallery sheet when the file picker opens.
+    if (Platform.OS === "web") {
+      chooseFromLibrary();
+      return;
+    }
     Alert.alert(
       "Add Image",
       "Choose a method to add an image",
       [
-        {
-          text: "Take Photo",
-          onPress: takePhoto,
-        },
-        {
-          text: "Choose from Library",
-          onPress: chooseFromLibrary,
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Take Photo", onPress: takePhoto },
+        { text: "Choose from Library", onPress: chooseFromLibrary },
+        { text: "Cancel", style: "cancel" },
       ],
       { cancelable: true }
     );
@@ -124,7 +120,8 @@ export function ImagePicker({
             <Image
               source={{ uri: imageUrl }}
               style={{ width: 150, height: 225 }}
-              resizeMode="cover"
+              contentFit="cover"
+              cachePolicy="memory-disk"
             />
           </View>
           <Button

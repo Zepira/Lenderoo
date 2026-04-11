@@ -3099,6 +3099,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/query-core@npm:5.97.0":
+  version: 5.97.0
+  resolution: "@tanstack/query-core@npm:5.97.0"
+  checksum: 10/5dab196303fb1aea97cb9d6bc8f40b8b54b4fb4d1f3a323242c24f028bb0ffa4428e2f647a6fc091955abf85a309b495b373f80ac7b44c4cd6b4224f39c3da70
+  languageName: node
+  linkType: hard
+
+"@tanstack/react-query@npm:^5.97.0":
+  version: 5.97.0
+  resolution: "@tanstack/react-query@npm:5.97.0"
+  dependencies:
+    "@tanstack/query-core": "npm:5.97.0"
+  peerDependencies:
+    react: ^18 || ^19
+  checksum: 10/0c7616ce6fd55f0cef46960324b29aa82943199a60b9fca3f6c798f2bbcbe540b2b57ddb6b2c138680f30ee489c74509f027f005e62956ae8fb032219aac3411
+  languageName: node
+  linkType: hard
+
 "@types/babel__core@npm:^7.1.14":
   version: 7.20.5
   resolution: "@types/babel__core@npm:7.20.5"
@@ -4725,6 +4743,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-image@npm:~3.0.11":
+  version: 3.0.11
+  resolution: "expo-image@npm:3.0.11"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+    react-native-web: "*"
+  peerDependenciesMeta:
+    react-native-web:
+      optional: true
+  checksum: 10/61d438f9feae0db952f0374050bdbb007002c2aa163270cf7c4ecb8c6b6f6c367bb4f5bf054347ed674ea0318bff6cb51b12eb36c8c8f8e5da6641ba985ac450
+  languageName: node
+  linkType: hard
+
 "expo-json-utils@npm:~0.15.0":
   version: 0.15.0
   resolution: "expo-json-utils@npm:0.15.0"
@@ -5890,6 +5923,7 @@ __metadata:
     "@rn-primitives/separator": "npm:^1.2.0"
     "@rn-primitives/slot": "npm:^1.2.0"
     "@supabase/supabase-js": "npm:^2.93.2"
+    "@tanstack/react-query": "npm:^5.97.0"
     "@types/react": "npm:~19.1.10"
     "@types/react-native": "npm:^0.73.0"
     babel-preset-expo: "npm:~54.0.0"
@@ -5905,6 +5939,7 @@ __metadata:
     expo-device: "npm:^8.0.10"
     expo-file-system: "npm:^19.0.21"
     expo-font: "npm:~14.0.10"
+    expo-image: "npm:~3.0.11"
     expo-image-manipulator: "npm:^14.0.8"
     expo-image-picker: "npm:^17.0.10"
     expo-linear-gradient: "npm:^55.0.11"

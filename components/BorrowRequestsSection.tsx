@@ -4,7 +4,8 @@
  * Displays incoming borrow requests for the library screen
  */
 
-import { View, Alert, ActivityIndicator, Image, Platform } from "react-native";
+import { View, Alert, ActivityIndicator, Platform } from "react-native";
+import { Image } from "expo-image";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -127,7 +128,8 @@ export function BorrowRequestsSection({
                   <Image
                     source={{ uri: itemImage }}
                     style={{ width: 64, height: 64 }}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
                   />
                 ) : (
                   <LucideIcons.Package size={32} color="#9ca3af" />

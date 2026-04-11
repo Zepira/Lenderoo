@@ -6,4 +6,6 @@
 
 export * from "./useItems";
 export * from "./useFriends";
+export * from "./useBorrowRequests";
+export * from "./useRealtimeSync";
 export * from "./useTheme";

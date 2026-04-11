@@ -13,14 +13,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 import { useThemeContext } from "../../contexts/ThemeContext";
-import { THEME } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
-import { show } from "@/lib/toast";
 import { BorrowRequestBanner } from "@/components/BorrowRequestBannerNative";
-import { getIncomingRequestCount } from "@/lib/borrow-requests-service";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
 import { FeedbackModal } from "@/components/FeedbackModal";
+import { useRealtimeSync, useIncomingRequestCount } from "@/hooks";
 
 const BTN_SIZE = 60;
 const NAV_HEIGHT = 74;
@@ -164,57 +160,22 @@ export default function TabLayout() {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const [requestCount, setRequestCount] = React.useState(0);
   const [bannerDismissed, setBannerDismissed] = React.useState(false);
   const [feedbackModalVisible, setFeedbackModalVisible] = React.useState(false);
 
+  // Single source of truth for all realtime DB updates
+  useRealtimeSync();
+
+  // Request count from cache — updates automatically via useRealtimeSync
+  const requestCount = useIncomingRequestCount();
+
+  // Re-show banner when new requests arrive
+  React.useEffect(() => {
+    if (requestCount > 0) setBannerDismissed(false);
+  }, [requestCount]);
+
   // Memoize the header right component to prevent recreation
   const HeaderRight = React.useCallback(() => <ThemeSwitcher />, []);
-
-  // Load incoming request count
-  React.useEffect(() => {
-    if (!user) return;
-
-    loadRequestCount();
-  }, [user]);
-
-  const loadRequestCount = async () => {
-    try {
-      const count = await getIncomingRequestCount();
-      setRequestCount(count);
-      if (count > 0) {
-        setBannerDismissed(false); // Show banner if new requests
-      }
-    } catch (error) {
-      console.error("Error loading request count:", error);
-    }
-  };
-
-  // Subscribe to borrow request changes
-  React.useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel("borrow-requests-banner")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "borrow_requests",
-          filter: `owner_id=eq.${user.id}`,
-        },
-        () => {
-          loadRequestCount();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
 
   const handleBannerPress = () => {
     router.push("/(tabs)/library");

@@ -1,332 +1,141 @@
-/**
- * useItems Hook
- *
- * React hooks for managing items data with realtime updates
- */
-
-import { useState, useEffect, useCallback } from 'react'
+import { useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Item, ItemFilters } from 'lib/types'
 import * as db from 'lib/database-supabase'
-import { supabase } from 'lib/supabase'
+import { queryKeys } from 'lib/query-client'
 
 export function useItems(filters?: ItemFilters) {
-  const [items, setItems] = useState<Item[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  const loadItems = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await db.queryItems(filters)
-      setItems(data)
-    } catch (err) {
-      setError(err as Error)
-    } finally {
-      setLoading(false)
-    }
-  }, [filters])
-
-  useEffect(() => {
-    loadItems()
-
-    // Subscribe to realtime updates for items table
-    const channel = supabase
-      .channel('items-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'items',
-        },
-        (payload) => {
-          console.log('📡 Items realtime update:', payload)
-          // Refresh items when any change occurs
-          loadItems()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [loadItems])
-
-  const refresh = useCallback(() => {
-    return loadItems()
-  }, [loadItems])
-
-  return { items, loading, error, refresh }
+  const result = useQuery({
+    queryKey: queryKeys.items.filtered(filters),
+    queryFn: () => db.queryItems(filters),
+  })
+  return {
+    items: result.data ?? [],
+    loading: result.isLoading,
+    error: result.error,
+    refresh: result.refetch,
+  }
 }
 
 export function useItem(id: string | null) {
-  const [item, setItem] = useState<Item | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  const loadItem = useCallback(async () => {
-    if (!id) {
-      setItem(null)
-      setLoading(false)
-      return
-    }
-
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await db.getItemById(id)
-      setItem(data)
-    } catch (err) {
-      setError(err as Error)
-    } finally {
-      setLoading(false)
-    }
-  }, [id])
-
-  useEffect(() => {
-    loadItem()
-
-    if (!id) return
-
-    // Subscribe to realtime updates for this specific item
-    const channel = supabase
-      .channel(`item-${id}-changes`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'items',
-          filter: `id=eq.${id}`,
-        },
-        (payload) => {
-          console.log('📡 Item realtime update:', payload)
-          loadItem()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [loadItem, id])
-
-  const refresh = useCallback(() => {
-    return loadItem()
-  }, [loadItem])
-
-  return { item, loading, error, refresh }
+  const result = useQuery({
+    queryKey: queryKeys.items.detail(id ?? ''),
+    queryFn: () => db.getItemById(id!),
+    enabled: !!id,
+  })
+  return {
+    item: result.data ?? null,
+    loading: result.isLoading,
+    error: result.error,
+    refresh: result.refetch,
+  }
 }
 
 export function useCreateItem() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-
-  const createItem = useCallback(async (itemData: Parameters<typeof db.createItem>[0]) => {
-    try {
-      setLoading(true)
-      setError(null)
-      const newItem = await db.createItem(itemData)
-      return newItem
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  return { createItem, loading, error }
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: (itemData: Parameters<typeof db.createItem>[0]) =>
+      db.createItem(itemData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
+    },
+  })
+  return {
+    createItem: mutation.mutateAsync,
+    loading: mutation.isPending,
+    error: mutation.error,
+  }
 }
 
 export function useUpdateItem() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-
-  const updateItem = useCallback(async (id: string, updates: Partial<Item>) => {
-    try {
-      setLoading(true)
-      setError(null)
-      const updatedItem = await db.updateItem(id, updates)
-      return updatedItem
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  return { updateItem, loading, error }
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Item> }) =>
+      db.updateItem(id, updates),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.detail(id) })
+    },
+  })
+  // Keep the original (id, updates) call signature intact so no screens break
+  return {
+    updateItem: (id: string, updates: Partial<Item>) =>
+      mutation.mutateAsync({ id, updates }),
+    loading: mutation.isPending,
+    error: mutation.error,
+  }
 }
 
 export function useDeleteItem() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-
-  const deleteItem = useCallback(async (id: string) => {
-    try {
-      setLoading(true)
-      setError(null)
-      const success = await db.deleteItem(id)
-      return success
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  return { deleteItem, loading, error }
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: (id: string) => db.deleteItem(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
+    },
+  })
+  return {
+    deleteItem: mutation.mutateAsync,
+    loading: mutation.isPending,
+    error: mutation.error,
+  }
 }
 
 export function useMarkItemReturned() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-
-  const markReturned = useCallback(async (id: string) => {
-    try {
-      setLoading(true)
-      setError(null)
-      await db.markItemReturned(id)
-    } catch (err) {
-      setError(err as Error)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  return { markReturned, loading, error }
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: (id: string) => db.markItemReturned(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.borrowRequests.incoming })
+      queryClient.invalidateQueries({ queryKey: queryKeys.borrowRequests.count })
+    },
+  })
+  return {
+    markReturned: mutation.mutateAsync,
+    loading: mutation.isPending,
+    error: mutation.error,
+  }
 }
 
 export function useActiveItems() {
-  const [items, setItems] = useState<Item[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  const loadItems = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await db.getActiveItems()
-      setItems(data)
-    } catch (err) {
-      setError(err as Error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadItems()
-
-    // Subscribe to realtime updates for items
-    const channel = supabase
-      .channel('active-items-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'items',
-        },
-        (payload) => {
-          console.log('📡 Active items realtime update:', payload)
-          loadItems()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [loadItems])
-
-  const refresh = useCallback(() => {
-    return loadItems()
-  }, [loadItems])
-
-  return { items, loading, error, refresh }
+  const result = useQuery({
+    queryKey: queryKeys.items.active,
+    queryFn: db.getActiveItems,
+  })
+  return {
+    items: result.data ?? [],
+    loading: result.isLoading,
+    error: result.error,
+    refresh: result.refetch,
+  }
 }
 
 export function useOverdueItems() {
-  const [items, setItems] = useState<Item[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  const loadItems = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await db.getOverdueItems()
-      setItems(data)
-    } catch (err) {
-      setError(err as Error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadItems()
-  }, [loadItems])
-
-  const refresh = useCallback(() => {
-    return loadItems()
-  }, [loadItems])
-
-  return { items, loading, error, refresh }
+  const result = useQuery({
+    queryKey: queryKeys.items.overdue,
+    queryFn: db.getOverdueItems,
+  })
+  return {
+    items: result.data ?? [],
+    loading: result.isLoading,
+    error: result.error,
+    refresh: result.refetch,
+  }
 }
 
 export function useBorrowedByMeItems() {
-  const [items, setItems] = useState<Item[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  const loadItems = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await db.getBorrowedByMeItems()
-      setItems(data)
-    } catch (err) {
-      setError(err as Error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadItems()
-
-    // Subscribe to realtime updates for items borrowed by me
-    const channel = supabase
-      .channel('borrowed-by-me-items-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'items',
-        },
-        (payload) => {
-          console.log('📡 Borrowed by me items realtime update:', payload)
-          loadItems()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [loadItems])
-
-  const refresh = useCallback(() => {
-    return loadItems()
-  }, [loadItems])
-
-  return { items, loading, error, refresh }
+  const result = useQuery({
+    queryKey: queryKeys.items.borrowedByMe,
+    queryFn: db.getBorrowedByMeItems,
+  })
+  return {
+    items: result.data ?? [],
+    loading: result.isLoading,
+    error: result.error,
+    refresh: result.refetch,
+  }
 }
+
+// Re-export queryKeys so screens can invalidate without importing lib/query-client
+export { queryKeys }
