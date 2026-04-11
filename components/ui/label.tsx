@@ -24,7 +24,8 @@ function Label({
       onLongPress={onLongPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
-      disabled={disabled}>
+      disabled={disabled}
+      {...(Platform.OS === 'web' ? { tabIndex: -1 } as object : {})}>
       <LabelPrimitive.Text
         className={cn(
           'text-foreground text-sm font-medium',

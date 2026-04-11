@@ -1,5 +1,5 @@
 import * as React from "react";
-import { View, Pressable, Platform } from "react-native";
+import { View, Platform, Pressable } from "react-native";
 import { router, Tabs } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import {
@@ -57,8 +57,10 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         onPress={onPress}
         style={{
           flex: 1,
+          alignSelf: "stretch",
           alignItems: "center",
           justifyContent: "center",
+          ...Platform.select({ web: { cursor: "pointer" } as object }),
         }}
         accessibilityRole="button"
         accessibilityState={isFocused ? { selected: true } : {}}
@@ -75,17 +77,18 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   return (
     <View
-      pointerEvents="box-none"
       style={{
         position: "absolute",
         bottom: insets.bottom + 8,
         left: 12,
         right: 12,
         height: CONTAINER_HEIGHT,
+        zIndex: 999,
       }}
     >
-      {/* Pill */}
+      {/* Visual pill — purely decorative, no touch handling */}
       <View
+        pointerEvents="none"
         style={{
           position: "absolute",
           bottom: 0,
@@ -94,39 +97,29 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           height: NAV_HEIGHT,
           borderRadius: 37,
           backgroundColor: "#101828",
-          flexDirection: "row",
-          alignItems: "stretch",
           elevation: 12,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 6 },
           shadowOpacity: 0.3,
           shadowRadius: 16,
         }}
+      />
+
+      {/* Interactive tab button row — sits on top of the pill, no border-radius clipping */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: NAV_HEIGHT,
+          flexDirection: "row",
+        }}
       >
-        {/* Left group — guaranteed equal width to right group */}
-        <View
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          {leftRoutes.map((route, i) => renderTab(route, i))}
-        </View>
+        {leftRoutes.map((route, i) => renderTab(route, i))}
         {/* Gap for the center button */}
         <View style={{ width: BTN_SIZE + 16 }} />
-        {/* Right group */}
-        <View
-          style={{
-            flex: 1,
-            flexGrow: 1,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-evenly",
-          }}
-        >
-          {rightRoutes.map((route, i) => renderTab(route, i + half))}
-        </View>
+        {rightRoutes.map((route, i) => renderTab(route, i + half))}
       </View>
 
       {/* Center add button — overlaps the top of the pill */}
@@ -150,13 +143,12 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             borderColor: "white",
             alignItems: "center",
             justifyContent: "center",
-            // iOS shadow glow
             shadowColor: "#00BFA6",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.5,
             shadowRadius: 8,
-            // elevation removed on Android to prevent double-layer ghost
             elevation: Platform.OS === "android" ? 0 : 14,
+            ...Platform.select({ web: { cursor: "pointer" } as object }),
           }}
           accessibilityRole="button"
           accessibilityLabel="Add item"
