@@ -4,31 +4,38 @@
  * Allows new users to create an account with email and password
  */
 
-import { useState } from 'react';
-import { View, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
-import { Link, router } from 'expo-router';
-import { Text } from '@/components/ui/text';
-import { PageHero } from '@/components/ui/typography';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { useAuth } from '@/contexts/AuthContext';
-import * as toast from '@/lib/toast';
+import { useState } from "react";
+import {
+  View,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Pressable,
+} from "react-native";
+import { Link, router } from "expo-router";
+import { Text } from "@/components/ui/text";
+import { PageHero } from "@/components/ui/typography";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import * as toast from "@/lib/toast";
 import {
   getAuthErrorMessage,
   isValidEmail,
   validatePassword,
-  validateName
-} from '@/lib/auth-errors';
-import { UserPlus } from 'lucide-react-native';
-import { AuthIconBox } from '@/components/AuthIconBox';
+  validateName,
+} from "@/lib/auth-errors";
+import { Eye, EyeOff, UserPlus } from "lucide-react-native";
+import { AuthIconBox } from "@/components/AuthIconBox";
 
 export default function SignUpScreen() {
   const { signUp } = useAuth();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{
     name?: string;
@@ -36,6 +43,8 @@ export default function SignUpScreen() {
     password?: string;
     confirmPassword?: string;
   }>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   async function handleSignUp() {
     // Clear previous errors
@@ -57,14 +66,14 @@ export default function SignUpScreen() {
 
     // Email validation
     if (!email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!isValidEmail(email.trim())) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = "Please enter a valid email address";
     }
 
     // Password validation
     if (!password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
     } else {
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.valid) {
@@ -74,9 +83,9 @@ export default function SignUpScreen() {
 
     // Confirm password validation
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
+      newErrors.confirmPassword = "Please confirm your password";
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = "Passwords do not match";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -87,10 +96,10 @@ export default function SignUpScreen() {
     try {
       setLoading(true);
       await signUp(email.trim(), password, name.trim());
-      toast.success('Account created successfully!');
+      toast.success("Account created successfully!");
       // Navigation is handled by auth state change in _layout.tsx
     } catch (error: any) {
-      console.error('Sign up error:', error);
+      console.error("Sign up error:", error);
       const errorMessage = getAuthErrorMessage(error);
       toast.error(errorMessage);
     } finally {
@@ -100,7 +109,7 @@ export default function SignUpScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1 bg-background"
     >
       <ScrollView
@@ -121,10 +130,10 @@ export default function SignUpScreen() {
           <View className="gap-4 mb-6">
             <View>
               <Label nativeID="name" className="mb-2">
-                Name
+                Username
               </Label>
               <Input
-                placeholder="Your name"
+                placeholder="Your username"
                 value={name}
                 onChangeText={(text) => {
                   setName(text);
@@ -136,7 +145,7 @@ export default function SignUpScreen() {
                 autoComplete="name"
                 textContentType="name"
                 editable={!loading}
-                className={errors.name ? 'border-red-500' : ''}
+                className={errors.name ? "border-red-500" : ""}
               />
               {errors.name && (
                 <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>
@@ -161,10 +170,12 @@ export default function SignUpScreen() {
                 keyboardType="email-address"
                 textContentType="emailAddress"
                 editable={!loading}
-                className={errors.email ? 'border-red-500' : ''}
+                className={errors.email ? "border-red-500" : ""}
               />
               {errors.email && (
-                <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>
+                <Text className="text-red-500 text-sm mt-1">
+                  {errors.email}
+                </Text>
               )}
             </View>
 
@@ -172,24 +183,39 @@ export default function SignUpScreen() {
               <Label nativeID="password" className="mb-2">
                 Password
               </Label>
-              <Input
-                placeholder="••••••••"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (errors.password) {
-                    setErrors((prev) => ({ ...prev, password: undefined }));
-                  }
-                }}
-                secureTextEntry
-                autoCapitalize="none"
-                autoComplete="password-new"
-                textContentType="newPassword"
-                editable={!loading}
-                className={errors.password ? 'border-red-500' : ''}
-              />
+              <View className="relative">
+                <Input
+                  placeholder="••••••••"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errors.password) {
+                      setErrors((prev) => ({ ...prev, password: undefined }));
+                    }
+                  }}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoComplete="password-new"
+                  textContentType="newPassword"
+                  editable={!loading}
+                  className={errors.password ? "border-red-500" : ""}
+                />
+                <Pressable
+                  onPress={() => setShowPassword((v) => !v)}
+                  className="absolute right-4 top-0 bottom-0 justify-center"
+                  hitSlop={8}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color="#9CA3AF" />
+                  ) : (
+                    <Eye size={20} color="#9CA3AF" />
+                  )}
+                </Pressable>
+              </View>
               {errors.password ? (
-                <Text className="text-red-500 text-sm mt-1">{errors.password}</Text>
+                <Text className="text-red-500 text-sm mt-1">
+                  {errors.password}
+                </Text>
               ) : (
                 <Text className="text-muted-foreground text-xs mt-1">
                   Must be at least 6 characters
@@ -201,22 +227,38 @@ export default function SignUpScreen() {
               <Label nativeID="confirmPassword" className="mb-2">
                 Confirm Password
               </Label>
-              <Input
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChangeText={(text) => {
-                  setConfirmPassword(text);
-                  if (errors.confirmPassword) {
-                    setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-                  }
-                }}
-                secureTextEntry
-                autoCapitalize="none"
-                autoComplete="password-new"
-                textContentType="newPassword"
-                editable={!loading}
-                className={errors.confirmPassword ? 'border-red-500' : ''}
-              />
+              <View className="relative">
+                <Input
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (errors.confirmPassword) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        confirmPassword: undefined,
+                      }));
+                    }
+                  }}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoComplete="password-new"
+                  textContentType="newPassword"
+                  editable={!loading}
+                  className={errors.confirmPassword ? "border-red-500" : ""}
+                />
+                <Pressable
+                  onPress={() => setShowConfirmPassword((v) => !v)}
+                  className="absolute right-4 top-0 bottom-0 justify-center"
+                  hitSlop={8}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} color="#9CA3AF" />
+                  ) : (
+                    <Eye size={20} color="#9CA3AF" />
+                  )}
+                </Pressable>
+              </View>
               {errors.confirmPassword && (
                 <Text className="text-red-500 text-sm mt-1">
                   {errors.confirmPassword}
@@ -226,11 +268,7 @@ export default function SignUpScreen() {
           </View>
 
           {/* Sign Up Button */}
-          <Button
-            onPress={handleSignUp}
-            disabled={loading}
-            className="mb-4"
-          >
+          <Button onPress={handleSignUp} disabled={loading} className="mb-4">
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
@@ -243,7 +281,9 @@ export default function SignUpScreen() {
 
           {/* Sign In Link */}
           <View className="flex-row justify-center items-center gap-1">
-            <Text className="text-muted-foreground">Already have an account?</Text>
+            <Text className="text-muted-foreground">
+              Already have an account?
+            </Text>
             <Link href="/(auth)/sign-in" asChild>
               <Button variant="link" disabled={loading}>
                 <Text>Sign In</Text>

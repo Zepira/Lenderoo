@@ -4,6 +4,7 @@
  * Handles image uploads to Supabase Storage
  */
 
+import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -102,22 +103,26 @@ async function uploadLocalImage(uri: string, userId: string): Promise<string> {
   const compressedUri = await compressImage(uri);
 
   // Generate unique filename
-  const fileExt = 'jpg'; // Always use jpg after compression
+  const fileExt = 'jpg';
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
   const filePath = `${userId}/${fileName}`;
-
-  // Read the file as base64
-  const base64 = await FileSystem.readAsStringAsync(compressedUri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-
-  // Convert base64 to ArrayBuffer
-  const arrayBuffer = decode(base64);
-
-  // Determine content type
   const contentType = 'image/jpeg';
 
-  // Upload to Supabase Storage
+  let arrayBuffer: ArrayBuffer;
+
+  if (Platform.OS === 'web') {
+    // On web, blob: and data: URIs can be fetched directly by the browser
+    const response = await fetch(compressedUri);
+    if (!response.ok) throw new Error('Failed to read selected image');
+    arrayBuffer = await response.arrayBuffer();
+  } else {
+    // On native, use expo-file-system to read the local file
+    const base64 = await FileSystem.readAsStringAsync(compressedUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    arrayBuffer = decode(base64);
+  }
+
   const { data, error } = await supabase.storage
     .from(BUCKET_NAME)
     .upload(filePath, arrayBuffer, {
@@ -130,7 +135,6 @@ async function uploadLocalImage(uri: string, userId: string): Promise<string> {
     throw new Error(`Failed to upload image: ${error.message}`);
   }
 
-  // Get public URL
   const { data: { publicUrl } } = supabase.storage
     .from(BUCKET_NAME)
     .getPublicUrl(filePath);
@@ -388,22 +392,31 @@ function getContentType(extension: string): string {
  */
 export async function validateImage(uri: string): Promise<boolean> {
   try {
+    if (Platform.OS === 'web') {
+      // On web, blob: URIs are already in memory — just check size via fetch
+      const response = await fetch(uri);
+      if (!response.ok) throw new Error('Image file does not exist');
+      const blob = await response.blob();
+      const maxSize = 5 * 1024 * 1024;
+      if (blob.size > maxSize) {
+        throw new Error('Image file is too large. Maximum size is 5MB.');
+      }
+      return true;
+    }
+
     const fileInfo = await FileSystem.getInfoAsync(uri);
 
     if (!fileInfo.exists) {
       throw new Error('Image file does not exist');
     }
 
-    // Check file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    const maxSize = 5 * 1024 * 1024;
     if (fileInfo.size && fileInfo.size > maxSize) {
       throw new Error('Image file is too large. Maximum size is 5MB.');
     }
 
-    // Check file extension
     const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'];
     const extension = uri.split('.').pop()?.toLowerCase();
-
     if (!extension || !validExtensions.includes(extension)) {
       throw new Error('Invalid image format. Supported formats: JPG, PNG, GIF, WebP, HEIC');
     }

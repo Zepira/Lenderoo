@@ -1,5 +1,6 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query'
 import type { ItemFilters } from 'lib/types'
+import * as toast from './toast'
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -10,6 +11,22 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: true,  // Refresh when app comes back to foreground
     },
   },
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      // Only show toast for background refetch failures (data already cached)
+      if (query.state.data !== undefined) {
+        const msg = error instanceof Error ? error.message : 'Failed to refresh data'
+        toast.error(msg)
+      }
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      // Safety net — catches any mutation error not handled by the caller
+      const msg = error instanceof Error ? error.message : 'Something went wrong'
+      toast.error(msg)
+    },
+  }),
 })
 
 // Centralised query keys — keeps invalidation calls consistent across hooks/screens

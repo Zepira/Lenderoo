@@ -51,9 +51,10 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       <Pressable
         key={route.key}
         onPress={onPress}
+        hitSlop={{ top: 20, bottom: 20, left: 8, right: 8 }}
         style={{
           flex: 1,
-          alignSelf: "stretch",
+          height: NAV_HEIGHT,
           alignItems: "center",
           justifyContent: "center",
           ...Platform.select({ web: { cursor: "pointer" } as object }),
@@ -72,7 +73,10 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   };
 
   return (
+    // Outer wrapper — only exists to let the center button overflow above the pill.
+    // box-none: the wrapper itself won't intercept events; only its children will.
     <View
+      pointerEvents="box-none"
       style={{
         position: "absolute",
         bottom: insets.bottom + 8,
@@ -82,9 +86,8 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         zIndex: 999,
       }}
     >
-      {/* Visual pill — purely decorative, no touch handling */}
+      {/* Pill + tab buttons in one element — visual and hit targets are identical */}
       <View
-        pointerEvents="none"
         style={{
           position: "absolute",
           bottom: 0,
@@ -93,32 +96,22 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           height: NAV_HEIGHT,
           borderRadius: 37,
           backgroundColor: "#101828",
+          flexDirection: "row",
+          alignItems: "stretch",
           elevation: 12,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 6 },
           shadowOpacity: 0.3,
           shadowRadius: 16,
         }}
-      />
-
-      {/* Interactive tab button row — sits on top of the pill, no border-radius clipping */}
-      <View
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: NAV_HEIGHT,
-          flexDirection: "row",
-        }}
       >
         {leftRoutes.map((route, i) => renderTab(route, i))}
-        {/* Gap for the center button */}
+        {/* Gap for the floating center button */}
         <View style={{ width: BTN_SIZE + 16 }} />
         {rightRoutes.map((route, i) => renderTab(route, i + half))}
       </View>
 
-      {/* Center add button — overlaps the top of the pill */}
+      {/* Center add button — floats above the pill */}
       <View
         style={{
           position: "absolute",

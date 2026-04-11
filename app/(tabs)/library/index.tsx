@@ -14,6 +14,7 @@ import { CardSearchInput } from "@/components/CardSearchInput";
 import { SegmentedTabs } from "@/components/SegmentedTabs";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
+import { ErrorState } from "@/components/ErrorState";
 
 type FilterTab = "all" | "available" | "lent";
 
@@ -36,7 +37,7 @@ export default function ItemsScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const { numColumns } = calcCardLayout(screenWidth);
 
-  const { items, loading, refresh } = useItems(filter);
+  const { items, loading, error, refresh } = useItems(filter);
   const { items: allItems } = useItems();
 
   const filteredItems = useMemo(() => {
@@ -129,6 +130,36 @@ export default function ItemsScreen() {
     { key: "available", label: "Available", count: availableCount },
     { key: "lent", label: "Lent Out", count: lentCount },
   ];
+
+  if (error && !loading && items.length === 0) {
+    return (
+      <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+        <ScreenHeader
+          title="My Library"
+          right={
+            <Pressable
+              onPress={() => router.push("/add-item")}
+              style={({ pressed }) => ({
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: THEME.light.primary + "18",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <Plus size={22} color={THEME.light.primary} />
+            </Pressable>
+          }
+        />
+        <ErrorState
+          message="Couldn't load your library. Please try again."
+          onRetry={refresh}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>

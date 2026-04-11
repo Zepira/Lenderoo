@@ -21,6 +21,7 @@ import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DashboardSection } from "@/components/dashboard/DashboardSection";
+import { ErrorState } from "@/components/ErrorState";
 
 export default function HomeScreen() {
   const { appUser } = useAuth();
@@ -31,16 +32,19 @@ export default function HomeScreen() {
   const {
     items: lentOutItems,
     loading: lentLoading,
+    error: lentError,
     refresh: refreshLent,
   } = useActiveItems();
   const {
     items: borrowedItems,
     loading: borrowedLoading,
+    error: borrowedError,
     refresh: refreshBorrowed,
   } = useBorrowedByMeItems();
-  const { items: allItems, refresh: refreshAll } = useItems();
+  const { items: allItems, error: allError, refresh: refreshAll } = useItems();
 
   const loading = lentLoading || borrowedLoading;
+  const error = lentError || borrowedError || allError;
 
   const firstName = appUser?.name?.split(" ")[0] ?? "there";
 
@@ -157,6 +161,13 @@ export default function HomeScreen() {
             </View>
           </SafeAreaView>
         </View>
+
+        {error && !loading && (
+          <ErrorState
+            message="Couldn't load your items. Pull down to retry."
+            onRetry={refresh}
+          />
+        )}
 
         {/* Stats grid */}
         <View style={{ paddingHorizontal: 24, marginTop: 28 }}>

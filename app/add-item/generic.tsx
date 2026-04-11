@@ -9,8 +9,9 @@ import {
   TextInput,
   Platform,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Camera, ChevronDown, UserCircle, X } from "lucide-react-native";
+import { ArrowLeft, Camera, ChevronDown, ChevronUp, Check, UserCircle, X } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -71,27 +72,11 @@ export default function AddGenericItemScreen() {
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showImagePicker, setShowImagePicker] = useState(false);
+  const [friendPickerOpen, setFriendPickerOpen] = useState(false);
 
   const cfg = CATEGORY_CONFIG[category] ?? CATEGORY_CONFIG.other;
   const categoryLabel = CATEGORY_LABELS[category] ?? "Item";
   const selectedFriend = friends.find((f) => f.id === borrowedBy);
-
-  const handleSelectFriend = () => {
-    if (friends.length === 0) return;
-    Alert.alert(
-      "Lend to a Friend",
-      "Choose who to lend this item to",
-      [
-        ...friends.map((f) => ({
-          text: f.name,
-          onPress: () => setBorrowedBy(f.id),
-        })),
-        { text: "Don't lend out", onPress: () => setBorrowedBy("") },
-        { text: "Cancel", style: "cancel" as const },
-      ],
-      { cancelable: true }
-    );
-  };
 
   const handleSubmit = async () => {
     if (loading || uploading || isSubmitting.current) return;
@@ -289,20 +274,26 @@ export default function AddGenericItemScreen() {
               onPress={() => setShowImagePicker(true)}
               style={({ pressed }) => ({
                 borderWidth: 2,
-                borderStyle: "dashed",
-                borderColor: pressed ? cfg.color + "88" : theme.border,
+                borderStyle: imageUrl ? "solid" : "dashed",
+                borderColor: imageUrl ? cfg.color + "60" : pressed ? cfg.color + "88" : theme.border,
                 borderRadius: 20,
-                paddingVertical: 28,
+                paddingVertical: imageUrl ? 12 : 28,
                 alignItems: "center",
                 gap: 10,
                 backgroundColor: imageUrl ? cfg.color + "08" : pressed ? cfg.color + "08" : "transparent",
+                overflow: "hidden",
               })}
             >
               {imageUrl ? (
-                <>
-                  <cfg.Icon size={28} color={cfg.color} />
-                  <Caption style={{ color: cfg.color }}>Photo selected — tap to change</Caption>
-                </>
+                <View style={{ alignItems: "center", gap: 8 }}>
+                  <Image
+                    source={{ uri: imageUrl }}
+                    style={{ width: 90, height: 120, borderRadius: 10 }}
+                    contentFit="cover"
+                    cachePolicy="memory"
+                  />
+                  <Caption style={{ color: cfg.color }}>Tap to change photo</Caption>
+                </View>
               ) : (
                 <>
                   <Camera size={28} color={theme.mutedForeground} />
@@ -368,31 +359,80 @@ export default function AddGenericItemScreen() {
               </Button>
             </View>
           ) : (
-            <Pressable
-              onPress={handleSelectFriend}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                borderRadius: 16,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <UserCircle size={20} color={selectedFriend ? theme.primary : theme.mutedForeground} />
-              <BodyStrong
-                style={{
-                  flex: 1,
-                  fontSize: 15,
-                  color: selectedFriend ? theme.foreground : theme.mutedForeground,
-                }}
+            <View style={{ gap: 8 }}>
+              {/* Trigger row */}
+              <Pressable
+                onPress={() => setFriendPickerOpen((v) => !v)}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                  borderRadius: 16,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  opacity: pressed ? 0.7 : 1,
+                })}
               >
-                {selectedFriend ? selectedFriend.name : "Select a friend…"}
-              </BodyStrong>
-              <ChevronDown size={18} color={theme.mutedForeground} />
-            </Pressable>
+                <UserCircle size={20} color={selectedFriend ? theme.primary : theme.mutedForeground} />
+                <BodyStrong
+                  style={{ flex: 1, fontSize: 15, color: selectedFriend ? theme.foreground : theme.mutedForeground }}
+                >
+                  {selectedFriend ? selectedFriend.name : "Select a friend…"}
+                </BodyStrong>
+                {friendPickerOpen
+                  ? <ChevronUp size={18} color={theme.mutedForeground} />
+                  : <ChevronDown size={18} color={theme.mutedForeground} />}
+              </Pressable>
+
+              {/* Inline friend list */}
+              {friendPickerOpen && (
+                <View
+                  style={{
+                    backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                  }}
+                >
+                  {friends.map((f, i) => (
+                    <Pressable
+                      key={f.id}
+                      onPress={() => { setBorrowedBy(f.id); setFriendPickerOpen(false); }}
+                      style={({ pressed }) => ({
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingHorizontal: 16,
+                        paddingVertical: 13,
+                        gap: 12,
+                        backgroundColor: pressed ? theme.primary + "18" : "transparent",
+                        borderTopWidth: i === 0 ? 0 : 1,
+                        borderTopColor: theme.border,
+                      })}
+                    >
+                      <BodyStrong style={{ flex: 1, fontSize: 15 }}>{f.name}</BodyStrong>
+                      {borrowedBy === f.id && <Check size={16} color={theme.primary} />}
+                    </Pressable>
+                  ))}
+                  {/* Clear selection */}
+                  {borrowedBy && (
+                    <Pressable
+                      onPress={() => { setBorrowedBy(""); setFriendPickerOpen(false); }}
+                      style={({ pressed }) => ({
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingHorizontal: 16,
+                        paddingVertical: 13,
+                        borderTopWidth: 1,
+                        borderTopColor: theme.border,
+                        backgroundColor: pressed ? theme.destructive + "12" : "transparent",
+                      })}
+                    >
+                      <Caption style={{ color: theme.mutedForeground }}>Don't lend out</Caption>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+            </View>
           )}
         </View>
 

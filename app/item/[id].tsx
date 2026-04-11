@@ -35,6 +35,7 @@ import {
   BookOpen,
   X,
 } from "lucide-react-native";
+import { ErrorState } from "@/components/ErrorState";
 import {
   useItem,
   useDeleteItem,
@@ -82,7 +83,7 @@ export default function ItemDetailScreen() {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
-  const { item, loading, refresh } = useItem(id!);
+  const { item, loading, error, refresh } = useItem(id!);
 
   const isBorrower =
     item && user && item.borrowedBy === user.id && !item.returnedDate;
@@ -147,11 +148,6 @@ export default function ItemDetailScreen() {
       .filter((o) => o.owner !== null);
   }, [item, allItems, friends]);
 
-  useEffect(() => {
-    if (!loading && !item) {
-      router.back();
-    }
-  }, [loading, item, router]);
 
   const goBack = () =>
     navigation.canGoBack() ? router.back() : router.push("/(tabs)" as any);
@@ -184,7 +180,7 @@ export default function ItemDetailScreen() {
     }
   };
 
-  if (loading || !item) {
+  if (loading || (!item && !error)) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <SafeAreaView
@@ -212,6 +208,37 @@ export default function ItemDetailScreen() {
         >
           <Caption>Loading…</Caption>
         </View>
+      </View>
+    );
+  }
+
+  if (error || !item) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <SafeAreaView
+          edges={["top"]}
+          style={{ backgroundColor: "transparent" }}
+        >
+          <Pressable
+            onPress={goBack}
+            style={({ pressed }) => ({
+              margin: 16,
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              backgroundColor: isDark ? theme.muted : "#F3F4F6",
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <ArrowLeft size={22} color={theme.mutedForeground} />
+          </Pressable>
+        </SafeAreaView>
+        <ErrorState
+          message={error ? "Couldn't load this item. Please try again." : "Item not found."}
+          onRetry={error ? refresh : undefined}
+        />
       </View>
     );
   }
