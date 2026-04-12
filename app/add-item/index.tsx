@@ -1,24 +1,14 @@
-import { useRouter } from "expo-router";
-import { View, Pressable, ScrollView } from "react-native";
+import { useRouter, useRootNavigation } from "expo-router";
+import { View, Pressable, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft, X } from "lucide-react-native";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
-import {
-  PageTitle,
-  SectionHeading,
-  TinyLabel,
-  BodyText,
-  Caption,
-} from "@/components/ui/typography";
+import { PageTitle, TinyLabel, Caption } from "@/components/ui/typography";
 import type { ItemCategory } from "lib/types";
 
 const CATEGORIES = Object.keys(CATEGORY_CONFIG) as ItemCategory[];
-
-// Split into two rows of 4
-const ROW1 = CATEGORIES.slice(0, 4);
-const ROW2 = CATEGORIES.slice(4);
 
 const CATEGORY_LABELS: Record<ItemCategory, string> = {
   book: "Book",
@@ -33,9 +23,33 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
 
 export default function SelectCategoryScreen() {
   const router = useRouter();
+  const rootNavigation = useRootNavigation();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
+  const { width } = useWindowDimensions();
+
+  const outerPadding = 24;
+  const gap = 12;
+  const availableWidth = width - outerPadding * 2;
+
+  // ~100px min gives 3 cols on 390px phone, more on tablets
+  const numColumns = Math.max(
+    2,
+    Math.floor((availableWidth + gap) / (100 + gap)),
+  );
+  const itemWidth = Math.floor(
+    (availableWidth - gap * (numColumns - 1)) / numColumns,
+  );
+  const itemHeight = Math.round(itemWidth * 1.15);
+
+  // Split into rows, padding the last row with nulls so widths stay consistent
+  const rows: (ItemCategory | null)[][] = [];
+  for (let i = 0; i < CATEGORIES.length; i += numColumns) {
+    const row = CATEGORIES.slice(i, i + numColumns) as (ItemCategory | null)[];
+    while (row.length < numColumns) row.push(null);
+    rows.push(row);
+  }
 
   const handleCategorySelect = (category: ItemCategory) => {
     if (category === "book") {
@@ -45,32 +59,35 @@ export default function SelectCategoryScreen() {
     }
   };
 
-  const renderCategoryButton = (category: ItemCategory) => {
+  const renderButton = (category: ItemCategory) => {
     const cfg = CATEGORY_CONFIG[category];
     return (
       <Pressable
         key={category}
         onPress={() => handleCategorySelect(category)}
-        style={({ pressed }) => ({
-          flex: 1,
-          alignItems: "center",
-          gap: 8,
-          paddingVertical: 14,
-          paddingHorizontal: 8,
-          borderRadius: 20,
-          backgroundColor: pressed ? cfg.color + "22" : cfg.color + "14",
-          borderWidth: 1.5,
-          borderColor: cfg.color + "40",
-          opacity: pressed ? 0.8 : 1,
-        })}
+        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
       >
-        <cfg.Icon size={24} color={cfg.color} />
-        <TinyLabel
-          style={{ color: cfg.color, fontSize: 9 }}
-          className="normal-case tracking-normal"
+        <View
+          style={{
+            width: itemWidth,
+            height: itemHeight,
+            borderRadius: 20,
+            backgroundColor: theme.card,
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+            borderWidth: 1.5,
+            borderColor: cfg.color + "40",
+          }}
         >
-          {CATEGORY_LABELS[category]}
-        </TinyLabel>
+          <cfg.Icon size={40} color={cfg.color} />
+          <TinyLabel
+            style={{ color: cfg.color, fontSize: 13, fontWeight: "500" }}
+            className="normal-case tracking-normal"
+          >
+            {CATEGORY_LABELS[category]}
+          </TinyLabel>
+        </View>
       </Pressable>
     );
   };
@@ -96,7 +113,6 @@ export default function SelectCategoryScreen() {
           shadowOpacity: 0.06,
           shadowRadius: 12,
           elevation: 4,
-          marginBottom: 24,
         }}
       >
         <SafeAreaView
@@ -125,7 +141,7 @@ export default function SelectCategoryScreen() {
               </Pressable>
               <PageTitle style={{ flex: 1 }}>Add New Item</PageTitle>
               <Pressable
-                onPress={() => router.dismiss()}
+                onPress={() => rootNavigation?.goBack()}
                 style={({ pressed }) => ({
                   width: 40,
                   height: 40,
@@ -143,75 +159,33 @@ export default function SelectCategoryScreen() {
         </SafeAreaView>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: 24,
-          paddingBottom: 48,
+      {/* Content */}
+      <View
+        style={{
+          paddingHorizontal: outerPadding,
+          paddingTop: 24,
+          paddingBottom: 24,
           gap: 16,
         }}
       >
-        {/* Category picker */}
-        <View
-          style={{
-            backgroundColor: theme.card,
-            borderRadius: 32,
-            padding: 24,
-            borderWidth: 1,
-            borderColor: theme.border,
-            gap: 16,
-          }}
-        >
-          <View style={{ gap: 4 }}>
-            <TinyLabel>Item Category</TinyLabel>
-            <Caption>What kind of item are you adding?</Caption>
-          </View>
-
-          <View style={{ gap: 10 }}>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              {ROW1.map(renderCategoryButton)}
+        {/* Grid */}
+        <View style={{ gap }}>
+          {rows.map((row, rowIndex) => (
+            <View key={rowIndex} style={{ flexDirection: "row", gap }}>
+              {row.map((category, colIndex) =>
+                category === null ? (
+                  <View
+                    key={`spacer-${colIndex}`}
+                    style={{ width: itemWidth, height: itemHeight }}
+                  />
+                ) : (
+                  renderButton(category)
+                ),
+              )}
             </View>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              {ROW2.map(renderCategoryButton)}
-            </View>
-          </View>
+          ))}
         </View>
-
-        {/* Book hint */}
-        <View
-          style={{
-            backgroundColor: THEME.light.primary + "12",
-            borderRadius: 20,
-            padding: 16,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            borderWidth: 1,
-            borderColor: THEME.light.primary + "30",
-          }}
-        >
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              backgroundColor: THEME.light.primary + "22",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CATEGORY_CONFIG.book.Icon size={18} color={THEME.light.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <BodyText style={{ fontSize: 13, color: THEME.light.primary }}>
-              Books auto-fill from Hardcover
-            </BodyText>
-            <Caption style={{ fontSize: 11 }}>
-              Search by title or author to pre-fill all details
-            </Caption>
-          </View>
-        </View>
-      </ScrollView>
+      </View>
     </View>
   );
 }

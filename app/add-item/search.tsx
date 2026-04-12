@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRouter } from "expo-router";
+import { useRouter, useRootNavigation } from "expo-router";
 import {
   ScrollView,
   View,
@@ -40,6 +40,7 @@ interface HardcoverBook {
 
 export default function SearchBookScreen() {
   const router = useRouter();
+  const rootNavigation = useRootNavigation();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
@@ -119,14 +120,14 @@ export default function SearchBookScreen() {
       <ScreenHeader
         title="Add a Book"
         onBack={() => router.back()}
-        onDismiss={() => router.dismiss()}
+        onDismiss={() => rootNavigation?.goBack()}
         icon={{ Icon: BookOpen, color: "#3B82F6" }}
       />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 16 }}
       >
         {/* Search card */}
         <View
@@ -140,7 +141,7 @@ export default function SearchBookScreen() {
           }}
         >
           <View style={{ gap: 4 }}>
-            <TinyLabel>Search Hardcover</TinyLabel>
+            <TinyLabel>Search Books</TinyLabel>
             <Caption>Find your book to auto-fill all details</Caption>
           </View>
 

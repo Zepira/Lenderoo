@@ -46,7 +46,6 @@ export function ScreenHeader({ title, subtitle, onBack, onDismiss, icon, right }
         shadowOpacity: 0.06,
         shadowRadius: 12,
         elevation: 4,
-        marginBottom: 24,
       }}
     >
       <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, Alert, Pressable, Platform } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePickerExpo from "expo-image-picker";
@@ -10,12 +10,14 @@ interface ImagePickerProps {
   imageUrl?: string;
   onImageSelected: (uri: string) => void;
   onImageRemoved: () => void;
+  autoOpen?: boolean;
 }
 
 export function ImagePicker({
   imageUrl,
   onImageSelected,
   onImageRemoved,
+  autoOpen,
 }: ImagePickerProps) {
   const [loading, setLoading] = useState(false);
 
@@ -111,6 +113,12 @@ export function ImagePicker({
       { cancelable: true }
     );
   };
+
+  useEffect(() => {
+    if (autoOpen && !imageUrl) {
+      handleAddImage();
+    }
+  }, []);
 
   return (
     <View className="gap-3">

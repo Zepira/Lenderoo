@@ -297,7 +297,7 @@ export default function EditBookScreen() {
       />
 
       <ScrollView ref={scrollViewRef} className="flex-1">
-        <View className="p-4 gap-4">
+        <View className="px-4 pt-6 pb-4 gap-4">
           {errors.general && (
             <View className="p-3 bg-red-50 rounded-lg border border-red-200">
               <Text variant="small" className="text-red-600">

@@ -189,7 +189,7 @@ export default function ItemsScreen() {
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 160, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 160, gap: 12 }}
         showsVerticalScrollIndicator={false}
         onRefresh={refresh}
         refreshing={loading}

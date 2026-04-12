@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useRootNavigation } from "expo-router";
 import {
   ScrollView,
   View,
@@ -25,6 +25,7 @@ import type { BookMetadata } from "lib/types";
 
 export default function AddBookScreen() {
   const router = useRouter();
+  const rootNavigation = useRootNavigation();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
@@ -220,7 +221,7 @@ export default function AddBookScreen() {
     fontFamily: "Inter-Medium",
   };
 
-  const fromHardcover = !!params.title;
+  const fromSearch = !!params.title;
 
   return (
     <View
@@ -233,10 +234,10 @@ export default function AddBookScreen() {
       }}
     >
       <ScreenHeader
-        title={fromHardcover ? title || "Book Details" : "Add a Book"}
-        subtitle={fromHardcover ? "from Hardcover" : undefined}
+        title={fromSearch ? title || "Book Details" : "Add a Book"}
+        subtitle={undefined}
         onBack={() => router.back()}
-        onDismiss={() => router.dismiss()}
+        onDismiss={() => rootNavigation?.goBack()}
         icon={{ Icon: BookOpen, color: "#3B82F6" }}
       />
 
@@ -246,6 +247,7 @@ export default function AddBookScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingHorizontal: 24,
+          paddingTop: 24,
           paddingBottom: 48,
           gap: 16,
         }}
@@ -309,24 +311,29 @@ export default function AddBookScreen() {
           ) : (
             <Pressable
               onPress={() => setShowImagePicker(true)}
-              style={({ pressed }) => ({
-                borderWidth: 2,
-                borderStyle: "dashed",
-                borderColor: pressed ? theme.primary + "88" : theme.border,
-                borderRadius: 20,
-                paddingVertical: 32,
-                alignItems: "center",
-                gap: 10,
-                backgroundColor: pressed ? theme.primary + "08" : "transparent",
-              })}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
-              <Camera size={32} color={theme.mutedForeground} />
-              <TinyLabel>Add Cover Photo</TinyLabel>
+              <View
+                style={{
+                  borderWidth: 2,
+                  borderStyle: "dashed",
+                  borderColor: theme.border,
+                  borderRadius: 20,
+                  paddingVertical: 32,
+                  alignItems: "center",
+                  gap: 10,
+                  backgroundColor: "transparent",
+                }}
+              >
+                <Camera size={32} color={theme.mutedForeground} />
+                <TinyLabel>Add Cover Photo</TinyLabel>
+              </View>
             </Pressable>
           )}
 
           {showImagePicker && (
             <ImagePicker
+              autoOpen={!coverUrl}
               imageUrl={coverUrl}
               onImageSelected={(uri) => {
                 setCoverUrl(uri);

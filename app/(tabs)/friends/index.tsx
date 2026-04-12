@@ -143,7 +143,7 @@ export default function FriendsScreen() {
         contentContainerStyle={{ paddingBottom: 160 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ paddingHorizontal: 24, gap: 16 }}>
+        <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 16 }}>
           {/* Pending friend requests */}
           {friendRequests.length > 0 && (
             <FriendRequests

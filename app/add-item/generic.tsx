@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useRootNavigation } from "expo-router";
 import {
   ScrollView,
   View,
@@ -7,21 +7,19 @@ import {
   ActivityIndicator,
   Pressable,
   TextInput,
-  Platform,
 } from "react-native";
 import { Image } from "expo-image";
-import { Camera, ChevronDown, ChevronUp, Check, UserCircle } from "lucide-react-native";
+import { Camera } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import {
   TinyLabel,
-  BodyStrong,
   Caption,
 } from "@/components/ui/typography";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { useFriends, useCreateItem, useItems } from "hooks";
+import { useCreateItem, useItems } from "hooks";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
@@ -54,11 +52,11 @@ export default function AddGenericItemScreen() {
   const { category: categoryParam } = useLocalSearchParams<{ category: string }>();
   const category = (categoryParam || "other") as ItemCategory;
   const router = useRouter();
+  const rootNavigation = useRootNavigation();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
 
-  const { friends } = useFriends();
   const { createItem, loading } = useCreateItem();
   const { items: existingItems } = useItems();
   const isSubmitting = useRef<boolean>(false);
@@ -66,18 +64,15 @@ export default function AddGenericItemScreen() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [borrowedBy, setBorrowedBy] = useState("");
   const [notes, setNotes] = useState("");
   const [maxBorrowDuration, setMaxBorrowDuration] = useState("");
   const [condition, setCondition] = useState<"fair" | "good" | "perfect" | "">("");
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showImagePicker, setShowImagePicker] = useState(false);
-  const [friendPickerOpen, setFriendPickerOpen] = useState(false);
 
   const cfg = CATEGORY_CONFIG[category] ?? CATEGORY_CONFIG.other;
   const categoryLabel = CATEGORY_LABELS[category] ?? "Item";
-  const selectedFriend = friends.find((f) => f.id === borrowedBy);
 
   const handleSubmit = async () => {
     if (loading || uploading || isSubmitting.current) return;
@@ -128,8 +123,6 @@ export default function AddGenericItemScreen() {
         description: description.trim() || undefined,
         category,
         images: uploadedImageUrl ? [uploadedImageUrl] : undefined,
-        borrowedBy: borrowedBy || undefined,
-        borrowedDate: borrowedBy ? new Date() : undefined,
         notes: notes.trim() || undefined,
         metadata: (maxBorrowDuration.trim() || condition)
           ? { maxBorrowDuration: maxBorrowDuration.trim() || undefined, condition: condition || undefined }
@@ -176,14 +169,14 @@ export default function AddGenericItemScreen() {
       <ScreenHeader
         title={`Add ${categoryLabel}`}
         onBack={() => router.back()}
-        onDismiss={() => router.dismiss()}
+        onDismiss={() => rootNavigation?.goBack()}
         icon={{ Icon: cfg.Icon, color: cfg.color }}
       />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 16 }}
       >
         {errors.general && (
           <View
@@ -213,6 +206,7 @@ export default function AddGenericItemScreen() {
           {/* Photo picker */}
           {showImagePicker ? (
             <ImagePicker
+              autoOpen={!imageUrl}
               imageUrl={imageUrl}
               onImageSelected={(uri) => { setImageUrl(uri); setShowImagePicker(false); }}
               onImageRemoved={() => { setImageUrl(""); setShowImagePicker(false); }}
@@ -220,34 +214,38 @@ export default function AddGenericItemScreen() {
           ) : (
             <Pressable
               onPress={() => setShowImagePicker(true)}
-              style={({ pressed }) => ({
-                borderWidth: 2,
-                borderStyle: imageUrl ? "solid" : "dashed",
-                borderColor: imageUrl ? cfg.color + "60" : pressed ? cfg.color + "88" : theme.border,
-                borderRadius: 20,
-                paddingVertical: imageUrl ? 12 : 28,
-                alignItems: "center",
-                gap: 10,
-                backgroundColor: imageUrl ? cfg.color + "08" : pressed ? cfg.color + "08" : "transparent",
-                overflow: "hidden",
-              })}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
-              {imageUrl ? (
-                <View style={{ alignItems: "center", gap: 8 }}>
-                  <Image
-                    source={{ uri: imageUrl }}
-                    style={{ width: 90, height: 120, borderRadius: 10 }}
-                    contentFit="cover"
-                    cachePolicy="memory"
-                  />
-                  <Caption style={{ color: cfg.color }}>Tap to change photo</Caption>
-                </View>
-              ) : (
-                <>
-                  <Camera size={28} color={theme.mutedForeground} />
-                  <TinyLabel>Add Photo (Optional)</TinyLabel>
-                </>
-              )}
+              <View
+                style={{
+                  borderWidth: 2,
+                  borderStyle: imageUrl ? "solid" : "dashed",
+                  borderColor: imageUrl ? cfg.color + "60" : theme.border,
+                  borderRadius: 20,
+                  paddingVertical: imageUrl ? 12 : 28,
+                  alignItems: "center",
+                  gap: 10,
+                  backgroundColor: imageUrl ? cfg.color + "08" : "transparent",
+                  overflow: "hidden",
+                }}
+              >
+                {imageUrl ? (
+                  <View style={{ alignItems: "center", gap: 8 }}>
+                    <Image
+                      source={{ uri: imageUrl }}
+                      style={{ width: 90, height: 120, borderRadius: 10 }}
+                      contentFit="cover"
+                      cachePolicy="memory"
+                    />
+                    <Caption style={{ color: cfg.color }}>Tap to change photo</Caption>
+                  </View>
+                ) : (
+                  <>
+                    <Camera size={28} color={theme.mutedForeground} />
+                    <TinyLabel>Add Photo (Optional)</TinyLabel>
+                  </>
+                )}
+              </View>
             </Pressable>
           )}
 
@@ -325,107 +323,6 @@ export default function AddGenericItemScreen() {
           </View>
         </View>
 
-        {/* Lend to card */}
-        <View
-          style={{
-            backgroundColor: theme.card,
-            borderRadius: 32,
-            padding: 24,
-            borderWidth: 1,
-            borderColor: theme.border,
-            gap: 16,
-          }}
-        >
-          <View style={{ gap: 4 }}>
-            <TinyLabel>Lend To (Optional)</TinyLabel>
-            <Caption>Leave empty to add without lending out</Caption>
-          </View>
-
-          {friends.length === 0 ? (
-            <View style={{ gap: 12 }}>
-              <Caption>No friends yet — add friends to lend items to them.</Caption>
-              <Button variant="outline" onPress={() => router.push("/add-friend" as any)}>
-                <Text>Add a Friend</Text>
-              </Button>
-            </View>
-          ) : (
-            <View style={{ gap: 8 }}>
-              {/* Trigger row */}
-              <Pressable
-                onPress={() => setFriendPickerOpen((v) => !v)}
-                style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                  borderRadius: 16,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <UserCircle size={20} color={selectedFriend ? theme.primary : theme.mutedForeground} />
-                <BodyStrong
-                  style={{ flex: 1, fontSize: 15, color: selectedFriend ? theme.foreground : theme.mutedForeground }}
-                >
-                  {selectedFriend ? selectedFriend.name : "Select a friend…"}
-                </BodyStrong>
-                {friendPickerOpen
-                  ? <ChevronUp size={18} color={theme.mutedForeground} />
-                  : <ChevronDown size={18} color={theme.mutedForeground} />}
-              </Pressable>
-
-              {/* Inline friend list */}
-              {friendPickerOpen && (
-                <View
-                  style={{
-                    backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                    borderRadius: 16,
-                    overflow: "hidden",
-                  }}
-                >
-                  {friends.map((f, i) => (
-                    <Pressable
-                      key={f.id}
-                      onPress={() => { setBorrowedBy(f.id); setFriendPickerOpen(false); }}
-                      style={({ pressed }) => ({
-                        flexDirection: "row",
-                        alignItems: "center",
-                        paddingHorizontal: 16,
-                        paddingVertical: 13,
-                        gap: 12,
-                        backgroundColor: pressed ? theme.primary + "18" : "transparent",
-                        borderTopWidth: i === 0 ? 0 : 1,
-                        borderTopColor: theme.border,
-                      })}
-                    >
-                      <BodyStrong style={{ flex: 1, fontSize: 15 }}>{f.name}</BodyStrong>
-                      {borrowedBy === f.id && <Check size={16} color={theme.primary} />}
-                    </Pressable>
-                  ))}
-                  {/* Clear selection */}
-                  {borrowedBy && (
-                    <Pressable
-                      onPress={() => { setBorrowedBy(""); setFriendPickerOpen(false); }}
-                      style={({ pressed }) => ({
-                        flexDirection: "row",
-                        alignItems: "center",
-                        paddingHorizontal: 16,
-                        paddingVertical: 13,
-                        borderTopWidth: 1,
-                        borderTopColor: theme.border,
-                        backgroundColor: pressed ? theme.destructive + "12" : "transparent",
-                      })}
-                    >
-                      <Caption style={{ color: theme.mutedForeground }}>Don't lend out</Caption>
-                    </Pressable>
-                  )}
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-
         {/* Notes card */}
         <View
           style={{
@@ -457,13 +354,7 @@ export default function AddGenericItemScreen() {
         >
           {(uploading || loading) && <ActivityIndicator size="small" color="#fff" />}
           <Text className="text-white font-bold">
-            {uploading
-              ? "Uploading…"
-              : loading
-              ? "Saving…"
-              : selectedFriend
-              ? `Add & Lend ${categoryLabel}`
-              : "Add to Library"}
+            {uploading ? "Uploading…" : loading ? "Saving…" : "Add to Library"}
           </Text>
         </Button>
       </ScrollView>

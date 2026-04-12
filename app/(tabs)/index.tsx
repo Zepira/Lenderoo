@@ -58,7 +58,6 @@ export default function HomeScreen() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        style={{ backgroundColor: isDark ? theme.background : "#ffffff" }}
         refreshControl={
           <RefreshControl
             refreshing={loading}
