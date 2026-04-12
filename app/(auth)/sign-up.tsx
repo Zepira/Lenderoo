@@ -27,6 +27,7 @@ import {
   validatePassword,
   validateName,
 } from "@/lib/auth-errors";
+import { customStorage } from "@/lib/async-storage-wrapper";
 import { Eye, EyeOff, UserPlus } from "lucide-react-native";
 import { AuthIconBox } from "@/components/AuthIconBox";
 
@@ -96,6 +97,7 @@ export default function SignUpScreen() {
     try {
       setLoading(true);
       await signUp(email.trim(), password, name.trim());
+      await customStorage.setItem("@lenderoo_has_signed_in", "true");
       toast.success("Account created successfully!");
       // Navigation is handled by auth state change in _layout.tsx
     } catch (error: any) {

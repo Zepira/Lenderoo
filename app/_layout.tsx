@@ -26,6 +26,7 @@ import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
 import { Provider } from "components/Provider";
 import { useThemeContext } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
+import { customStorage } from "../lib/async-storage-wrapper";
 
 export { ErrorBoundary } from "expo-router";
 
@@ -64,7 +65,13 @@ function RootLayoutContent() {
 
     const inAuthGroup = segments[0] === "(auth)";
     if (!user && !inAuthGroup) {
-      router.replace("/(auth)/");
+      customStorage.getItem("@lenderoo_has_signed_in").then((value) => {
+        if (value) {
+          router.replace("/(auth)/sign-in");
+        } else {
+          router.replace("/(auth)/");
+        }
+      });
     } else if (user && inAuthGroup) {
       router.replace("/(tabs)");
     }

@@ -18,7 +18,7 @@ import {
   KeyboardAvoidingView,
   FlatList,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -64,7 +64,8 @@ import {
   getMyBorrowRequestForItem,
   cancelBorrowRequest,
 } from "@/lib/borrow-requests-service";
-import type { BorrowRequest } from "lib/types";
+import { getHistoryForItemWithUsers } from "@/lib/database-supabase";
+import type { BorrowRequest, BorrowHistoryWithUser } from "lib/types";
 import * as toast from "@/lib/toast";
 import { resolveAvatarSource } from "@/lib/avatar-service";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,10 +90,15 @@ export default function ItemDetailScreen() {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
+  const insets = useSafeAreaInsets();
   const { item, loading, error, refresh } = useItem(id!);
 
   const isBorrower =
-    item && user && item.borrowedBy === user.id && !!item.borrowedDate && !item.returnedDate;
+    item &&
+    user &&
+    item.borrowedBy === user.id &&
+    !!item.borrowedDate &&
+    !item.returnedDate;
   const isOwner = item && user && item.userId === user.id;
   // Load the borrower's friend profile only when the viewer is not the borrower
   // (querying the friendship table with your own ID causes an error)
@@ -127,6 +133,11 @@ export default function ItemDetailScreen() {
   );
   const [requesting, setRequesting] = useState(false);
 
+  // Borrow history
+  const [borrowHistory, setBorrowHistory] = useState<BorrowHistoryWithUser[]>(
+    [],
+  );
+
   const loadBorrowRequest = useCallback(async () => {
     if (!item || isOwner || isBorrower) return;
     try {
@@ -135,11 +146,20 @@ export default function ItemDetailScreen() {
     } catch {}
   }, [item?.id, isOwner, isBorrower]);
 
+  const loadBorrowHistory = useCallback(async () => {
+    if (!item) return;
+    try {
+      const history = await getHistoryForItemWithUsers(item.id);
+      setBorrowHistory(history);
+    } catch {}
+  }, [item?.id]);
+
   useFocusEffect(
     useCallback(() => {
       refresh();
       loadBorrowRequest();
-    }, [refresh, loadBorrowRequest]),
+      loadBorrowHistory();
+    }, [refresh, loadBorrowRequest, loadBorrowHistory]),
   );
 
   const communityOwners = useMemo(() => {
@@ -200,33 +220,34 @@ export default function ItemDetailScreen() {
   if (isLoading || error || !item) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <SafeAreaView
-          edges={["top"]}
+        <View
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
+            top: insets.top + 12,
+            left: 20,
             zIndex: 10,
-            backgroundColor: "transparent",
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            backgroundColor: isDark ? theme.muted : "#F3F4F6",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           <Pressable
             onPress={goBack}
             style={({ pressed }) => ({
-              margin: 16,
-              width: 40,
-              height: 40,
+              flex: 1,
+              width: "100%",
               borderRadius: 12,
-              backgroundColor: "rgba(0, 0, 0, 0.34)",
               alignItems: "center",
               justifyContent: "center",
-              opacity: pressed ? 0.7 : 1,
+              opacity: pressed ? 0.6 : 1,
             })}
           >
-            <ArrowLeft size={22} color="rgba(255, 255, 255, 0.91)" />
+            <ArrowLeft size={22} color={theme.foreground} />
           </Pressable>
-        </SafeAreaView>
+        </View>
         {isLoading ? (
           <View
             style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
@@ -358,34 +379,35 @@ export default function ItemDetailScreen() {
     <View
       style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#ffffff" }}
     >
-      {/* Back button — SafeAreaView overlay, always on top of hero */}
-      <SafeAreaView
-        edges={["top"]}
+      {/* Back button — absolutely positioned, clears status bar via insets */}
+      <View
         style={{
           position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
+          top: insets.top + 12,
+          left: 20,
           zIndex: 10,
-          backgroundColor: "transparent",
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          backgroundColor: isDark ? theme.muted : "#F3F4F6",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <Pressable
           onPress={goBack}
           style={({ pressed }) => ({
-            margin: 16,
-            width: 40,
-            height: 40,
+            flex: 1,
+            width: "100%",
             borderRadius: 12,
-            backgroundColor: "rgba(0, 0, 0, 0.34)",
             alignItems: "center",
             justifyContent: "center",
-            opacity: pressed ? 0.7 : 1,
+            opacity: pressed ? 0.6 : 1,
           })}
         >
-          <ArrowLeft size={22} color="rgba(255, 255, 255, 0.91)" />
+          <ArrowLeft size={22} color={theme.foreground} />
         </Pressable>
-      </SafeAreaView>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -514,12 +536,32 @@ export default function ItemDetailScreen() {
                 style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
               >
                 {!isOwner && (
-                  <View style={{ width: 28, height: 28, borderRadius: 8, overflow: "hidden", backgroundColor: theme.primary + "22" }}>
+                  <View
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      backgroundColor: theme.primary + "22",
+                    }}
+                  >
                     {resolveAvatarSource(ownerFriend?.avatarUrl) ? (
-                      <Image source={resolveAvatarSource(ownerFriend!.avatarUrl)!} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                      <Image
+                        source={resolveAvatarSource(ownerFriend!.avatarUrl)!}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
                     ) : (
-                      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <Caption style={{ color: theme.primary }}>{getInitials(ownerName)}</Caption>
+                      <View
+                        style={{
+                          flex: 1,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Caption style={{ color: theme.primary }}>
+                          {getInitials(ownerName)}
+                        </Caption>
                       </View>
                     )}
                   </View>
@@ -698,12 +740,32 @@ export default function ItemDetailScreen() {
                     marginBottom: 24,
                   }}
                 >
-                  <View style={{ width: 48, height: 48, borderRadius: 14, overflow: "hidden", backgroundColor: theme.secondary + "22" }}>
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      backgroundColor: theme.secondary + "22",
+                    }}
+                  >
                     {resolveAvatarSource(appUser?.avatarUrl) ? (
-                      <Image source={resolveAvatarSource(appUser!.avatarUrl)!} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                      <Image
+                        source={resolveAvatarSource(appUser!.avatarUrl)!}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
                     ) : (
-                      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <BodyStrong style={{ color: theme.secondary }}>{getInitials(appUser?.name)}</BodyStrong>
+                      <View
+                        style={{
+                          flex: 1,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <BodyStrong style={{ color: theme.secondary }}>
+                          {getInitials(appUser?.name)}
+                        </BodyStrong>
                       </View>
                     )}
                   </View>
@@ -731,12 +793,32 @@ export default function ItemDetailScreen() {
                   }}
                   activeOpacity={0.75}
                 >
-                  <View style={{ width: 48, height: 48, borderRadius: 14, overflow: "hidden", backgroundColor: theme.secondary + "22" }}>
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      backgroundColor: theme.secondary + "22",
+                    }}
+                  >
                     {resolveAvatarSource(friend.avatarUrl) ? (
-                      <Image source={resolveAvatarSource(friend.avatarUrl)!} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                      <Image
+                        source={resolveAvatarSource(friend.avatarUrl)!}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
                     ) : (
-                      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <BodyStrong style={{ color: theme.secondary }}>{getInitials(friend.name)}</BodyStrong>
+                      <View
+                        style={{
+                          flex: 1,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <BodyStrong style={{ color: theme.secondary }}>
+                          {getInitials(friend.name)}
+                        </BodyStrong>
                       </View>
                     )}
                   </View>
@@ -753,104 +835,127 @@ export default function ItemDetailScreen() {
             </>
           )}
 
-          {/* ── Timeline ── */}
-          {(item.borrowedDate || item.returnedDate) && (
-            <>
-              <Separator style={{ marginBottom: 20 }} />
-              <SectionHeading style={{ marginBottom: 16 }}>
-                Timeline
-              </SectionHeading>
-              <View style={{ gap: 14, marginBottom: 24 }}>
-                {item.borrowedDate && (
+          {/* ── Borrow History ── */}
+          {(() => {
+            // Synthesize an "Active" row from the item's live state so we never
+            // rely on an open DB entry. DB entries are only written at return
+            // time (complete records), so they are always "Returned".
+            const activeName = isBorrower
+              ? (appUser?.name ?? "You")
+              : (friend?.name ?? null);
+            const activeAvatar = isBorrower
+              ? appUser?.avatarUrl ?? null
+              : friend?.avatarUrl ?? null;
+            const showActiveRow = !isAvailable && !!item.borrowedDate;
+            const totalCount = borrowHistory.length + (showActiveRow ? 1 : 0);
+            if (totalCount === 0) return null;
+
+            const renderRow = (
+              key: string,
+              displayName: string,
+              avatarUrl: string | null | undefined,
+              borrowedDate: Date,
+              returnedDate: Date | undefined,
+              active: boolean,
+            ) => {
+              const avatarSrc = avatarUrl ? resolveAvatarSource(avatarUrl) : null;
+              return (
+                <View
+                  key={key}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: 14,
+                    backgroundColor: active ? theme.secondary + "12" : theme.muted,
+                    borderRadius: 16,
+                    borderWidth: active ? 1 : 0,
+                    borderColor: active ? theme.secondary + "33" : "transparent",
+                  }}
+                >
                   <View
                     style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      backgroundColor: theme.primary + "22",
                     }}
                   >
-                    <Caption>Borrowed</Caption>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <BodyStrong style={{ fontSize: 13 }}>
-                        {formatDate(item.borrowedDate)}
-                      </BodyStrong>
-                      <Caption>{formatRelativeTime(item.borrowedDate)}</Caption>
-                    </View>
-                  </View>
-                )}
-                {item.dueDate && (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Caption>Due Date</Caption>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <BodyStrong
-                        style={{
-                          fontSize: 13,
-                          color: isOverdue
-                            ? theme.destructive
-                            : theme.foreground,
-                        }}
-                      >
-                        {formatDate(item.dueDate)}
-                      </BodyStrong>
-                      {!isAvailable && daysUntil !== undefined && (
-                        <Caption
-                          style={{
-                            color: isOverdue
-                              ? theme.destructive
-                              : theme.mutedForeground,
-                          }}
-                        >
-                          {isOverdue
-                            ? `Overdue by ${Math.abs(daysUntil)}d`
-                            : `Due in ${daysUntil}d`}
+                    {avatarSrc ? (
+                      <Image
+                        source={avatarSrc}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                        <Caption style={{ color: theme.primary }}>
+                          {getInitials(displayName)}
                         </Caption>
-                      )}
-                    </View>
+                      </View>
+                    )}
                   </View>
-                )}
-                {item.returnedDate && (
+
+                  <View style={{ flex: 1 }}>
+                    <BodyStrong style={{ fontSize: 13 }}>{displayName}</BodyStrong>
+                    <Caption>
+                      {formatDate(borrowedDate)}
+                      {returnedDate ? ` → ${formatDate(returnedDate)}` : ""}
+                    </Caption>
+                  </View>
+
                   <View
                     style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      backgroundColor: active ? theme.secondary + "EE" : theme.primary + "22",
+                      borderRadius: 8,
                     }}
                   >
-                    <Caption>Returned</Caption>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <BodyStrong
-                        style={{ fontSize: 13, color: theme.primary }}
-                      >
-                        {formatDate(item.returnedDate)}
-                      </BodyStrong>
-                      <Caption>{formatRelativeTime(item.returnedDate)}</Caption>
-                    </View>
+                    <TinyLabel
+                      style={{ color: active ? "#fff" : theme.primary }}
+                      className="normal-case tracking-normal"
+                    >
+                      {active ? "Active" : "Returned"}
+                    </TinyLabel>
                   </View>
-                )}
-                {daysSinceBorrowed > 0 && (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Caption>Duration</Caption>
-                    <BodyStrong style={{ fontSize: 13 }}>
-                      {daysSinceBorrowed} day
-                      {daysSinceBorrowed !== 1 ? "s" : ""}
-                    </BodyStrong>
-                  </View>
-                )}
-              </View>
-            </>
-          )}
+                </View>
+              );
+            };
+
+            return (
+              <>
+                <Separator style={{ marginBottom: 20 }} />
+                <SectionHeading style={{ marginBottom: 4 }}>
+                  Borrow History
+                </SectionHeading>
+                <Caption style={{ marginBottom: 16 }}>
+                  {totalCount} time{totalCount !== 1 ? "s" : ""} borrowed
+                </Caption>
+                <View style={{ gap: 10, marginBottom: 24 }}>
+                  {showActiveRow && activeName && renderRow(
+                    "active",
+                    activeName,
+                    activeAvatar,
+                    item.borrowedDate!,
+                    undefined,
+                    true,
+                  )}
+                  {borrowHistory.map((entry) =>
+                    renderRow(
+                      entry.id,
+                      entry.borrowerName ?? "Unknown",
+                      entry.borrowerAvatarUrl,
+                      entry.borrowedDate,
+                      entry.returnedDate,
+                      false,
+                    )
+                  )}
+                </View>
+              </>
+            );
+          })()}
 
           {/* ── Notes ── */}
           {item.notes && (
@@ -902,12 +1007,32 @@ export default function ItemDetailScreen() {
                       borderRadius: 16,
                     }}
                   >
-                    <View style={{ width: 40, height: 40, borderRadius: 12, overflow: "hidden", backgroundColor: theme.primary + "22" }}>
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        backgroundColor: theme.primary + "22",
+                      }}
+                    >
                       {resolveAvatarSource(owner?.avatarUrl) ? (
-                        <Image source={resolveAvatarSource(owner!.avatarUrl)!} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                        <Image
+                          source={resolveAvatarSource(owner!.avatarUrl)!}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="cover"
+                        />
                       ) : (
-                        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                          <Caption style={{ color: theme.primary }}>{owner ? getInitials(owner.name) : "?"}</Caption>
+                        <View
+                          style={{
+                            flex: 1,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Caption style={{ color: theme.primary }}>
+                            {owner ? getInitials(owner.name) : "?"}
+                          </Caption>
                         </View>
                       )}
                     </View>
@@ -1140,12 +1265,32 @@ export default function ItemDetailScreen() {
                     opacity: pressed ? 0.6 : 1,
                   })}
                 >
-                  <View style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden", backgroundColor: theme.primary + "22" }}>
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      overflow: "hidden",
+                      backgroundColor: theme.primary + "22",
+                    }}
+                  >
                     {resolveAvatarSource(f.avatarUrl) ? (
-                      <Image source={resolveAvatarSource(f.avatarUrl)!} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                      <Image
+                        source={resolveAvatarSource(f.avatarUrl)!}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
                     ) : (
-                      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <Caption style={{ color: theme.primary }}>{getInitials(f.name)}</Caption>
+                      <View
+                        style={{
+                          flex: 1,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Caption style={{ color: theme.primary }}>
+                          {getInitials(f.name)}
+                        </Caption>
                       </View>
                     )}
                   </View>

@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import * as toast from "@/lib/toast";
 import { getAuthErrorMessage, isValidEmail } from "@/lib/auth-errors";
+import { customStorage } from "@/lib/async-storage-wrapper";
 
 export default function SignInScreen() {
   const { signIn } = useAuth();
@@ -60,6 +61,7 @@ export default function SignInScreen() {
     try {
       setLoading(true);
       await signIn(email.trim(), password);
+      await customStorage.setItem("@lenderoo_has_signed_in", "true");
       // Navigation is handled by auth state change in _layout.tsx
     } catch (error: any) {
       console.error("Sign in error:", error);

@@ -2,21 +2,15 @@ import {
   View,
   ScrollView,
   Image,
-  Pressable,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  PageHero,
-  LabelStrong,
-  BodyStrong,
-} from "@/components/ui/typography";
+import { PageHero, LabelStrong } from "@/components/ui/typography";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import { useActiveItems, useBorrowedByMeItems, useItems } from "hooks/useItems";
 import { useAuth } from "@/contexts/AuthContext";
-import { resolveAvatarSource } from "@/lib/avatar-service";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -64,6 +58,7 @@ export default function HomeScreen() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
+        style={{ backgroundColor: isDark ? theme.background : "#ffffff" }}
         refreshControl={
           <RefreshControl
             refreshing={loading}
@@ -73,91 +68,63 @@ export default function HomeScreen() {
         }
         contentContainerStyle={{ paddingBottom: 160 }}
       >
-        {/* Header */}
+        {/* Header — no top radius so pull-down shows white, not grey */}
         <View
           style={{
             backgroundColor: theme.card,
-            borderRadius: 40,
+            borderBottomLeftRadius: 40,
+            borderBottomRightRadius: 40,
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.06,
             shadowRadius: 12,
             elevation: 4,
+            overflow: "hidden",
           }}
         >
           <SafeAreaView edges={["top"]}>
             <View
               style={{
-                paddingHorizontal: 24,
-                paddingTop: 16,
-                paddingBottom: 28,
+                paddingTop: 20,
+                paddingBottom: 36,
+                flexDirection: "row",
+                alignItems: "flex-end",
+                justifyContent: "space-between",
               }}
             >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                }}
-              >
-                <View style={{ flex: 1, marginRight: 16 }}>
-                  <PageHero>Hi {firstName}</PageHero>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginTop: 4,
-                      gap: 8,
-                    }}
-                  >
-                    <LabelStrong className="text-muted-foreground">
-                      {borrowedItems.length} borrowed
-                    </LabelStrong>
-                    <LabelStrong className="text-primary">•</LabelStrong>
-                    <LabelStrong className="text-muted-foreground">
-                      {lentOutItems.length} lent
-                    </LabelStrong>
-                  </View>
-                </View>
-
-                {/* Profile avatar */}
-                <Pressable
-                  onPress={() => router.push("/(tabs)/settings")}
+              {/* Left: greeting */}
+              <View style={{ flex: 1, paddingLeft: 24 }}>
+                <PageHero>Hi {firstName}</PageHero>
+                <View
                   style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 14,
-                    overflow: "hidden",
-                    borderWidth: 2,
-                    borderColor: THEME.light.primary + "33",
-                    backgroundColor: theme.muted,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: 4,
+                    gap: 8,
                   }}
                 >
-                  {resolveAvatarSource(appUser?.avatarUrl) ? (
-                    <Image
-                      source={resolveAvatarSource(appUser?.avatarUrl)!}
-                      style={{ width: "100%", height: "100%" }}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View
-                      style={{
-                        flex: 1,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: THEME.light.primary + "22",
-                      }}
-                    >
-                      <BodyStrong
-                        className="text-primary"
-                        style={{ fontSize: 18, lineHeight: 24 }}
-                      >
-                        {firstName[0]?.toUpperCase()}
-                      </BodyStrong>
-                    </View>
-                  )}
-                </Pressable>
+                  <LabelStrong className="text-muted-foreground">
+                    {borrowedItems.length} borrowed
+                  </LabelStrong>
+                  <LabelStrong className="text-primary">•</LabelStrong>
+                  <LabelStrong className="text-muted-foreground">
+                    {lentOutItems.length} lent
+                  </LabelStrong>
+                </View>
               </View>
+
+              {/* Right: kangaroo mascot — hugs the right edge */}
+              <Image
+                source={require("../../assets/images/kangaroo.png")}
+                style={{
+                  width: 200,
+                  height: 200,
+                  marginRight: -30,
+                  marginBottom: -60,
+                  marginTop: -60,
+                }}
+                resizeMode="contain"
+              />
             </View>
           </SafeAreaView>
         </View>
@@ -203,17 +170,13 @@ export default function HomeScreen() {
               <DashboardSection
                 title="Borrowed"
                 items={borrowedItems}
-                onItemPress={(item) =>
-                  router.push(`/item/${item.id}` as any)
-                }
+                onItemPress={(item) => router.push(`/item/${item.id}` as any)}
                 onViewAll={() => router.push("/(tabs)/library")}
               />
               <DashboardSection
                 title="Lent Out"
                 items={lentOutItems}
-                onItemPress={(item) =>
-                  router.push(`/item/${item.id}` as any)
-                }
+                onItemPress={(item) => router.push(`/item/${item.id}` as any)}
                 onViewAll={() => router.push("/(tabs)/library")}
               />
             </>

@@ -5,6 +5,7 @@
  */
 
 import { supabase } from './supabase';
+import { addHistoryEntry } from './database-supabase';
 import type { BorrowRequest, BorrowRequestWithDetails, BorrowRequestRow } from './types';
 
 // ============================================================================

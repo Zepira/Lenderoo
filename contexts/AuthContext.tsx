@@ -46,8 +46,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load initial session and set up auth state listener
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Get initial session — catch refresh errors silently (expired/invalid
+    // refresh token throws AuthApiError; let the auth listener handle routing)
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        setLoading(false);
+        return;
+      }
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -55,12 +60,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setLoading(false);
       }
+    }).catch(() => {
+      setLoading(false);
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // Expired/invalid refresh token — clear state silently so the root
+      // layout redirects to sign-in without surfacing an error to the user.
+      if (event === 'TOKEN_REFRESH_FAILED') {
+        setSession(null);
+        setUser(null);
+        setAppUser(null);
+        setLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {

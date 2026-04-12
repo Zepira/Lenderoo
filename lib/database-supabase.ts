@@ -10,6 +10,7 @@ import type {
   Item,
   Friend,
   BorrowHistory,
+  BorrowHistoryWithUser,
   ItemFilters,
   FriendFilters,
 } from "./types";
@@ -222,15 +223,6 @@ export async function updateItem(
     // Increment count for new borrower if there is one
     if (updates.borrowedBy) {
       await incrementFriendBorrowCount(updates.borrowedBy);
-      // Record a borrow history entry (non-critical)
-      addHistoryEntry({
-        itemId: id,
-        friendId: updates.borrowedBy,
-        borrowedDate: updates.borrowedDate ?? new Date(),
-        returnedDate: undefined,
-        dueDate: updates.dueDate,
-        notes: undefined,
-      }).catch(() => {});
     }
   }
 
@@ -356,12 +348,15 @@ export async function markItemReturned(id: string): Promise<void> {
     .eq("id", id);
   if (error) throw error;
 
-  // Record borrow history entry now that we have all the data (non-critical)
-  if (itemSnapshot?.borrowedBy && itemSnapshot?.borrowedDate) {
+  // Insert a completed history record now that we have all the data.
+  // We only write at return time (not at lend time) to avoid needing an
+  // UPDATE RLS policy. The "Active" state is derived from item.borrowedBy
+  // in the UI instead.
+  if (itemSnapshot?.borrowedBy) {
     addHistoryEntry({
       itemId: id,
       friendId: itemSnapshot.borrowedBy,
-      borrowedDate: itemSnapshot.borrowedDate,
+      borrowedDate: itemSnapshot.borrowedDate ?? new Date(),
       returnedDate: new Date(),
       dueDate: itemSnapshot.dueDate,
       notes: undefined,
@@ -635,6 +630,31 @@ export async function getHistoryByFriend(
   return (data || []).map(convertHistoryFromDb);
 }
 
+export async function getHistoryForItemWithUsers(
+  itemId: string
+): Promise<BorrowHistoryWithUser[]> {
+  const { data, error } = await supabase
+    .from("borrow_history_with_users")
+    .select("*")
+    .eq("item_id", itemId)
+    .order("borrowed_date", { ascending: false });
+
+  if (error) throw error;
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    itemId: row.item_id,
+    friendId: row.friend_id,
+    borrowedDate: new Date(row.borrowed_date),
+    returnedDate: row.returned_date ? new Date(row.returned_date) : undefined,
+    dueDate: row.due_date ? new Date(row.due_date) : undefined,
+    notes: row.notes,
+    createdAt: new Date(row.created_at),
+    borrowerName: row.borrower_name ?? null,
+    borrowerEmail: row.borrower_email ?? null,
+    borrowerAvatarUrl: row.borrower_avatar_url ?? null,
+  }));
+}
+
 export async function addHistoryEntry(
   entry: Omit<BorrowHistory, "id" | "createdAt">
 ): Promise<BorrowHistory> {
@@ -655,6 +675,51 @@ export async function addHistoryEntry(
 
   if (error) throw error;
   return convertHistoryFromDb(data);
+}
+
+/**
+ * Close the most recent open history entry for an item+borrower by setting
+ * returned_date. Called when an item is marked as returned instead of
+ * creating a new entry (which would duplicate the record).
+ */
+export async function closeOpenHistoryEntry(
+  itemId: string,
+  borrowerId: string,
+  returnedDate: Date
+): Promise<void> {
+  // Find the latest open entry (no returned_date) for this item + borrower
+  const { data: openEntry } = await supabase
+    .from("borrow_history")
+    .select("id")
+    .eq("item_id", itemId)
+    .eq("friend_id", borrowerId)
+    .is("returned_date", null)
+    .order("borrowed_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (openEntry) {
+    await supabase
+      .from("borrow_history")
+      .update({ returned_date: returnedDate.toISOString() })
+      .eq("id", openEntry.id);
+  } else {
+    // No open entry found — shouldn't happen normally, but create a complete
+    // entry as a fallback so history is never silently lost.
+    const { data: item } = await supabase
+      .from("items")
+      .select("borrowed_date, due_date")
+      .eq("id", itemId)
+      .maybeSingle();
+
+    await supabase.from("borrow_history").insert({
+      item_id: itemId,
+      friend_id: borrowerId,
+      borrowed_date: item?.borrowed_date ?? returnedDate.toISOString(),
+      returned_date: returnedDate.toISOString(),
+      due_date: item?.due_date ?? null,
+    });
+  }
 }
 
 // ============================================================================

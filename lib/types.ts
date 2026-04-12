@@ -203,8 +203,8 @@ export interface BorrowHistory {
   id: string;
   /** ID of the item that was borrowed */
   itemId: string;
-  /** ID of the friend who borrowed the item */
-  friendId: string;
+  /** ID of the user who borrowed the item */
+  friendId: string | null;
   /** Date when item was borrowed */
   borrowedDate: Date;
   /** Optional due date for return */
@@ -215,6 +215,13 @@ export interface BorrowHistory {
   notes?: string;
   /** History entry creation timestamp */
   createdAt: Date;
+}
+
+/** BorrowHistory enriched with borrower profile info */
+export interface BorrowHistoryWithUser extends BorrowHistory {
+  borrowerName: string | null;
+  borrowerEmail: string | null;
+  borrowerAvatarUrl: string | null;
 }
 
 /**
