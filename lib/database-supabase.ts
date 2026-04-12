@@ -182,8 +182,18 @@ export async function updateItem(
   // Use 'in' operator to check if property exists, allowing undefined/null values to clear fields
   if ('borrowedBy' in updates)
     updateData.borrowed_by = updates.borrowedBy ?? null;
-  if ('borrowedDate' in updates)
+  if ('borrowedDate' in updates) {
     updateData.borrowed_date = updates.borrowedDate?.toISOString() ?? null;
+  } else if ('borrowedBy' in updates) {
+    // Keep borrowedDate in sync with borrowedBy so calculateItemStatus is consistent
+    if (updates.borrowedBy && !oldItem.borrowedDate) {
+      // Newly lending without an explicit date — stamp now
+      updateData.borrowed_date = new Date().toISOString();
+    } else if (!updates.borrowedBy) {
+      // Clearing the borrower — also clear the borrow date
+      updateData.borrowed_date = null;
+    }
+  }
   if ('dueDate' in updates)
     updateData.due_date = updates.dueDate?.toISOString() ?? null;
   if ('returnedDate' in updates)
@@ -200,7 +210,7 @@ export async function updateItem(
 
   if (error) throw error;
 
-  // If borrowedBy changed, update friend counts
+  // If borrowedBy changed, update friend counts and record history
   if (
     updates.borrowedBy !== undefined &&
     updates.borrowedBy !== oldItem.borrowedBy
@@ -212,6 +222,15 @@ export async function updateItem(
     // Increment count for new borrower if there is one
     if (updates.borrowedBy) {
       await incrementFriendBorrowCount(updates.borrowedBy);
+      // Record a borrow history entry (non-critical)
+      addHistoryEntry({
+        itemId: id,
+        friendId: updates.borrowedBy,
+        borrowedDate: updates.borrowedDate ?? new Date(),
+        returnedDate: undefined,
+        dueDate: updates.dueDate,
+        notes: undefined,
+      }).catch(() => {});
     }
   }
 
@@ -319,6 +338,9 @@ export async function getBorrowedByMeItems(): Promise<Item[]> {
 }
 
 export async function markItemReturned(id: string): Promise<void> {
+  // Fetch the item before clearing so we can record history (non-critical)
+  const itemSnapshot = await getItemById(id).catch(() => null);
+
   // Bypass updateItem (which pre-fetches via getItemById and silently returns
   // null if RLS blocks the borrower from reading it). Do a direct update
   // instead so RLS errors surface as thrown exceptions.
@@ -334,6 +356,18 @@ export async function markItemReturned(id: string): Promise<void> {
     .eq("id", id);
   if (error) throw error;
 
+  // Record borrow history entry now that we have all the data (non-critical)
+  if (itemSnapshot?.borrowedBy && itemSnapshot?.borrowedDate) {
+    addHistoryEntry({
+      itemId: id,
+      friendId: itemSnapshot.borrowedBy,
+      borrowedDate: itemSnapshot.borrowedDate,
+      returnedDate: new Date(),
+      dueDate: itemSnapshot.dueDate,
+      notes: undefined,
+    }).catch(() => {});
+  }
+
   // Mark the approved borrow request as cancelled so it no longer shows as
   // active. 'cancelled' is a valid status in the DB CHECK constraint and
   // getMyBorrowRequestForItem only queries for ['pending', 'approved'].
@@ -344,7 +378,7 @@ export async function markItemReturned(id: string): Promise<void> {
     .from("borrow_requests")
     .update({ status: "cancelled" })
     .eq("item_id", id)
-    .eq("status", "approved");
+    .in("status", ["pending", "approved"]);
 }
 
 export async function queryItems(filters?: ItemFilters): Promise<Item[]> {

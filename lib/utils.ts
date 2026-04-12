@@ -153,11 +153,10 @@ export function addDays(date: Date, days: number): Date {
  * Calculate the status of an item
  */
 export function calculateItemStatus(item: Item): ItemStatus {
-  if (item.dueDate && isOverdue(item.dueDate)) {
-    return "overdue";
-  }
-
   if (item.borrowedDate && !item.returnedDate) {
+    if (item.dueDate && isOverdue(item.dueDate)) {
+      return "overdue";
+    }
     return "borrowed";
   }
 

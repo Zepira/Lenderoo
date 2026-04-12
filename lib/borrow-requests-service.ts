@@ -106,7 +106,7 @@ export async function createBorrowRequest(
     throw new Error(`Failed to fetch item: ${itemError.message}`);
   }
 
-  if (item.borrowed_by) {
+  if (item.borrowed_by && item.borrowed_date) {
     throw new Error('This item is already borrowed');
   }
 
@@ -308,7 +308,7 @@ export async function approveBorrowRequest(
   // Get the request details
   const { data: request, error: requestError } = await supabase
     .from('borrow_requests')
-    .select('*, items!inner(id, borrowed_by, user_id)')
+    .select('*, items!inner(id, borrowed_by, borrowed_date, user_id)')
     .eq('id', requestId)
     .single();
 
@@ -334,7 +334,7 @@ export async function approveBorrowRequest(
   }
 
   // Verify item is still available
-  if (request.items.borrowed_by) {
+  if (request.items.borrowed_by && request.items.borrowed_date) {
     throw new Error('This item has already been borrowed');
   }
 

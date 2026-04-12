@@ -10,18 +10,17 @@ import {
   Platform,
 } from "react-native";
 import { Image } from "expo-image";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Camera, ChevronDown, ChevronUp, Check, UserCircle, X } from "lucide-react-native";
+import { Camera, ChevronDown, ChevronUp, Check, UserCircle } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import {
-  PageTitle,
   TinyLabel,
   BodyStrong,
   Caption,
 } from "@/components/ui/typography";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { useFriends, useCreateItem, useItems } from "hooks";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { createItemSchema } from "lib/validation";
@@ -69,6 +68,8 @@ export default function AddGenericItemScreen() {
   const [imageUrl, setImageUrl] = useState("");
   const [borrowedBy, setBorrowedBy] = useState("");
   const [notes, setNotes] = useState("");
+  const [maxBorrowDuration, setMaxBorrowDuration] = useState("");
+  const [condition, setCondition] = useState<"fair" | "good" | "perfect" | "">("");
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showImagePicker, setShowImagePicker] = useState(false);
@@ -130,6 +131,9 @@ export default function AddGenericItemScreen() {
         borrowedBy: borrowedBy || undefined,
         borrowedDate: borrowedBy ? new Date() : undefined,
         notes: notes.trim() || undefined,
+        metadata: (maxBorrowDuration.trim() || condition)
+          ? { maxBorrowDuration: maxBorrowDuration.trim() || undefined, condition: condition || undefined }
+          : undefined,
       };
 
       createItemSchema.parse(itemData);
@@ -169,68 +173,12 @@ export default function AddGenericItemScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6", borderTopLeftRadius: 40, borderTopRightRadius: 40, overflow: "hidden" }}>
-      {/* Header */}
-      <View
-        style={{
-          backgroundColor: theme.card,
-          borderBottomLeftRadius: 40,
-          borderBottomRightRadius: 40,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-          elevation: 4,
-          marginBottom: 24,
-        }}
-      >
-        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-          <View style={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 28 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-              <Pressable
-                onPress={() => router.back()}
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <ArrowLeft size={22} color={theme.mutedForeground} />
-              </Pressable>
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  backgroundColor: cfg.color + "18",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <cfg.Icon size={18} color={cfg.color} />
-              </View>
-              <PageTitle style={{ flex: 1 }}>Add {categoryLabel}</PageTitle>
-              <Pressable
-                onPress={() => router.dismiss()}
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <X size={20} color={theme.mutedForeground} />
-              </Pressable>
-            </View>
-          </View>
-        </SafeAreaView>
-      </View>
+      <ScreenHeader
+        title={`Add ${categoryLabel}`}
+        onBack={() => router.back()}
+        onDismiss={() => router.dismiss()}
+        icon={{ Icon: cfg.Icon, color: cfg.color }}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -331,6 +279,48 @@ export default function AddGenericItemScreen() {
               multiline
               numberOfLines={3}
               style={[inputStyle, { minHeight: 90, textAlignVertical: "top", paddingTop: 14 }]}
+            />
+          </View>
+
+          {/* Condition */}
+          <View style={{ gap: 8 }}>
+            <TinyLabel>Condition (Optional)</TinyLabel>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {(["fair", "good", "perfect"] as const).map((c) => {
+                const color = c === "fair" ? "#F59E0B" : c === "good" ? "#10B981" : "#3B82F6";
+                const selected = condition === c;
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => setCondition(selected ? "" : c)}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      backgroundColor: selected ? color + "22" : (isDark ? theme.muted : "#F3F4F6"),
+                      borderWidth: 1.5,
+                      borderColor: selected ? color : "transparent",
+                    }}
+                  >
+                    <Caption style={{ color: selected ? color : theme.mutedForeground, fontWeight: selected ? "600" : "400"}}>
+                      {c.charAt(0).toUpperCase() + c.slice(1)}
+                    </Caption>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Max borrow duration */}
+          <View style={{ gap: 8 }}>
+            <TinyLabel>Max Borrow Duration (Optional)</TinyLabel>
+            <TextInput
+              value={maxBorrowDuration}
+              onChangeText={setMaxBorrowDuration}
+              placeholder="e.g. 1 week, 2 weeks, 1 month…"
+              placeholderTextColor={theme.mutedForeground}
+              style={inputStyle}
             />
           </View>
         </View>

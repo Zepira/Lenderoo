@@ -172,6 +172,10 @@ export interface BookMetadata {
   averageRating?: number;
   /** Hardcover book ID */
   hardcoverId?: string;
+  /** How long borrowers may keep this book (e.g. "2 weeks", "1 month") */
+  maxBorrowDuration?: string;
+  /** Physical condition of the book */
+  condition?: "fair" | "good" | "perfect";
 }
 
 /**

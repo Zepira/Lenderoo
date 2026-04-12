@@ -10,18 +10,13 @@ import {
   TextInput,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Camera, BookOpen, X } from "lucide-react-native";
+import { Camera, BookOpen } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
-import {
-  PageTitle,
-  TinyLabel,
-  BodyStrong,
-  Caption,
-} from "@/components/ui/typography";
+import { TinyLabel, BodyStrong, Caption } from "@/components/ui/typography";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { useCreateItem, useItems } from "hooks";
 import { createItemSchema } from "lib/validation";
 import { supabase } from "@/lib/supabase";
@@ -70,6 +65,8 @@ export default function AddBookScreen() {
   const [publicationYear, setPublicationYear] = useState("");
   const [averageRating, setAverageRating] = useState("");
   const [hardcoverId, setHardcoverId] = useState("");
+  const [maxBorrowDuration, setMaxBorrowDuration] = useState("");
+  const [condition, setCondition] = useState<"fair" | "good" | "perfect" | "">("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
@@ -83,8 +80,6 @@ export default function AddBookScreen() {
     if (params.genre) setGenre(params.genre);
     if (params.description) {
       setSynopsis(params.description);
-      const shortDesc = params.description.split(".")[0] + ".";
-      setDescription(shortDesc.length < 100 ? shortDesc : "");
     }
     if (params.coverUrl) setCoverUrl(params.coverUrl);
     if (params.isbn) setIsbn(params.isbn);
@@ -105,7 +100,8 @@ export default function AddBookScreen() {
       if (!title.trim()) {
         setErrors({ name: "Title is required" });
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        if (Platform.OS !== "web") Alert.alert("Missing Information", "Please enter a book title.");
+        if (Platform.OS !== "web")
+          Alert.alert("Missing Information", "Please enter a book title.");
         isSubmitting.current = false;
         setIsLoading(false);
         return;
@@ -120,17 +116,25 @@ export default function AddBookScreen() {
         synopsis: synopsis.trim() || undefined,
         isbn: isbn.trim() || undefined,
         pageCount: pageCount ? parseInt(pageCount) : undefined,
-        publicationYear: publicationYear ? parseInt(publicationYear) : undefined,
+        publicationYear: publicationYear
+          ? parseInt(publicationYear)
+          : undefined,
         averageRating: averageRating ? parseFloat(averageRating) : undefined,
         hardcoverId: hardcoverId || undefined,
+        maxBorrowDuration: maxBorrowDuration.trim() || undefined,
+        condition: condition || undefined,
       };
 
       const duplicates = existingItems.filter((item) => {
         if (item.category !== "book") return false;
-        if (item.name.toLowerCase().trim() !== title.toLowerCase().trim()) return false;
+        if (item.name.toLowerCase().trim() !== title.toLowerCase().trim())
+          return false;
         if (author.trim() && item.metadata) {
-          const itemAuthor = (item.metadata as BookMetadata).author?.toLowerCase().trim();
-          if (itemAuthor && itemAuthor !== author.toLowerCase().trim()) return false;
+          const itemAuthor = (item.metadata as BookMetadata).author
+            ?.toLowerCase()
+            .trim();
+          if (itemAuthor && itemAuthor !== author.toLowerCase().trim())
+            return false;
         }
         return true;
       });
@@ -139,20 +143,25 @@ export default function AddBookScreen() {
         const dup = duplicates[0];
         const dupAuthor = (dup.metadata as BookMetadata)?.author;
         const msg = `"${dup.name}"${dupAuthor ? ` by ${dupAuthor}` : ""} is already in your library.`;
-        if (Platform.OS !== "web") Alert.alert("Duplicate Book", msg, [{ text: "OK" }]);
+        if (Platform.OS !== "web")
+          Alert.alert("Duplicate Book", msg, [{ text: "OK" }]);
         setErrors({ name: "This book is already in your library" });
         isSubmitting.current = false;
         setIsLoading(false);
         return;
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
       let imageUrl: string | undefined;
       const trimmedCoverUrl = coverUrl.trim();
       if (trimmedCoverUrl) {
-        const isExternal = trimmedCoverUrl.startsWith("http://") || trimmedCoverUrl.startsWith("https://");
+        const isExternal =
+          trimmedCoverUrl.startsWith("http://") ||
+          trimmedCoverUrl.startsWith("https://");
         const isSupabase = trimmedCoverUrl.includes("supabase.co/storage");
         if (isExternal && !isSupabase) {
           imageUrl = trimmedCoverUrl;
@@ -185,10 +194,13 @@ export default function AddBookScreen() {
       isSubmitting.current = false;
       setIsLoading(false);
       if (error && typeof error === "object" && "issues" in error) {
-        const zodError = error as { issues: Array<{ path: Array<string | number>; message: string }> };
+        const zodError = error as {
+          issues: Array<{ path: Array<string | number>; message: string }>;
+        };
         const fieldErrors: Record<string, string> = {};
         zodError.issues.forEach((err) => {
-          if (err.path.length > 0) fieldErrors[err.path[0] as string] = err.message;
+          if (err.path.length > 0)
+            fieldErrors[err.path[0] as string] = err.message;
         });
         setErrors(fieldErrors);
       } else if (error instanceof Error) {
@@ -211,70 +223,32 @@ export default function AddBookScreen() {
   const fromHardcover = !!params.title;
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6", borderTopLeftRadius: 40, borderTopRightRadius: 40, overflow: "hidden" }}>
-      {/* Header */}
-      <View
-        style={{
-          backgroundColor: theme.card,
-          borderBottomLeftRadius: 40,
-          borderBottomRightRadius: 40,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-          elevation: 4,
-          marginBottom: 24,
-        }}
-      >
-        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-          <View style={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 28 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-              <Pressable
-                onPress={() => router.back()}
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <ArrowLeft size={22} color={theme.mutedForeground} />
-              </Pressable>
-              <View style={{ flex: 1 }}>
-                <PageTitle numberOfLines={1}>{fromHardcover ? title || "Book Details" : "Add a Book"}</PageTitle>
-                {fromHardcover && (
-                  <Caption style={{ color: theme.primary, marginTop: 2 }}>
-                    from Hardcover
-                  </Caption>
-                )}
-              </View>
-              <Pressable
-                onPress={() => router.dismiss()}
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <X size={20} color={theme.mutedForeground} />
-              </Pressable>
-            </View>
-          </View>
-        </SafeAreaView>
-      </View>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: isDark ? theme.muted : "#F3F4F6",
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+        overflow: "hidden",
+      }}
+    >
+      <ScreenHeader
+        title={fromHardcover ? title || "Book Details" : "Add a Book"}
+        subtitle={fromHardcover ? "from Hardcover" : undefined}
+        onBack={() => router.back()}
+        onDismiss={() => router.dismiss()}
+        icon={{ Icon: BookOpen, color: "#3B82F6" }}
+      />
 
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingBottom: 48,
+          gap: 16,
+        }}
       >
         {errors.general && (
           <View
@@ -286,7 +260,9 @@ export default function AddBookScreen() {
               borderColor: theme.destructive + "33",
             }}
           >
-            <Caption style={{ color: theme.destructive }}>{errors.general}</Caption>
+            <Caption style={{ color: theme.destructive }}>
+              {errors.general}
+            </Caption>
           </View>
         )}
 
@@ -320,7 +296,12 @@ export default function AddBookScreen() {
                 />
               </View>
               <Pressable onPress={() => setShowImagePicker(true)}>
-                <Caption style={{ textDecorationLine: "underline", color: theme.primary }}>
+                <Caption
+                  style={{
+                    textDecorationLine: "underline",
+                    color: theme.primary,
+                  }}
+                >
                   Change cover
                 </Caption>
               </Pressable>
@@ -347,8 +328,14 @@ export default function AddBookScreen() {
           {showImagePicker && (
             <ImagePicker
               imageUrl={coverUrl}
-              onImageSelected={(uri) => { setCoverUrl(uri); setShowImagePicker(false); }}
-              onImageRemoved={() => { setCoverUrl(""); setShowImagePicker(false); }}
+              onImageSelected={(uri) => {
+                setCoverUrl(uri);
+                setShowImagePicker(false);
+              }}
+              onImageRemoved={() => {
+                setCoverUrl("");
+                setShowImagePicker(false);
+              }}
             />
           )}
 
@@ -360,9 +347,18 @@ export default function AddBookScreen() {
               onChangeText={setTitle}
               placeholder="e.g. The Great Gatsby"
               placeholderTextColor={theme.mutedForeground}
-              style={[inputStyle, errors.name ? { borderWidth: 1.5, borderColor: theme.destructive } : {}]}
+              style={[
+                inputStyle,
+                errors.name
+                  ? { borderWidth: 1.5, borderColor: theme.destructive }
+                  : {},
+              ]}
             />
-            {errors.name && <Caption style={{ color: theme.destructive }}>{errors.name}</Caption>}
+            {errors.name && (
+              <Caption style={{ color: theme.destructive }}>
+                {errors.name}
+              </Caption>
+            )}
           </View>
 
           {/* Author */}
@@ -477,7 +473,10 @@ export default function AddBookScreen() {
               placeholderTextColor={theme.mutedForeground}
               multiline
               numberOfLines={4}
-              style={[inputStyle, { minHeight: 100, textAlignVertical: "top", paddingTop: 14 }]}
+              style={[
+                inputStyle,
+                { minHeight: 100, textAlignVertical: "top", paddingTop: 14 },
+              ]}
             />
           </View>
 
@@ -490,7 +489,51 @@ export default function AddBookScreen() {
               placeholderTextColor={theme.mutedForeground}
               multiline
               numberOfLines={2}
-              style={[inputStyle, { minHeight: 60, textAlignVertical: "top", paddingTop: 14 }]}
+              style={[
+                inputStyle,
+                { minHeight: 60, textAlignVertical: "top", paddingTop: 14 },
+              ]}
+            />
+          </View>
+
+          {/* Condition */}
+          <View style={{ gap: 8 }}>
+            <TinyLabel>Condition (Optional)</TinyLabel>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {(["fair", "good", "perfect"] as const).map((c) => {
+                const color = c === "fair" ? "#F59E0B" : c === "good" ? "#10B981" : "#3B82F6";
+                const selected = condition === c;
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => setCondition(selected ? "" : c)}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      backgroundColor: selected ? color + "22" : (isDark ? theme.muted : "#F3F4F6"),
+                      borderWidth: 1.5,
+                      borderColor: selected ? color : "transparent",
+                    }}
+                  >
+                    <Caption style={{ color: selected ? color : theme.mutedForeground, fontWeight: selected ? "600" : "400"}}>
+                      {c.charAt(0).toUpperCase() + c.slice(1)}
+                    </Caption>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <TinyLabel>Max Borrow Duration (Optional)</TinyLabel>
+            <TextInput
+              value={maxBorrowDuration}
+              onChangeText={setMaxBorrowDuration}
+              placeholder="e.g. 1 week, 2 weeks, 1 month…"
+              placeholderTextColor={theme.mutedForeground}
+              style={inputStyle}
             />
           </View>
         </View>
@@ -506,8 +549,6 @@ export default function AddBookScreen() {
             {isLoading ? "Adding…" : "Add to Library"}
           </Text>
         </Button>
-
-        <Caption className="text-center">Typically returned in 7–10 days</Caption>
       </ScrollView>
     </View>
   );

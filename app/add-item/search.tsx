@@ -8,14 +8,13 @@ import {
   Pressable,
   TextInput,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Search, BookOpen, X } from "lucide-react-native";
+import { Search, BookOpen } from "lucide-react-native";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import {
-  PageTitle,
   TinyLabel,
   BodyStrong,
   Caption,
@@ -117,56 +116,12 @@ export default function SearchBookScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6", borderTopLeftRadius: 40, borderTopRightRadius: 40, overflow: "hidden" }}>
-      {/* Header */}
-      <View
-        style={{
-          backgroundColor: theme.card,
-          borderBottomLeftRadius: 40,
-          borderBottomRightRadius: 40,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-          elevation: 4,
-          marginBottom: 24,
-        }}
-      >
-        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-          <View style={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 28 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-              <Pressable
-                onPress={() => router.back()}
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <ArrowLeft size={22} color={theme.mutedForeground} />
-              </Pressable>
-              <PageTitle style={{ flex: 1 }}>Add a Book</PageTitle>
-              <Pressable
-                onPress={() => router.dismiss()}
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <X size={20} color={theme.mutedForeground} />
-              </Pressable>
-            </View>
-          </View>
-        </SafeAreaView>
-      </View>
+      <ScreenHeader
+        title="Add a Book"
+        onBack={() => router.back()}
+        onDismiss={() => router.dismiss()}
+        icon={{ Icon: BookOpen, color: "#3B82F6" }}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

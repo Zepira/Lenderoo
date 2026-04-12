@@ -25,6 +25,7 @@ export function calcCardLayout(screenWidth: number) {
 }
 import { Send, X, RotateCcw } from "lucide-react-native";
 import type { Item, BorrowRequest } from "lib/types";
+import { calculateItemStatus } from "lib/utils";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -71,9 +72,8 @@ export function ItemCard({
   const imageUrl = item.images?.[0] ?? (item as any).imageUrl;
 
   const hasPending = request?.status === "pending";
-  const hasApproved = request?.status === "approved";
-  const isUnavailable =
-    !!(item.borrowedBy && !item.returnedDate) || hasApproved;
+  const itemStatus = calculateItemStatus(item);
+  const isUnavailable = itemStatus === "borrowed" || itemStatus === "overdue";
 
   let statusLabel = "Available";
   let statusColor = THEME.light.primary;

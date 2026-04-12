@@ -17,14 +17,19 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Book } from "lucide-react-native";
 import { useFriends, useUpdateItem, useItems } from "hooks";
 import { createItemSchema } from "lib/validation";
-import { FloatingBackButton } from "components/FloatingBackButton";
 import { ImagePicker } from "components/ImagePicker";
 import type { BookMetadata } from "lib/types";
 import { cn } from "lib/utils";
-import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { THEME } from "@/lib/theme";
+import { Caption } from "@/components/ui/typography";
 
 export default function EditBookScreen() {
   const router = useRouter();
+  const { activeTheme } = useThemeContext();
+  const isDark = activeTheme === "dark";
+  const theme = isDark ? THEME.dark : THEME.light;
   const params = useLocalSearchParams<{
     itemId: string;
     title?: string;
@@ -43,6 +48,8 @@ export default function EditBookScreen() {
     hardcoverId?: string;
     notes?: string;
     borrowedBy?: string;
+    maxBorrowDuration?: string;
+    condition?: string;
   }>();
   const { friends } = useFriends();
   const { updateItem, loading: saving } = useUpdateItem();
@@ -66,6 +73,8 @@ export default function EditBookScreen() {
   const [publicationYear, setPublicationYear] = useState("");
   const [averageRating, setAverageRating] = useState("");
   const [hardcoverId, setHardcoverId] = useState("");
+  const [maxBorrowDuration, setMaxBorrowDuration] = useState("");
+  const [condition, setCondition] = useState<"fair" | "good" | "perfect" | "">("");
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -88,6 +97,8 @@ export default function EditBookScreen() {
     if (params.hardcoverId) setHardcoverId(params.hardcoverId);
     if (params.notes) setNotes(params.notes);
     if (params.borrowedBy) setBorrowedBy(params.borrowedBy);
+    if (params.maxBorrowDuration) setMaxBorrowDuration(params.maxBorrowDuration);
+    if (params.condition) setCondition(params.condition as "fair" | "good" | "perfect");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
@@ -175,6 +186,8 @@ export default function EditBookScreen() {
           : undefined,
         averageRating: averageRating ? parseFloat(averageRating) : undefined,
         hardcoverId: hardcoverId || undefined,
+        maxBorrowDuration: maxBorrowDuration.trim() || undefined,
+        condition: condition || undefined,
       };
 
       console.log("📦 Building update data...");
@@ -272,10 +285,18 @@ export default function EditBookScreen() {
   };
 
   return (
-    <SafeAreaWrapper>
-      <FloatingBackButton />
+    <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
+      <ScreenHeader
+        title={`Edit ${params.title || title || "Book"}`}
+        onBack={() => router.back()}
+        right={
+          <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#3B82F611", alignItems: "center", justifyContent: "center" }}>
+            <Book size={18} color="#3B82F6" />
+          </View>
+        }
+      />
 
-      <ScrollView ref={scrollViewRef} className="flex-1 bg-background">
+      <ScrollView ref={scrollViewRef} className="flex-1">
         <View className="p-4 gap-4">
           {errors.general && (
             <View className="p-3 bg-red-50 rounded-lg border border-red-200">
@@ -413,30 +434,82 @@ export default function EditBookScreen() {
               />
             </View>
 
-            {/* Action Buttons */}
-            <View className="flex-row gap-3 pt-2">
-              <Button
-                variant="outline"
-                onPress={handleCancel}
-                disabled={saving}
-                className="flex-1"
-              >
-                <Text>Cancel</Text>
-              </Button>
-              <Button
-                onPress={handleSubmit}
-                disabled={saving || !title.trim()}
-                className="flex-1 bg-blue-600"
-              >
-                {saving && <ActivityIndicator size="small" color="white" />}
-                <Text className="text-white">
-                  {saving ? "Updating..." : "Update Book"}
-                </Text>
-              </Button>
+            {/* Condition */}
+            <View className="gap-2">
+              <Label className="font-semibold">Condition (Optional)</Label>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {(["fair", "good", "perfect"] as const).map((c) => {
+                  const color = c === "fair" ? "#F59E0B" : c === "good" ? "#10B981" : "#3B82F6";
+                  const selected = condition === c;
+                  return (
+                    <Pressable
+                      key={c}
+                      onPress={() => setCondition(selected ? "" : c)}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 10,
+                        borderRadius: 12,
+                        alignItems: "center",
+                        backgroundColor: selected ? color + "22" : (isDark ? theme.muted : "#F3F4F6"),
+                        borderWidth: 1.5,
+                        borderColor: selected ? color : "transparent",
+                      }}
+                    >
+                      <Caption style={{ color: selected ? color : theme.mutedForeground, fontWeight: selected ? "600" : "400"}}>
+                        {c.charAt(0).toUpperCase() + c.slice(1)}
+                      </Caption>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Max Borrow Duration */}
+            <View className="gap-2">
+              <Label nativeID="maxBorrowDuration" className="font-semibold">
+                Max Borrow Duration (Optional)
+              </Label>
+              <Input
+                value={maxBorrowDuration}
+                onChangeText={setMaxBorrowDuration}
+                placeholder="e.g. 1 week, 2 weeks, 1 month…"
+              />
             </View>
           </View>
         </View>
       </ScrollView>
-    </SafeAreaWrapper>
+
+      {/* Sticky action buttons */}
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 12,
+          padding: 16,
+          paddingBottom: 24,
+          backgroundColor: isDark ? theme.muted : "#F3F4F6",
+          borderTopWidth: 1,
+          borderTopColor: theme.border,
+        }}
+      >
+        <Button
+          variant="outline"
+          onPress={handleCancel}
+          disabled={saving}
+          style={{ flex: 1 } as any}
+        >
+          <Text>Cancel</Text>
+        </Button>
+        <Button
+          onPress={handleSubmit}
+          disabled={saving || !title.trim()}
+          style={{ flex: 1 } as any}
+        >
+          {saving && <ActivityIndicator size="small" color="#fff" />}
+          <Text className="text-white font-bold">
+            {saving ? "Updating…" : "Update Book"}
+          </Text>
+        </Button>
+      </View>
+    </View>
   );
 }

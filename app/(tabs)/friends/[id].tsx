@@ -535,6 +535,7 @@ export default function FriendDetailScreen() {
                     const borrowedByMe =
                       !!user &&
                       item.borrowedBy === user.id &&
+                      !!item.borrowedDate &&
                       !item.returnedDate;
                     return (
                       <ItemCard

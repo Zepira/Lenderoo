@@ -45,11 +45,16 @@ export default function EditItemRouter() {
             params.set("averageRating", metadata.averageRating.toString());
           if (metadata.hardcoverId)
             params.set("hardcoverId", metadata.hardcoverId);
+          if (metadata.maxBorrowDuration)
+            params.set("maxBorrowDuration", metadata.maxBorrowDuration);
+          if (metadata.condition)
+            params.set("condition", metadata.condition);
         }
 
         router.replace(`/edit-item/book?${params.toString()}` as any);
       } else {
         // For generic items
+        const genericMeta = item.metadata as any;
         const params = new URLSearchParams({
           itemId: item.id,
           category: item.category,
@@ -60,6 +65,10 @@ export default function EditItemRouter() {
           }),
           ...(item.notes && { notes: item.notes }),
           ...(item.borrowedBy && { borrowedBy: item.borrowedBy }),
+          ...(genericMeta?.maxBorrowDuration && {
+            maxBorrowDuration: genericMeta.maxBorrowDuration,
+          }),
+          ...(genericMeta?.condition && { condition: genericMeta.condition }),
         });
 
         router.replace(`/edit-item/generic?${params.toString()}` as any);

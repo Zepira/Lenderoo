@@ -13,12 +13,15 @@ import {
   Pressable,
   TouchableOpacity,
   Platform,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
@@ -32,6 +35,8 @@ import {
   Tag,
   Trash2,
   User,
+  UserCircle,
+  Users,
   BookOpen,
   X,
 } from "lucide-react-native";
@@ -41,6 +46,7 @@ import {
   useDeleteItem,
   useMarkItemReturned,
   useItems,
+  useUpdateItem,
 } from "hooks/useItems";
 import { useFriend, useFriends } from "hooks/useFriends";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
@@ -86,24 +92,34 @@ export default function ItemDetailScreen() {
   const { item, loading, error, refresh } = useItem(id!);
 
   const isBorrower =
-    item && user && item.borrowedBy === user.id && !item.returnedDate;
+    item && user && item.borrowedBy === user.id && !!item.borrowedDate && !item.returnedDate;
   const isOwner = item && user && item.userId === user.id;
   // Load the borrower's friend profile only when the viewer is not the borrower
   // (querying the friendship table with your own ID causes an error)
+  // Also guard against item.borrowedBy === user.id with no borrowedDate (stale data),
+  // which would make isBorrower false but still point at the current user's own ID.
   const borrowerFriendId =
-    item?.borrowedBy && !item.returnedDate && !isBorrower
+    item?.borrowedBy &&
+    item.borrowedBy !== user?.id &&
+    !item.returnedDate &&
+    !isBorrower
       ? item.borrowedBy
       : null;
   const { friend } = useFriend(borrowerFriendId);
 
   const { deleteItem, loading: deleting } = useDeleteItem();
   const { markReturned, loading: returning } = useMarkItemReturned();
+  const { updateItem, loading: lending } = useUpdateItem();
   const { items: allItems } = useItems();
   const { friends } = useFriends();
 
   // Owner name: "Me" if current user owns it, otherwise look up in friends list
   const ownerFriend = friends.find((f) => f.id === item?.userId);
   const ownerName = isOwner ? "Me" : (ownerFriend?.name ?? "Unknown");
+
+  // Lend-to modal state (owner)
+  const [lendPickerOpen, setLendPickerOpen] = useState(false);
+  const [lendSearch, setLendSearch] = useState("");
 
   // Borrow request state (for friend-viewer actions)
   const [borrowRequest, setBorrowRequest] = useState<BorrowRequest | null>(
@@ -148,7 +164,6 @@ export default function ItemDetailScreen() {
       .filter((o) => o.owner !== null);
   }, [item, allItems, friends]);
 
-
   const goBack = () =>
     navigation.canGoBack() ? router.back() : router.push("/(tabs)" as any);
 
@@ -180,65 +195,54 @@ export default function ItemDetailScreen() {
     }
   };
 
-  if (loading || (!item && !error)) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <SafeAreaView
-          edges={["top"]}
-          style={{ backgroundColor: "transparent" }}
-        >
-          <Pressable
-            onPress={goBack}
-            style={({ pressed }) => ({
-              margin: 16,
-              width: 44,
-              height: 44,
-              borderRadius: 14,
-              backgroundColor: isDark ? theme.muted : "#F3F4F6",
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <ArrowLeft size={22} color={theme.mutedForeground} />
-          </Pressable>
-        </SafeAreaView>
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
-          <Caption>Loading…</Caption>
-        </View>
-      </View>
-    );
-  }
+  const isLoading = loading || (!item && !error);
 
-  if (error || !item) {
+  if (isLoading || error || !item) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         <SafeAreaView
           edges={["top"]}
-          style={{ backgroundColor: "transparent" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+            backgroundColor: "transparent",
+          }}
         >
           <Pressable
             onPress={goBack}
             style={({ pressed }) => ({
               margin: 16,
-              width: 44,
-              height: 44,
-              borderRadius: 14,
-              backgroundColor: isDark ? theme.muted : "#F3F4F6",
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: "rgba(0, 0, 0, 0.34)",
               alignItems: "center",
               justifyContent: "center",
-              opacity: pressed ? 0.6 : 1,
+              opacity: pressed ? 0.7 : 1,
             })}
           >
-            <ArrowLeft size={22} color={theme.mutedForeground} />
+            <ArrowLeft size={22} color="rgba(255, 255, 255, 0.91)" />
           </Pressable>
         </SafeAreaView>
-        <ErrorState
-          message={error ? "Couldn't load this item. Please try again." : "Item not found."}
-          onRetry={error ? refresh : undefined}
-        />
+        {isLoading ? (
+          <View
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
+            <Caption>Loading…</Caption>
+          </View>
+        ) : (
+          <ErrorState
+            message={
+              error
+                ? "Couldn't load this item. Please try again."
+                : "Item not found."
+            }
+            onRetry={error ? refresh : undefined}
+          />
+        )}
       </View>
     );
   }
@@ -256,6 +260,21 @@ export default function ItemDetailScreen() {
     item.images?.[0] ?? (item as any).imageUrls?.[0] ?? (item as any).imageUrl;
   const bookMeta =
     item.category === "book" ? (item.metadata as BookMetadata) : null;
+  const maxBorrowDuration =
+    bookMeta?.maxBorrowDuration ??
+    ((item.metadata as any)?.maxBorrowDuration as string | undefined);
+  const condition = (bookMeta?.condition ??
+    (item.metadata as any)?.condition) as
+    | "fair"
+    | "good"
+    | "perfect"
+    | undefined;
+
+  const CONDITION_COLOR = {
+    fair: "#F59E0B",
+    good: "#10B981",
+    perfect: "#3B82F6",
+  } as const;
 
   const statusLabel = isAvailable
     ? "Available"
@@ -281,6 +300,22 @@ export default function ItemDetailScreen() {
 
   const handleEdit = () => {
     router.push(`/edit-item/${item.id}` as any);
+  };
+
+  const handleLendTo = async (friendId: string) => {
+    setLendPickerOpen(false);
+    try {
+      await updateItem(item.id, {
+        borrowedBy: friendId,
+        borrowedDate: new Date(),
+      });
+      const friendName =
+        friends.find((f) => f.id === friendId)?.name ?? "friend";
+      toast.success(`Lent to ${friendName}`);
+      refresh();
+    } catch {
+      toast.error("Failed to lend item");
+    }
   };
 
   const handleDelete = async () => {
@@ -337,17 +372,18 @@ export default function ItemDetailScreen() {
       >
         <Pressable
           onPress={goBack}
-          style={{
+          style={({ pressed }) => ({
             margin: 16,
-            width: 44,
-            height: 44,
-            borderRadius: 50,
+            width: 40,
+            height: 40,
+            borderRadius: 12,
             backgroundColor: "rgba(0, 0, 0, 0.34)",
             alignItems: "center",
             justifyContent: "center",
-          }}
+            opacity: pressed ? 0.7 : 1,
+          })}
         >
-          <ArrowLeft size={32} color="rgba(255, 255, 255, 0.91)" />
+          <ArrowLeft size={22} color="rgba(255, 255, 255, 0.91)" />
         </Pressable>
       </SafeAreaView>
 
@@ -478,24 +514,15 @@ export default function ItemDetailScreen() {
                 style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
               >
                 {!isOwner && (
-                  <Avatar
-                    style={{ width: 28, height: 28, borderRadius: 8 }}
-                    alt={ownerName}
-                  >
-                    {ownerFriend?.avatarUrl ? (
-                      <AvatarImage
-                        source={
-                          resolveAvatarSource(ownerFriend.avatarUrl) ?? {
-                            uri: "",
-                          }
-                        }
-                      />
+                  <View style={{ width: 28, height: 28, borderRadius: 8, overflow: "hidden", backgroundColor: theme.primary + "22" }}>
+                    {resolveAvatarSource(ownerFriend?.avatarUrl) ? (
+                      <Image source={resolveAvatarSource(ownerFriend!.avatarUrl)!} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
                     ) : (
-                      <AvatarFallback>
-                        <Caption>{getInitials(ownerName)}</Caption>
-                      </AvatarFallback>
+                      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                        <Caption style={{ color: theme.primary }}>{getInitials(ownerName)}</Caption>
+                      </View>
                     )}
-                  </Avatar>
+                  </View>
                 )}
                 <View style={{ alignItems: "center" }}>
                   <TinyLabel style={{ marginBottom: 4 }}>Owner</TinyLabel>
@@ -506,43 +533,78 @@ export default function ItemDetailScreen() {
 
             <View style={{ width: 1, backgroundColor: theme.border }} />
 
-            {/* Book rating / days borrowed */}
+            {/* Condition */}
             <View style={{ alignItems: "center", flex: 1 }}>
-              <TinyLabel style={{ marginBottom: 4 }}>
-                {bookMeta?.averageRating ? "Rating" : "Duration"}
-              </TinyLabel>
-              <LabelStrong>
-                {bookMeta?.averageRating
-                  ? `${bookMeta.averageRating.toFixed(1)}/5`
-                  : daysSinceBorrowed > 0
-                    ? `${daysSinceBorrowed}d`
-                    : "—"}
+              <TinyLabel style={{ marginBottom: 4 }}>Condition</TinyLabel>
+              <LabelStrong
+                style={{
+                  color: condition
+                    ? CONDITION_COLOR[condition]
+                    : theme.foreground,
+                }}
+                numberOfLines={1}
+              >
+                {condition
+                  ? condition.charAt(0).toUpperCase() + condition.slice(1)
+                  : "—"}
               </LabelStrong>
             </View>
 
             <View style={{ width: 1, backgroundColor: theme.border }} />
 
-            {/* Due date or condition */}
+            {/* Duration */}
             <View style={{ alignItems: "center", flex: 1 }}>
-              <TinyLabel style={{ marginBottom: 4 }}>
-                {item.dueDate ? "Due" : "Added"}
-              </TinyLabel>
-              <LabelStrong
-                style={{
-                  color: isOverdue ? theme.destructive : theme.foreground,
-                }}
-                numberOfLines={1}
-              >
-                {item.dueDate
-                  ? formatDate(item.dueDate)
-                  : formatDate(item.createdAt)}
+              <TinyLabel style={{ marginBottom: 4 }}>Duration</TinyLabel>
+              <LabelStrong numberOfLines={1} style={{ maxWidth: 90 }}>
+                {maxBorrowDuration
+                  ? maxBorrowDuration
+                  : daysSinceBorrowed > 0
+                    ? `${daysSinceBorrowed}d`
+                    : "—"}
               </LabelStrong>
             </View>
           </View>
 
+          {/* ── Description ── */}
+          {item.description && !bookMeta && (
+            <>
+              <BodyText
+                style={{
+                  color: theme.mutedForeground,
+                  marginBottom: 24,
+                  lineHeight: 22,
+                }}
+              >
+                {item.description}
+              </BodyText>
+            </>
+          )}
+
           {/* ── Book metadata ── */}
+
           {bookMeta && (
             <View style={{ gap: 20, marginBottom: 24 }}>
+              {/* Rating */}
+              {bookMeta.averageRating && (
+                <View>
+                  <TinyLabel style={{ marginBottom: 6 }}>Rating</TinyLabel>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <BodyText style={{ letterSpacing: 2, color: "#F59E0B" }}>
+                      {"★".repeat(Math.round(bookMeta.averageRating))}
+                      {"☆".repeat(5 - Math.round(bookMeta.averageRating))}
+                    </BodyText>
+                    <Caption style={{ color: theme.mutedForeground }}>
+                      {bookMeta.averageRating.toFixed(1)}
+                    </Caption>
+                  </View>
+                </View>
+              )}
               {/* Genre — full width, wrapping */}
               {bookMeta.genre && (
                 <View>
@@ -636,21 +698,15 @@ export default function ItemDetailScreen() {
                     marginBottom: 24,
                   }}
                 >
-                  <Avatar className="w-12 h-12" alt="You">
-                    {appUser?.avatarUrl ? (
-                      <AvatarImage
-                        source={
-                          resolveAvatarSource(appUser.avatarUrl) ?? { uri: "" }
-                        }
-                      />
+                  <View style={{ width: 48, height: 48, borderRadius: 14, overflow: "hidden", backgroundColor: theme.secondary + "22" }}>
+                    {resolveAvatarSource(appUser?.avatarUrl) ? (
+                      <Image source={resolveAvatarSource(appUser!.avatarUrl)!} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
                     ) : (
-                      <AvatarFallback>
-                        <BodyStrong style={{ color: theme.secondary }}>
-                          {getInitials(appUser?.name)}
-                        </BodyStrong>
-                      </AvatarFallback>
+                      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                        <BodyStrong style={{ color: theme.secondary }}>{getInitials(appUser?.name)}</BodyStrong>
+                      </View>
                     )}
-                  </Avatar>
+                  </View>
                   <View style={{ flex: 1 }}>
                     <TinyLabel style={{ marginBottom: 2 }}>
                       Currently Lent To
@@ -675,21 +731,15 @@ export default function ItemDetailScreen() {
                   }}
                   activeOpacity={0.75}
                 >
-                  <Avatar className="w-12 h-12" alt={friend.name}>
-                    {friend.avatarUrl ? (
-                      <AvatarImage
-                        source={
-                          resolveAvatarSource(friend.avatarUrl) ?? { uri: "" }
-                        }
-                      />
+                  <View style={{ width: 48, height: 48, borderRadius: 14, overflow: "hidden", backgroundColor: theme.secondary + "22" }}>
+                    {resolveAvatarSource(friend.avatarUrl) ? (
+                      <Image source={resolveAvatarSource(friend.avatarUrl)!} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
                     ) : (
-                      <AvatarFallback>
-                        <BodyStrong style={{ color: theme.secondary }}>
-                          {getInitials(friend.name)}
-                        </BodyStrong>
-                      </AvatarFallback>
+                      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                        <BodyStrong style={{ color: theme.secondary }}>{getInitials(friend.name)}</BodyStrong>
+                      </View>
                     )}
-                  </Avatar>
+                  </View>
                   <View style={{ flex: 1 }}>
                     <TinyLabel style={{ marginBottom: 2 }}>
                       Currently Lent To
@@ -852,21 +902,15 @@ export default function ItemDetailScreen() {
                       borderRadius: 16,
                     }}
                   >
-                    <Avatar className="w-10 h-10" alt={owner?.name ?? "?"}>
-                      {owner?.avatarUrl ? (
-                        <AvatarImage
-                          source={
-                            resolveAvatarSource(owner.avatarUrl) ?? { uri: "" }
-                          }
-                        />
+                    <View style={{ width: 40, height: 40, borderRadius: 12, overflow: "hidden", backgroundColor: theme.primary + "22" }}>
+                      {resolveAvatarSource(owner?.avatarUrl) ? (
+                        <Image source={resolveAvatarSource(owner!.avatarUrl)!} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
                       ) : (
-                        <AvatarFallback>
-                          <Caption>
-                            {owner ? getInitials(owner.name) : "?"}
-                          </Caption>
-                        </AvatarFallback>
+                        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                          <Caption style={{ color: theme.primary }}>{owner ? getInitials(owner.name) : "?"}</Caption>
+                        </View>
                       )}
-                    </Avatar>
+                    </View>
                     <View style={{ flex: 1 }}>
                       <BodyStrong style={{ fontSize: 13 }}>
                         {owner?.name ?? "Unknown"}
@@ -920,10 +964,27 @@ export default function ItemDetailScreen() {
                     </Text>
                   </Button>
                 )}
+
+                {/* Lend to — only when available */}
+                {isAvailable && (
+                  <Button
+                    onPress={() => {
+                      setLendPickerOpen(true);
+                      setLendSearch("");
+                    }}
+                    disabled={lending || friends.length === 0}
+                  >
+                    <Users size={16} color="#fff" />
+                    <Text className="text-white font-bold">
+                      {friends.length === 0 ? "No friends yet" : "Lend to…"}
+                    </Text>
+                  </Button>
+                )}
+
                 <Button
                   variant="outline"
                   onPress={handleEdit}
-                  disabled={deleting || returning}
+                  disabled={deleting || returning || lending}
                   style={{ borderColor: theme.border } as any}
                 >
                   <Edit size={16} color={theme.foreground} />
@@ -932,7 +993,7 @@ export default function ItemDetailScreen() {
                 <Button
                   variant="outline"
                   onPress={handleDelete}
-                  disabled={deleting || returning}
+                  disabled={deleting || returning || lending}
                   style={{ borderColor: theme.destructive + "44" } as any}
                 >
                   <Trash2 size={16} color={theme.destructive} />
@@ -944,7 +1005,7 @@ export default function ItemDetailScreen() {
             ) : (
               /* Viewer is a friend — borrow/request actions */
               <>
-                {isAvailable && !borrowRequest && (
+                {isAvailable && borrowRequest?.status !== "pending" && (
                   <Button onPress={handleBorrow} disabled={requesting}>
                     <Send size={16} color="#fff" />
                     <Text className="text-white font-bold">
@@ -965,7 +1026,7 @@ export default function ItemDetailScreen() {
                     </Text>
                   </Button>
                 )}
-                {!isAvailable && !borrowRequest && (
+                {!isAvailable && borrowRequest?.status !== "pending" && (
                   <Button
                     disabled
                     style={{ backgroundColor: theme.destructive } as any}
@@ -986,6 +1047,133 @@ export default function ItemDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* ── Lend-to modal ── */}
+      <Modal
+        visible={lendPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLendPickerOpen(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }}
+          onPress={() => setLendPickerOpen(false)}
+        />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
+        >
+          <View
+            style={{
+              backgroundColor: theme.card,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              paddingTop: 12,
+              paddingHorizontal: 20,
+              paddingBottom: 40,
+              maxHeight: "80%",
+              gap: 16,
+            }}
+          >
+            {/* Handle bar */}
+            <View
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: theme.border,
+                alignSelf: "center",
+              }}
+            />
+
+            <BodyStrong style={{ fontSize: 17, textAlign: "center" }}>
+              Lend to a Friend
+            </BodyStrong>
+
+            {/* Search */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                borderRadius: 14,
+                paddingHorizontal: 14,
+                paddingVertical: 11,
+                gap: 10,
+              }}
+            >
+              <UserCircle size={18} color={theme.mutedForeground} />
+              <TextInput
+                value={lendSearch}
+                onChangeText={setLendSearch}
+                placeholder="Search friends…"
+                placeholderTextColor={theme.mutedForeground}
+                autoFocus
+                style={{
+                  flex: 1,
+                  fontSize: 15,
+                  color: theme.foreground,
+                  fontFamily: "Inter-Medium",
+                }}
+              />
+            </View>
+
+            {/* Friend list */}
+            <FlatList
+              data={friends.filter((f) =>
+                f.name.toLowerCase().includes(lendSearch.toLowerCase()),
+              )}
+              keyExtractor={(f) => f.id}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              ItemSeparatorComponent={() => (
+                <View style={{ height: 1, backgroundColor: theme.border }} />
+              )}
+              renderItem={({ item: f }) => (
+                <Pressable
+                  onPress={() => handleLendTo(f.id)}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 14,
+                    gap: 12,
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <View style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden", backgroundColor: theme.primary + "22" }}>
+                    {resolveAvatarSource(f.avatarUrl) ? (
+                      <Image source={resolveAvatarSource(f.avatarUrl)!} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                    ) : (
+                      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                        <Caption style={{ color: theme.primary }}>{getInitials(f.name)}</Caption>
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <BodyStrong style={{ fontSize: 15 }}>{f.name}</BodyStrong>
+                    {f.email && (
+                      <Caption style={{ color: theme.mutedForeground }}>
+                        {f.email}
+                      </Caption>
+                    )}
+                  </View>
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <Caption
+                  style={{
+                    textAlign: "center",
+                    color: theme.mutedForeground,
+                    paddingVertical: 24,
+                  }}
+                >
+                  No friends match "{lendSearch}"
+                </Caption>
+              }
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
