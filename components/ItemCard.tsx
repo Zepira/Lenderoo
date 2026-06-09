@@ -72,12 +72,16 @@ export function ItemCard({
   const imageUrl = item.images?.[0] ?? (item as any).imageUrl;
 
   const hasPending = request?.status === "pending";
+  const hasApproved = request?.status === "approved";
   const itemStatus = calculateItemStatus(item);
   const isUnavailable = itemStatus === "borrowed" || itemStatus === "overdue";
 
   let statusLabel = "Available";
   let statusColor = THEME.light.primary;
-  if (hasPending) {
+  if (hasApproved) {
+    statusLabel = "Borrowing Next";
+    statusColor = THEME.light.primary;
+  } else if (hasPending) {
     statusLabel = "Requested";
     statusColor = THEME.light.secondary;
   } else if (isUnavailable) {
@@ -86,6 +90,8 @@ export function ItemCard({
   }
 
   const width = calcCardLayout(screenWidth).cardWidth;
+
+  const canBeBorrowed = !isUnavailable && !hasPending && !hasApproved && onBorrow;
 
   return (
     <Pressable
@@ -173,7 +179,7 @@ export function ItemCard({
         </View>
 
         {/* Borrow button */}
-        {!isUnavailable && !hasPending && onBorrow && (
+        {canBeBorrowed && (
           <Button
             variant="default"
             onPress={onBorrow}
@@ -193,36 +199,25 @@ export function ItemCard({
           </Button>
         )}
 
-        {/* Cancel request button */}
-        {hasPending && onCancel && (
-          <Pressable
+        {/* Cancel / leave queue button */}
+        {(hasPending || hasApproved) && onCancel && (
+          <Button
+            variant="outline"
             onPress={onCancel}
             disabled={isRequesting}
-            style={({ pressed }) => ({
-              backgroundColor: isDark ? theme.muted : "#F3F4F6",
-              borderRadius: 12,
-              paddingVertical: 8,
-              alignItems: "center",
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: 4,
-              opacity: pressed || isRequesting ? 0.6 : 1,
-            })}
+            className="h-9 rounded-xl"
           >
             {isRequesting ? (
               <ActivityIndicator size="small" color={theme.mutedForeground} />
             ) : (
               <>
                 <X size={12} color={theme.mutedForeground} />
-                <TinyLabel
-                  style={{ color: theme.mutedForeground }}
-                  className="normal-case tracking-normal"
-                >
-                  Cancel Request
-                </TinyLabel>
+                <Text className="text-xs normal-case tracking-normal">
+                  {hasApproved ? "Leave Queue" : "Cancel Request"}
+                </Text>
               </>
             )}
-          </Pressable>
+          </Button>
         )}
 
         {/* Return button — shown when the current user is the borrower */}
@@ -247,32 +242,26 @@ export function ItemCard({
           </Button>
         )}
 
-        {/* Request Next button — shown when item is unavailable and not borrowed by me */}
-        {isUnavailable &&
-          !isBorrowedByMe &&
-          onBorrow !== undefined && (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                onBorrow();
-              }}
-              style={({ pressed }) => ({
-                backgroundColor: pressed
-                  ? theme.destructive + "cc"
-                  : theme.destructive,
-                borderRadius: 12,
-                paddingVertical: 8,
-                alignItems: "center",
-              })}
-            >
-              <TinyLabel
-                className="normal-case tracking-normal"
-                style={{ color: theme.destructiveForeground }}
-              >
-                Request Next
-              </TinyLabel>
-            </Pressable>
-          )}
+        {/* Request Next button — shown when item is unavailable, not borrowed by me, and no active request */}
+        {isUnavailable && !isBorrowedByMe && !hasPending && !hasApproved && onBorrow !== undefined && (
+          <Button
+            variant="default"
+            onPress={onBorrow}
+            disabled={isRequesting}
+            className="h-9 rounded-xl"
+          >
+            {isRequesting ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <Send size={12} color="white" />
+                <Text className="text-xs normal-case tracking-normal text-primary-foreground">
+                  Request Next
+                </Text>
+              </>
+            )}
+          </Button>
+        )}
       </View>
     </Pressable>
   );
