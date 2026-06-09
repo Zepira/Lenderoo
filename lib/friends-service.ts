@@ -286,7 +286,8 @@ export async function getMyFriends(): Promise<FriendUser[]> {
 }
 
 /**
- * Get a single friend's details by their user ID
+ * Get a single friend's details by their user ID.
+ * Returns null (silently) if no active friendship exists.
  */
 export async function getFriendUserById(
   friendUserId: string
@@ -295,67 +296,56 @@ export async function getFriendUserById(
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    console.error("❌ Not authenticated");
-    throw new Error("Not authenticated");
-  }
+  if (!user) throw new Error("Not authenticated");
 
-  console.log("🔍 Fetching friend details for:", friendUserId);
-  console.log("🔍 Current user ID:", user.id);
+  const { data: connection, error: connectionError } = await supabase
+    .from("user_friends")
+    .select("friends_since, friend_name, friend_email, friend_avatar_url, friend_code")
+    .eq("user_id", user.id)
+    .eq("friend_user_id", friendUserId)
+    .maybeSingle();
 
-  // First verify they are friends
-  // Note: This returns 2 rows (bidirectional friendship), so we just take the first one
-  const { data: connections, error: connectionError } = await supabase
-    .from("friend_connections")
-    .select("id, status, created_at")
-    .or(
-      `and(user_id.eq.${user.id},friend_user_id.eq.${friendUserId}),and(user_id.eq.${friendUserId},friend_user_id.eq.${user.id})`
-    )
-    .eq("status", "active")
-    .limit(1);
-
-  if (connectionError) {
-    console.error("❌ Error checking friendship:", connectionError);
-    return null;
-  }
-
-  console.log("👥 Connections found:", connections);
-
-  if (!connections || connections.length === 0) {
-    console.error("❌ No active friendship found");
-    return null;
-  }
-
-  const connection = connections[0];
-
-  // Get the friend's user details
-  const { data: friendData, error: userError } = await supabase
-    .from("users")
-    .select("id, name, email, avatar_url, friend_code")
-    .eq("id", friendUserId)
-    .single();
-
-  if (userError) {
-    console.error("❌ Error fetching user details:", userError);
-    return null;
-  }
-
-  if (!friendData) {
-    console.error("❌ User not found");
-    return null;
-  }
-
-  console.log("✅ Friend data fetched:", friendData.name);
+  if (connectionError || !connection) return null;
 
   return {
-    id: friendData.id,
-    name: friendData.name,
-    email: friendData.email,
-    avatarUrl: friendData.avatar_url || undefined,
-    friendCode: friendData.friend_code,
-    friendsSince: connection.created_at
-      ? new Date(connection.created_at)
+    id: friendUserId,
+    name: connection.friend_name,
+    email: connection.friend_email,
+    avatarUrl: connection.friend_avatar_url || undefined,
+    friendCode: connection.friend_code,
+    friendsSince: connection.friends_since
+      ? new Date(connection.friends_since)
       : new Date(),
+  };
+}
+
+export interface UserPublicProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+}
+
+/**
+ * Get basic public profile for any user by ID.
+ * Does not require friendship — uses the open users read policy.
+ */
+export async function getUserPublicProfile(
+  userId: string
+): Promise<UserPublicProfile | null> {
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, name, email, avatar_url")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    avatarUrl: data.avatar_url || undefined,
   };
 }
 

@@ -4,10 +4,12 @@ import type { Friend, FriendFilters } from 'lib/types'
 import {
   getMyFriends,
   getFriendUserById,
+  getUserPublicProfile,
   addFriendByCode,
   removeFriend,
   getItemsBorrowedByFriend,
   type FriendUser,
+  type UserPublicProfile,
 } from 'lib/friends-service'
 import { queryKeys } from 'lib/query-client'
 
@@ -110,6 +112,18 @@ export function useDeleteFriend() {
     deleteFriend: mutation.mutateAsync,
     loading: mutation.isPending,
     error: mutation.error,
+  }
+}
+
+export function useUserProfile(id: string | null) {
+  const result = useQuery({
+    queryKey: ['user-profile', id ?? ''],
+    queryFn: () => getUserPublicProfile(id!),
+    enabled: !!id,
+  })
+  return {
+    profile: result.data ?? null,
+    loading: result.isLoading,
   }
 }
 

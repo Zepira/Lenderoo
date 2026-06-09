@@ -250,14 +250,20 @@ export function ItemCard({
         {/* Request Next button — shown when item is unavailable and not borrowed by me */}
         {isUnavailable &&
           !isBorrowedByMe &&
-          (onBorrow !== undefined || onCancel !== undefined) && (
-            <View
-              style={{
-                backgroundColor: theme.destructive,
+          onBorrow !== undefined && (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onBorrow();
+              }}
+              style={({ pressed }) => ({
+                backgroundColor: pressed
+                  ? theme.destructive + "cc"
+                  : theme.destructive,
                 borderRadius: 12,
                 paddingVertical: 8,
                 alignItems: "center",
-              }}
+              })}
             >
               <TinyLabel
                 className="normal-case tracking-normal"
@@ -265,7 +271,7 @@ export function ItemCard({
               >
                 Request Next
               </TinyLabel>
-            </View>
+            </Pressable>
           )}
       </View>
     </Pressable>

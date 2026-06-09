@@ -376,6 +376,51 @@ export async function markItemReturned(id: string): Promise<void> {
     .in("status", ["pending", "approved"]);
 }
 
+/**
+ * Return an item by handing it off directly to the next approved requester.
+ * Writes a history entry for the current borrower, updates the item to the
+ * next person, and cancels all other pending/approved requests.
+ */
+export async function markItemReturnedToNext(
+  itemId: string,
+  nextRequesterId: string
+): Promise<void> {
+  const itemSnapshot = await getItemById(itemId).catch(() => null);
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('items')
+    .update({
+      borrowed_by: nextRequesterId,
+      borrowed_date: now,
+      due_date: null,
+      returned_date: null,
+      updated_at: now,
+    })
+    .eq('id', itemId);
+  if (error) throw error;
+
+  if (itemSnapshot?.borrowedBy) {
+    addHistoryEntry({
+      itemId,
+      friendId: itemSnapshot.borrowedBy,
+      borrowedDate: itemSnapshot.borrowedDate ?? new Date(),
+      returnedDate: new Date(),
+      dueDate: itemSnapshot.dueDate,
+      notes: undefined,
+    }).catch(() => {});
+  }
+
+  // Cancel all other pending/approved requests; the next person's approved
+  // request stays as-is — it now represents the active borrow.
+  await supabase
+    .from('borrow_requests')
+    .update({ status: 'cancelled' })
+    .eq('item_id', itemId)
+    .in('status', ['pending', 'approved'])
+    .neq('requester_id', nextRequesterId);
+}
+
 export async function queryItems(filters?: ItemFilters): Promise<Item[]> {
   const userId = await getCurrentUserId();
 

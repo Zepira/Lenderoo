@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { View, FlatList, useWindowDimensions, Pressable } from "react-native";
+import { Alert, View, FlatList, useWindowDimensions, Pressable } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Plus } from "lucide-react-native";
 import { BorrowRequestsSection } from "components/BorrowRequestsSection";
@@ -106,7 +106,9 @@ export default function ItemsScreen() {
       await loadIncomingRequests();
       await refresh();
     } catch (error: any) {
-      toast.error(error.message || "Failed to approve request");
+      const msg = error?.message || "Failed to approve request";
+      console.error("Approve borrow request failed:", msg, error);
+      Alert.alert("Error", msg);
     } finally {
       setProcessingId(null);
     }

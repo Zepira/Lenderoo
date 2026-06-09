@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { useLocalSearchParams, useRouter, useNavigation, useFocusEffect } from "expo-router";
+import {
+  useLocalSearchParams,
+  useRouter,
+  useNavigation,
+  useFocusEffect,
+} from "expo-router";
 import {
   ScrollView,
   View,
@@ -498,18 +503,18 @@ export default function FriendDetailScreen() {
                   >
                     {label}
                   </TinyLabel>
-                  {count > 0 && (
+                  {
                     <TinyLabel
                       style={{
                         color: active
-                          ? "rgba(255,255,255,0.7)"
+                          ? "rgba(40, 40, 40, 0.7)"
                           : theme.mutedForeground,
                         fontSize: 9,
                       }}
                     >
                       {count}
                     </TinyLabel>
-                  )}
+                  }
                 </Pressable>
               );
             })}
@@ -545,9 +550,19 @@ export default function FriendDetailScreen() {
                         isRequesting={requestingItemId === item.id}
                         isBorrowedByMe={borrowedByMe}
                         onPress={() => router.push(`/item/${item.id}` as any)}
-                        onBorrow={borrowedByMe ? undefined : () => handleRequestBorrow(item)}
-                        onCancel={borrowedByMe ? undefined : () => handleCancelRequest(item)}
-                        onReturn={borrowedByMe ? () => handleReturn(item) : undefined}
+                        onBorrow={
+                          borrowedByMe
+                            ? undefined
+                            : () => handleRequestBorrow(item)
+                        }
+                        onCancel={
+                          borrowedByMe
+                            ? undefined
+                            : () => handleCancelRequest(item)
+                        }
+                        onReturn={
+                          borrowedByMe ? () => handleReturn(item) : undefined
+                        }
                       />
                     );
                   })}

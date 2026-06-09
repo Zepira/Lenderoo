@@ -80,19 +80,18 @@ export async function createBorrowRequest(
     throw new Error('Not authenticated');
   }
 
-  // Verify the user and owner are friends (may return 2 rows for bidirectional friendship)
-  const { data: friendships, error: friendshipError } = await supabase
-    .from('friend_connections')
-    .select('id, status')
-    .or(`and(user_id.eq.${user.id},friend_user_id.eq.${ownerId}),and(user_id.eq.${ownerId},friend_user_id.eq.${user.id})`)
-    .eq('status', 'active')
-    .limit(1);
+  const { data: friendship, error: friendshipError } = await supabase
+    .from('user_friends')
+    .select('connection_id')
+    .eq('user_id', user.id)
+    .eq('friend_user_id', ownerId)
+    .maybeSingle();
 
   if (friendshipError) {
     throw new Error(`Failed to verify friendship: ${friendshipError.message}`);
   }
 
-  if (!friendships || friendships.length === 0) {
+  if (!friendship) {
     throw new Error('You must be friends with this user to request their items');
   }
 
@@ -107,25 +106,21 @@ export async function createBorrowRequest(
     throw new Error(`Failed to fetch item: ${itemError.message}`);
   }
 
-  if (item.borrowed_by && item.borrowed_date) {
-    throw new Error('This item is already borrowed');
-  }
-
   if (item.user_id !== ownerId) {
     throw new Error('Owner ID does not match item owner');
   }
 
-  // Check for existing pending request
+  // Check for existing pending or approved (queue) request from this user
   const { data: existingRequest } = await supabase
     .from('borrow_requests')
     .select('id')
     .eq('item_id', itemId)
     .eq('requester_id', user.id)
-    .eq('status', 'pending')
+    .in('status', ['pending', 'approved'])
     .maybeSingle();
 
   if (existingRequest) {
-    throw new Error('You already have a pending request for this item');
+    throw new Error('You already have an active request for this item');
   }
 
   // Create the request
@@ -322,8 +317,6 @@ export async function approveBorrowRequest(
     throw new Error('Request not found');
   }
 
-  console.log('Approve request data:', { request, user: user.id });
-
   // Verify user is the owner
   if (request.owner_id !== user.id) {
     throw new Error('Only the item owner can approve requests');
@@ -334,21 +327,28 @@ export async function approveBorrowRequest(
     throw new Error('Only pending requests can be approved');
   }
 
-  // Verify item is still available
-  if (request.items.borrowed_by && request.items.borrowed_date) {
-    throw new Error('This item has already been borrowed');
+  const itemCurrentlyBorrowed = !!(request.items.borrowed_by && request.items.borrowed_date);
+
+  if (itemCurrentlyBorrowed) {
+    // Item is already lent out — approve this as a queue position only.
+    // Do NOT update the item or deny other pending requests.
+    const { data: updatedRequest, error: updateError } = await supabase
+      .from('borrow_requests')
+      .update({ status: 'approved' })
+      .eq('id', requestId)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw new Error(`Failed to approve request: ${updateError.message}`);
+    }
+
+    return convertBorrowRequestFromDb(updatedRequest);
   }
 
+  // Item is available — approve immediately and mark it as borrowed.
   const borrowedDate = new Date();
   const finalDueDate = dueDate || (request.requested_due_date ? new Date(request.requested_due_date) : undefined);
-
-  // Update the item to mark it as borrowed
-  console.log('Updating item:', {
-    itemId: request.item_id,
-    borrowedBy: request.requester_id,
-    borrowedDate: borrowedDate.toISOString(),
-    dueDate: finalDueDate?.toISOString(),
-  });
 
   const { data: updatedItem, error: itemError } = await supabase
     .from('items')
@@ -356,13 +356,11 @@ export async function approveBorrowRequest(
       borrowed_by: request.requester_id,
       borrowed_date: borrowedDate.toISOString(),
       due_date: finalDueDate?.toISOString(),
-      returned_date: null, // Clear any previous return date
+      returned_date: null,
     })
     .eq('id', request.item_id)
-    .is('borrowed_by', null) // Ensure still available
+    .is('borrowed_by', null)
     .select();
-
-  console.log('Item update result:', { updatedItem, itemError });
 
   if (itemError) {
     throw new Error(`Failed to update item: ${itemError.message}`);
@@ -372,7 +370,6 @@ export async function approveBorrowRequest(
     throw new Error('Item was already borrowed or could not be updated');
   }
 
-  // Update the request to approved
   const { data: updatedRequest, error: updateError } = await supabase
     .from('borrow_requests')
     .update({ status: 'approved' })
@@ -380,25 +377,18 @@ export async function approveBorrowRequest(
     .select()
     .single();
 
-  console.log('Request update result:', { updatedRequest, updateError });
-
   if (updateError) {
     throw new Error(`Failed to approve request: ${updateError.message}`);
   }
 
-  // Auto-deny other pending requests for the same item
-  const { error: denyError } = await supabase
+  // Auto-deny other pending requests for the same item (item is now taken)
+  await supabase
     .from('borrow_requests')
     .update({ status: 'denied' })
     .eq('item_id', request.item_id)
     .eq('status', 'pending')
     .neq('id', requestId);
 
-  if (denyError) {
-    console.warn('Failed to auto-deny other requests:', denyError);
-  }
-
-  console.log('✅ Borrow request approved successfully');
   return convertBorrowRequestFromDb(updatedRequest);
 }
 
@@ -480,12 +470,11 @@ export async function cancelBorrowRequest(requestId: string): Promise<BorrowRequ
     throw new Error('Only the requester can cancel their request');
   }
 
-  // Verify request is pending
-  if (request.status !== 'pending') {
-    throw new Error('Only pending requests can be cancelled');
+  // Allow cancelling pending or approved (queue) requests
+  if (request.status !== 'pending' && request.status !== 'approved') {
+    throw new Error('Only pending or approved requests can be cancelled');
   }
 
-  // Update the request status
   const { data, error } = await supabase
     .from('borrow_requests')
     .update({ status: 'cancelled' })
@@ -498,4 +487,37 @@ export async function cancelBorrowRequest(requestId: string): Promise<BorrowRequ
   }
 
   return convertBorrowRequestFromDb(data);
+}
+
+/**
+ * Get approved queue entries for a borrowed item (people waiting to borrow next).
+ * Excludes the current borrower. Ordered by approval time (first approved = first in queue).
+ *
+ * @param itemId - ID of the item
+ * @param currentBorrowerId - ID of the person currently borrowing (excluded from results)
+ */
+export async function getApprovedQueueForItem(
+  itemId: string,
+  currentBorrowerId?: string
+): Promise<BorrowRequestWithDetails[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  let query = supabase
+    .from('borrow_requests_with_details')
+    .select('*')
+    .eq('item_id', itemId)
+    .eq('status', 'approved')
+    .order('updated_at', { ascending: true });
+
+  if (currentBorrowerId) {
+    query = query.neq('requester_id', currentBorrowerId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) return [];
+
+  return (data || []).map(convertBorrowRequestWithDetailsFromDb);
 }
