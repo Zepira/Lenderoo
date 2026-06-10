@@ -12,7 +12,7 @@ import {
 import * as ImagePickerExpo from 'expo-image-picker';
 import { Camera, ImageIcon, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PRESET_AVATARS, type PresetAvatar } from '@/lib/avatar-service';
+import { PRESET_AVATARS, type PresetAvatar } from '@/lib/services/avatar';
 import { PageTitle, BodyText, TinyLabel, Caption } from '@/components/ui/typography';
 import { THEME } from '@/lib/theme';
 import { useThemeContext } from '@/contexts/ThemeContext';

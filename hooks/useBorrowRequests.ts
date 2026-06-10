@@ -8,7 +8,7 @@ import {
   denyBorrowRequest,
   cancelBorrowRequest,
   createBorrowRequest,
-} from 'lib/borrow-requests-service'
+} from '@/lib/services/borrow-requests'
 import { queryKeys } from 'lib/query-client'
 
 export function useIncomingBorrowRequests() {

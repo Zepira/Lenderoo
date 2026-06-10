@@ -18,7 +18,7 @@ import {
   getFriendItemCounts,
   type FriendRequest,
   type FriendUser,
-} from "@/lib/friends-service";
+} from "@/lib/services/friends";
 import { FriendRequests } from "components/FriendRequests";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
-import { resolveAvatarSource } from "@/lib/avatar-service";
+import { resolveAvatarSource } from "@/lib/services/avatar";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
 

@@ -64,14 +64,19 @@ import {
   getMyBorrowRequestForItem,
   cancelBorrowRequest,
   getApprovedQueueForItem,
-} from "@/lib/borrow-requests-service";
+} from "@/lib/services/borrow-requests";
 import {
   getHistoryForItemWithUsers,
   markItemReturnedToNext,
-} from "@/lib/database-supabase";
-import type { BorrowRequest, BorrowHistoryWithUser, BorrowRequestWithDetails } from "lib/types";
+} from "@/lib/services/database";
+import type {
+  BorrowRequest,
+  BorrowHistoryWithUser,
+  BorrowRequestWithDetails,
+} from "lib/types";
 import * as toast from "@/lib/toast";
-import { resolveAvatarSource } from "@/lib/avatar-service";
+import { supabase } from "@/lib/supabase";
+import { resolveAvatarSource } from "@/lib/services/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
@@ -140,7 +145,9 @@ export default function ItemDetailScreen() {
     [],
   );
   // Approved queue entries (people waiting to borrow next)
-  const [borrowQueue, setBorrowQueue] = useState<BorrowRequestWithDetails[]>([]);
+  const [borrowQueue, setBorrowQueue] = useState<BorrowRequestWithDetails[]>(
+    [],
+  );
 
   const loadBorrowRequest = useCallback(async () => {
     if (!item || isOwner || isBorrower) return;
@@ -177,6 +184,31 @@ export default function ItemDetailScreen() {
       loadBorrowQueue();
     }, [refresh, loadBorrowRequest, loadBorrowHistory, loadBorrowQueue]),
   );
+
+  // Live-update borrow request status (e.g. owner approves while this screen is open)
+  useEffect(() => {
+    if (!item?.id || isOwner) return;
+    const channel = supabase
+      .channel(`item-${item.id}-requests`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "borrow_requests",
+          filter: `item_id=eq.${item.id}`,
+        },
+        () => {
+          loadBorrowRequest();
+          loadBorrowQueue();
+          refresh();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [item?.id, isOwner, loadBorrowRequest, loadBorrowQueue, refresh]);
 
   const communityOwners = useMemo(() => {
     if (!item || item.category !== "book" || !item.metadata) return [];
@@ -327,7 +359,9 @@ export default function ItemDetailScreen() {
   const handleMarkReturned = async () => {
     if (!item) return;
 
-    if (borrowQueue.length > 0) {
+    // Only the owner can hand off to the next borrower — the borrower updating
+    // borrowed_by to a third party fails the items RLS WITH CHECK clause.
+    if (isOwner && borrowQueue.length > 0) {
       const next = borrowQueue[0];
       Alert.alert(
         "Return Item",
@@ -346,7 +380,7 @@ export default function ItemDetailScreen() {
             },
           },
           {
-            text: "Return to Owner",
+            text: "Return to Library",
             onPress: async () => {
               try {
                 await markReturned(item.id);
@@ -369,7 +403,7 @@ export default function ItemDetailScreen() {
       toast.success(`"${item.name}" has been ${actionText}`);
       router.back();
     } catch {
-      toast.error(`Failed to ${actionText.replace("has been ", "")}`);
+      toast.error("Failed to return item");
     }
   };
 
@@ -470,11 +504,32 @@ export default function ItemDetailScreen() {
         {/* ── Hero Image ── */}
         <View style={{ height: 400, width: "100%" }}>
           {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
-            />
+            <View>
+              <Image
+                source={{ uri: imageUrl }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+              <LinearGradient
+                // Array of colors showing the progression from top to bottom
+                colors={[
+                  "rgba(0, 0, 0, 0.07)",
+                  "rgba(0, 0, 0, 0.53)",
+                  "rgba(0, 0, 0, 0.64)",
+                  "#000000cb",
+                ]}
+                // Explicit alignment points (Optional: This is the default vertical setup)
+                start={{ x: 0, y: 0 }} // Top
+                end={{ x: 0, y: 1 }} // Bottom
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+              />
+            </View>
           ) : (
             <View
               style={{
@@ -849,7 +904,9 @@ export default function ItemDetailScreen() {
                       >
                         {resolveAvatarSource(borrowerProfile.avatarUrl) ? (
                           <Image
-                            source={resolveAvatarSource(borrowerProfile.avatarUrl)!}
+                            source={
+                              resolveAvatarSource(borrowerProfile.avatarUrl)!
+                            }
                             style={{ width: "100%", height: "100%" }}
                             resizeMode="cover"
                           />
@@ -934,9 +991,9 @@ export default function ItemDetailScreen() {
                           backgroundColor: theme.primary + "22",
                         }}
                       >
-                        {req.requesterAvatarUrl ? (
+                        {resolveAvatarSource(req.requesterAvatarUrl) ? (
                           <Image
-                            source={{ uri: req.requesterAvatarUrl }}
+                            source={resolveAvatarSource(req.requesterAvatarUrl)!}
                             style={{ width: "100%", height: "100%" }}
                             resizeMode="cover"
                           />
@@ -978,8 +1035,8 @@ export default function ItemDetailScreen() {
               ? (appUser?.name ?? "You")
               : (borrowerProfile?.name ?? null);
             const activeAvatar = isBorrower
-              ? appUser?.avatarUrl ?? null
-              : borrowerProfile?.avatarUrl ?? null;
+              ? (appUser?.avatarUrl ?? null)
+              : (borrowerProfile?.avatarUrl ?? null);
             const showActiveRow = !isAvailable && !!item.borrowedDate;
             const totalCount = borrowHistory.length + (showActiveRow ? 1 : 0);
             if (totalCount === 0) return null;
@@ -992,7 +1049,9 @@ export default function ItemDetailScreen() {
               returnedDate: Date | undefined,
               active: boolean,
             ) => {
-              const avatarSrc = avatarUrl ? resolveAvatarSource(avatarUrl) : null;
+              const avatarSrc = avatarUrl
+                ? resolveAvatarSource(avatarUrl)
+                : null;
               return (
                 <View
                   key={key}
@@ -1001,10 +1060,14 @@ export default function ItemDetailScreen() {
                     alignItems: "center",
                     gap: 12,
                     padding: 14,
-                    backgroundColor: active ? theme.secondary + "12" : theme.muted,
+                    backgroundColor: active
+                      ? theme.secondary + "12"
+                      : theme.muted,
                     borderRadius: 16,
                     borderWidth: active ? 1 : 0,
-                    borderColor: active ? theme.secondary + "33" : "transparent",
+                    borderColor: active
+                      ? theme.secondary + "33"
+                      : "transparent",
                   }}
                 >
                   <View
@@ -1023,7 +1086,13 @@ export default function ItemDetailScreen() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                      <View
+                        style={{
+                          flex: 1,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
                         <Caption style={{ color: theme.primary }}>
                           {getInitials(displayName)}
                         </Caption>
@@ -1032,7 +1101,9 @@ export default function ItemDetailScreen() {
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <BodyStrong style={{ fontSize: 13 }}>{displayName}</BodyStrong>
+                    <BodyStrong style={{ fontSize: 13 }}>
+                      {displayName}
+                    </BodyStrong>
                     <Caption>
                       {formatDate(borrowedDate)}
                       {returnedDate ? ` → ${formatDate(returnedDate)}` : ""}
@@ -1043,7 +1114,9 @@ export default function ItemDetailScreen() {
                     style={{
                       paddingHorizontal: 8,
                       paddingVertical: 3,
-                      backgroundColor: active ? theme.secondary + "EE" : theme.primary + "22",
+                      backgroundColor: active
+                        ? theme.secondary + "EE"
+                        : theme.primary + "22",
                       borderRadius: 8,
                     }}
                   >
@@ -1068,14 +1141,16 @@ export default function ItemDetailScreen() {
                   {totalCount} time{totalCount !== 1 ? "s" : ""} borrowed
                 </Caption>
                 <View style={{ gap: 10, marginBottom: 24 }}>
-                  {showActiveRow && activeName && renderRow(
-                    "active",
-                    activeName,
-                    activeAvatar,
-                    item.borrowedDate!,
-                    undefined,
-                    true,
-                  )}
+                  {showActiveRow &&
+                    activeName &&
+                    renderRow(
+                      "active",
+                      activeName,
+                      activeAvatar,
+                      item.borrowedDate!,
+                      undefined,
+                      true,
+                    )}
                   {borrowHistory.map((entry) =>
                     renderRow(
                       entry.id,
@@ -1084,7 +1159,7 @@ export default function ItemDetailScreen() {
                       entry.borrowedDate,
                       entry.returnedDate,
                       false,
-                    )
+                    ),
                   )}
                 </View>
               </>
@@ -1202,12 +1277,10 @@ export default function ItemDetailScreen() {
           {/* ── Action Buttons ── */}
           <View style={{ gap: 12, marginTop: 28 }}>
             {isBorrower ? (
-              /* Viewer is the borrower — return the item */
-              <Button onPress={handleMarkReturned} disabled={returning}>
-                <RotateCcw size={18} color="#fff" />
-                <Text className="text-white font-bold">
-                  {returning ? "Returning…" : "Return to Owner"}
-                </Text>
+              /* Viewer is the borrower — secondary yellow, matches ItemCard "Return" */
+              <Button variant="secondary" onPress={handleMarkReturned} disabled={returning}>
+                <RotateCcw size={18} color={theme.secondaryForeground} />
+                <Text>{returning ? "Returning…" : "Return to Owner"}</Text>
               </Button>
             ) : isOwner ? (
               /* Viewer is the owner — owner management actions */
@@ -1218,9 +1291,7 @@ export default function ItemDetailScreen() {
                     disabled={returning || deleting}
                   >
                     <Check size={18} color="#fff" />
-                    <Text className="text-white font-bold">
-                      {returning ? "Marking…" : "Mark as Returned"}
-                    </Text>
+                    <Text>{returning ? "Marking…" : "Mark as Returned"}</Text>
                   </Button>
                 )}
 
@@ -1234,7 +1305,7 @@ export default function ItemDetailScreen() {
                     disabled={lending || friends.length === 0}
                   >
                     <Users size={16} color="#fff" />
-                    <Text className="text-white font-bold">
+                    <Text>
                       {friends.length === 0 ? "No friends yet" : "Lend to…"}
                     </Text>
                   </Button>
@@ -1244,74 +1315,56 @@ export default function ItemDetailScreen() {
                   variant="outline"
                   onPress={handleEdit}
                   disabled={deleting || returning || lending}
-                  style={{ borderColor: theme.border } as any}
                 >
                   <Edit size={16} color={theme.foreground} />
                   <Text>Edit Item</Text>
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="destructive-outline"
                   onPress={handleDelete}
                   disabled={deleting || returning || lending}
-                  style={{ borderColor: theme.destructive + "44" } as any}
                 >
                   <Trash2 size={16} color={theme.destructive} />
-                  <Text style={{ color: theme.destructive }}>
-                    {deleting ? "Deleting…" : "Delete Item"}
-                  </Text>
+                  <Text>{deleting ? "Deleting…" : "Delete Item"}</Text>
                 </Button>
               </>
             ) : (
-              /* Viewer is a friend — borrow/request actions */
+              /* Viewer is a friend — matches ItemCard button logic */
               <>
-                {/* Borrow: item available, no active request */}
+                {/* Borrow: item available, no active request — default green */}
                 {isAvailable && !borrowRequest && (
                   <Button onPress={handleBorrow} disabled={requesting}>
                     <Send size={16} color="#fff" />
-                    <Text className="text-white font-bold">
-                      {requesting ? "Sending…" : "Borrow"}
-                    </Text>
+                    <Text>{requesting ? "Sending…" : "Borrow"}</Text>
                   </Button>
                 )}
-                {/* Request Next: item unavailable, no active request */}
+                {/* Request Next: item unavailable, no active request — default green */}
                 {!isAvailable && !borrowRequest && (
-                  <Button
-                    onPress={handleBorrow}
-                    disabled={requesting}
-                    style={{ backgroundColor: theme.destructive } as any}
-                  >
+                  <Button onPress={handleBorrow} disabled={requesting}>
                     <Send size={16} color="#fff" />
-                    <Text className="text-white font-bold">
-                      {requesting ? "Sending…" : "Request Next"}
-                    </Text>
+                    <Text>{requesting ? "Sending…" : "Request Next"}</Text>
                   </Button>
                 )}
-                {/* Cancel pending request */}
+                {/* Cancel pending request — destructive red */}
                 {borrowRequest?.status === "pending" && (
                   <Button
-                    variant="outline"
+                    variant="destructive"
                     onPress={handleCancelRequest}
                     disabled={requesting}
-                    style={{ borderColor: theme.border } as any}
                   >
-                    <X size={16} color={theme.mutedForeground} />
-                    <Text style={{ color: theme.mutedForeground }}>
-                      {requesting ? "Cancelling…" : "Cancel Request"}
-                    </Text>
+                    <X size={16} color="#fff" />
+                    <Text>{requesting ? "Cancelling…" : "Cancel Request"}</Text>
                   </Button>
                 )}
-                {/* Leave queue: approved but still waiting (item not yet handed off) */}
+                {/* Leave queue: approved but still waiting — destructive red */}
                 {borrowRequest?.status === "approved" && (
                   <Button
-                    variant="outline"
+                    variant="destructive"
                     onPress={handleCancelRequest}
                     disabled={requesting}
-                    style={{ borderColor: theme.border } as any}
                   >
-                    <X size={16} color={theme.mutedForeground} />
-                    <Text style={{ color: theme.mutedForeground }}>
-                      {requesting ? "Cancelling…" : "Leave Queue"}
-                    </Text>
+                    <X size={16} color="#fff" />
+                    <Text>{requesting ? "Cancelling…" : "Leave Queue"}</Text>
                   </Button>
                 )}
               </>

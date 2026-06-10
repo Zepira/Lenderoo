@@ -5,9 +5,9 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { STORAGE_KEYS } from "./constants";
-import * as localDb from "./database";
-import * as supabaseDb from "./database-supabase";
+import { STORAGE_KEYS } from "../constants";
+import * as localDb from "../database";
+import * as supabaseDb from "./database";
 
 /**
  * Check if migration has already been completed
@@ -46,11 +46,8 @@ export async function migrateLocalDataToSupabase(): Promise<{
     // Check if already migrated
     const alreadyMigrated = await isMigrationComplete();
     if (alreadyMigrated) {
-      console.log("Migration already complete");
       return { success: true, itemsCount: 0, friendsCount: 0, historyCount: 0 };
     }
-
-    console.log("Starting migration from AsyncStorage to Supabase...");
 
     // Export all local data
     const localData = await localDb.exportData();
@@ -61,14 +58,9 @@ export async function migrateLocalDataToSupabase(): Promise<{
       localData.friends.length === 0 &&
       localData.history.length === 0
     ) {
-      console.log("No local data to migrate");
       await markMigrationComplete();
       return { success: true, itemsCount: 0, friendsCount: 0, historyCount: 0 };
     }
-
-    console.log(
-      `Found ${localData.items.length} items, ${localData.friends.length} friends, ${localData.history.length} history entries`
-    );
 
     // Create ID mapping for friends (old ID -> new ID)
     const friendIdMap = new Map<string, string>();
@@ -86,9 +78,7 @@ export async function migrateLocalDataToSupabase(): Promise<{
 
         // Map old ID to new ID
         friendIdMap.set(friend.id, newFriend.id);
-        console.log(`Migrated friend: ${friend.name}`);
       } catch (error) {
-        console.error(`Failed to migrate friend ${friend.name}:`, error);
         // Continue with other friends even if one fails
       }
     }
@@ -114,10 +104,7 @@ export async function migrateLocalDataToSupabase(): Promise<{
           notes: item.notes,
           metadata: item.metadata,
         });
-
-        console.log(`Migrated item: ${item.name}`);
       } catch (error) {
-        console.error(`Failed to migrate item ${item.name}:`, error);
         // Continue with other items even if one fails
       }
     }
@@ -128,7 +115,6 @@ export async function migrateLocalDataToSupabase(): Promise<{
         // Skip history entries that reference non-existent friends or items
         const newFriendId = friendIdMap.get(entry.friendId);
         if (!newFriendId) {
-          console.log(`Skipping history entry: friend not found`);
           continue;
         }
 
@@ -140,18 +126,13 @@ export async function migrateLocalDataToSupabase(): Promise<{
           dueDate: entry.dueDate,
           notes: entry.notes,
         });
-
-        console.log(`Migrated history entry`);
       } catch (error) {
-        console.error(`Failed to migrate history entry:`, error);
         // Continue with other entries even if one fails
       }
     }
 
     // Mark migration as complete
     await markMigrationComplete();
-
-    console.log("Migration completed successfully");
 
     return {
       success: true,
@@ -160,7 +141,6 @@ export async function migrateLocalDataToSupabase(): Promise<{
       historyCount: localData.history.length,
     };
   } catch (error) {
-    console.error("Migration failed:", error);
     return {
       success: false,
       itemsCount: 0,
@@ -182,5 +162,4 @@ export async function clearLocalDataAfterMigration(): Promise<void> {
   }
 
   await localDb.clearAllData();
-  console.log("Local data cleared after migration");
 }

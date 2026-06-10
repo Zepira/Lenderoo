@@ -5,7 +5,7 @@
  */
 
 import { Platform } from 'react-native';
-import { supabase } from './supabase';
+import { supabase } from '../supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { decode } from 'base64-arraybuffer';
@@ -29,11 +29,8 @@ export async function uploadItemImage(
   uploadExternalUrls: boolean = false
 ): Promise<string> {
   try {
-    console.log('📤 Processing image:', uri);
-
     // If it's already a Supabase Storage URL, return as-is
     if (uri.includes('supabase.co/storage')) {
-      console.log('✅ Already a Supabase Storage URL, skipping upload');
       return uri;
     }
 
@@ -41,16 +38,13 @@ export async function uploadItemImage(
     if (uri.startsWith('http://') || uri.startsWith('https://')) {
       if (uploadExternalUrls) {
         // Download and re-upload (slower but ensures we control the image)
-        console.log('🌐 Downloading and re-uploading external URL...');
         try {
           return await downloadAndUploadImage(uri, userId);
         } catch (error: any) {
-          console.warn('⚠️ Failed to download/upload, using URL directly:', error.message);
           return uri;
         }
       } else {
         // Use external URL directly (faster, recommended for book covers)
-        console.log('🔗 Using external URL directly (no upload needed)');
         return uri;
       }
     }
@@ -58,7 +52,6 @@ export async function uploadItemImage(
     // It's a local file URI - upload it
     return await uploadLocalImage(uri, userId);
   } catch (error) {
-    console.error('❌ Error uploading image:', error);
     throw error;
   }
 }
@@ -68,8 +61,6 @@ export async function uploadItemImage(
  */
 async function compressImage(uri: string): Promise<string> {
   try {
-    console.log('🗜️ Compressing image...');
-
     const manipResult = await ImageManipulator.manipulateAsync(
       uri,
       [
@@ -87,10 +78,8 @@ async function compressImage(uri: string): Promise<string> {
       }
     );
 
-    console.log('✅ Image compressed:', manipResult.uri);
     return manipResult.uri;
   } catch (error) {
-    console.warn('⚠️ Image compression failed, using original:', error);
     return uri; // Fallback to original if compression fails
   }
 }
@@ -131,15 +120,12 @@ async function uploadLocalImage(uri: string, userId: string): Promise<string> {
     });
 
   if (error) {
-    console.error('❌ Upload error:', error);
     throw new Error(`Failed to upload image: ${error.message}`);
   }
 
   const { data: { publicUrl } } = supabase.storage
     .from(BUCKET_NAME)
     .getPublicUrl(filePath);
-
-  console.log('✅ Image uploaded successfully:', publicUrl);
 
   return publicUrl;
 }
@@ -149,8 +135,6 @@ async function uploadLocalImage(uri: string, userId: string): Promise<string> {
  */
 async function downloadAndUploadImage(url: string, userId: string): Promise<string> {
   try {
-    console.log('⬇️ Downloading image from:', url);
-
     // Try CORS proxy for web, direct download for mobile
     const imageData = await downloadImageData(url);
 
@@ -158,8 +142,6 @@ async function downloadAndUploadImage(url: string, userId: string): Promise<stri
     const fileExt = imageData.extension;
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `${userId}/${fileName}`;
-
-    console.log('⬆️ Uploading to storage:', filePath);
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
@@ -170,7 +152,6 @@ async function downloadAndUploadImage(url: string, userId: string): Promise<stri
       });
 
     if (error) {
-      console.error('❌ Upload error:', error);
       throw new Error(`Failed to upload image: ${error.message}`);
     }
 
@@ -179,11 +160,8 @@ async function downloadAndUploadImage(url: string, userId: string): Promise<stri
       .from(BUCKET_NAME)
       .getPublicUrl(filePath);
 
-    console.log('✅ Image downloaded and uploaded successfully:', publicUrl);
-
     return publicUrl;
   } catch (error) {
-    console.error('❌ Error downloading/uploading image:', error);
     throw error;
   }
 }
@@ -227,8 +205,6 @@ async function downloadImageWeb(url: string): Promise<{
 
   for (const proxyUrl of corsProxies) {
     try {
-      console.log('🌐 Trying URL:', proxyUrl.includes('corsproxy') ? 'via CORS proxy' : 'direct');
-
       const response = await fetch(proxyUrl, {
         method: 'GET',
         headers: {
@@ -253,10 +229,8 @@ async function downloadImageWeb(url: string): Promise<{
         reader.readAsArrayBuffer(blob);
       });
 
-      console.log('✅ Downloaded via web');
       return { data: arrayBuffer, contentType, extension };
     } catch (error: any) {
-      console.warn(`⚠️ Failed with this method:`, error.message);
       lastError = error;
       continue; // Try next proxy
     }
@@ -276,8 +250,6 @@ async function downloadImageMobile(url: string): Promise<{
   // Download to temporary location
   const filename = `${Date.now()}-temp.jpg`;
   const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-
-  console.log('📱 Downloading to:', fileUri);
 
   const downloadResult = await FileSystem.downloadAsync(url, fileUri);
 
@@ -304,7 +276,6 @@ async function downloadImageMobile(url: string): Promise<{
   // Clean up temp file
   await FileSystem.deleteAsync(fileUri, { idempotent: true });
 
-  console.log('✅ Downloaded via mobile');
   return { data: arrayBuffer, contentType, extension };
 }
 
@@ -339,20 +310,14 @@ export async function deleteItemImage(imageUrl: string): Promise<void> {
 
     const filePath = urlParts.slice(bucketIndex + 1).join('/');
 
-    console.log('🗑️ Deleting image:', filePath);
-
     const { error } = await supabase.storage
       .from(BUCKET_NAME)
       .remove([filePath]);
 
     if (error) {
-      console.error('❌ Delete error:', error);
       throw new Error(`Failed to delete image: ${error.message}`);
     }
-
-    console.log('✅ Image deleted successfully');
   } catch (error) {
-    console.error('❌ Error deleting image:', error);
     throw error;
   }
 }
@@ -423,7 +388,6 @@ export async function validateImage(uri: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error('❌ Image validation error:', error);
     throw error;
   }
 }

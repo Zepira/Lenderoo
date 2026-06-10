@@ -8,7 +8,7 @@ import { View, Pressable, TouchableOpacity } from "react-native";
 import { Mail, Phone, Package, Library } from "lucide-react-native";
 import type { Friend } from "lib/types";
 import { getInitials, formatCount } from "lib/utils";
-import { resolveAvatarSource } from "@/lib/avatar-service";
+import { resolveAvatarSource } from "@/lib/services/avatar";
 import { Card, CardHeader, CardFooter } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";

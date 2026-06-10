@@ -162,11 +162,11 @@ export default function AddFriendScreen() {
               <Text>Cancel</Text>
             </Button>
             <Button
-              className="flex-1 bg-blue-600"
+              className="flex-1"
               onPress={handleSubmit}
               disabled={loading}
             >
-              <Text className="text-white">
+              <Text>
                 {loading ? "Saving..." : "Add Friend"}
               </Text>
             </Button>

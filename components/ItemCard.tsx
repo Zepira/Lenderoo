@@ -25,7 +25,7 @@ export function calcCardLayout(screenWidth: number) {
 }
 import { Send, X, RotateCcw } from "lucide-react-native";
 import type { Item, BorrowRequest } from "lib/types";
-import { calculateItemStatus } from "lib/utils";
+import { calculateItemStatus, getItemStatusDisplay } from "lib/utils";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -76,22 +76,16 @@ export function ItemCard({
   const itemStatus = calculateItemStatus(item);
   const isUnavailable = itemStatus === "borrowed" || itemStatus === "overdue";
 
-  let statusLabel = "Available";
-  let statusColor = THEME.light.primary;
-  if (hasApproved) {
-    statusLabel = "Borrowing Next";
-    statusColor = THEME.light.primary;
-  } else if (hasPending) {
-    statusLabel = "Requested";
-    statusColor = THEME.light.secondary;
-  } else if (isUnavailable) {
-    statusLabel = "Borrowed";
-    statusColor = "#6B7280";
-  }
+  const { label: statusLabel, color: statusColor } = getItemStatusDisplay(
+    itemStatus,
+    isBorrowedByMe,
+    request,
+  );
 
   const width = calcCardLayout(screenWidth).cardWidth;
 
-  const canBeBorrowed = !isUnavailable && !hasPending && !hasApproved && onBorrow;
+  const canBeBorrowed =
+    !isUnavailable && !hasPending && !hasApproved && onBorrow;
 
   return (
     <Pressable
@@ -180,88 +174,73 @@ export function ItemCard({
 
         {/* Borrow button */}
         {canBeBorrowed && (
-          <Button
-            variant="default"
-            onPress={onBorrow}
-            disabled={isRequesting}
-            className="h-9 rounded-xl"
-          >
+          <Button size="xs" onPress={onBorrow} disabled={isRequesting}>
             {isRequesting ? (
-              <ActivityIndicator size="small" color="white" />
+              <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Send size={12} color="white" />
-                <Text className="text-xs normal-case tracking-normal text-primary-foreground">
-                  Borrow
-                </Text>
+                <Send size={12} color="#fff" />
+                <Text>Borrow</Text>
               </>
             )}
           </Button>
         )}
 
-        {/* Cancel / leave queue button */}
+        {/* Cancel / leave queue — destructive red */}
         {(hasPending || hasApproved) && onCancel && (
           <Button
-            variant="outline"
+            variant="destructive"
+            size="xs"
             onPress={onCancel}
             disabled={isRequesting}
-            className="h-9 rounded-xl"
           >
             {isRequesting ? (
-              <ActivityIndicator size="small" color={theme.mutedForeground} />
+              <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <X size={12} color={theme.mutedForeground} />
-                <Text className="text-xs normal-case tracking-normal">
-                  {hasApproved ? "Leave Queue" : "Cancel Request"}
-                </Text>
+                <X size={12} color="#fff" />
+                <Text>{hasApproved ? "Leave Queue" : "Cancel Request"}</Text>
               </>
             )}
           </Button>
         )}
 
-        {/* Return button — shown when the current user is the borrower */}
+        {/* Return — secondary yellow */}
         {isUnavailable && isBorrowedByMe && onReturn && (
           <Button
-            variant="default"
+            variant="secondary"
+            size="xs"
             onPress={onReturn}
             disabled={isRequesting}
-            className="h-9 rounded-xl"
-            style={{ backgroundColor: THEME.light.secondary } as any}
           >
             {isRequesting ? (
-              <ActivityIndicator size="small" color="white" />
+              <ActivityIndicator size="small" color={theme.secondaryForeground} />
             ) : (
               <>
-                <RotateCcw size={12} color="white" />
-                <Text className="text-xs normal-case tracking-normal text-primary-foreground">
-                  Return
-                </Text>
+                <RotateCcw size={12} color={theme.secondaryForeground} />
+                <Text>Return</Text>
               </>
             )}
           </Button>
         )}
 
-        {/* Request Next button — shown when item is unavailable, not borrowed by me, and no active request */}
-        {isUnavailable && !isBorrowedByMe && !hasPending && !hasApproved && onBorrow !== undefined && (
-          <Button
-            variant="default"
-            onPress={onBorrow}
-            disabled={isRequesting}
-            className="h-9 rounded-xl"
-          >
-            {isRequesting ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <>
-                <Send size={12} color="white" />
-                <Text className="text-xs normal-case tracking-normal text-primary-foreground">
-                  Request Next
-                </Text>
-              </>
-            )}
-          </Button>
-        )}
+        {/* Request Next — default green, item unavailable with no active request */}
+        {isUnavailable &&
+          !isBorrowedByMe &&
+          !hasPending &&
+          !hasApproved &&
+          onBorrow !== undefined && (
+            <Button size="xs" onPress={onBorrow} disabled={isRequesting}>
+              {isRequesting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Send size={12} color="#fff" />
+                  <Text>Request Next</Text>
+                </>
+              )}
+            </Button>
+          )}
       </View>
     </Pressable>
   );

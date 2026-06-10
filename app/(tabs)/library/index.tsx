@@ -5,7 +5,7 @@ import { Plus } from "lucide-react-native";
 import { BorrowRequestsSection } from "components/BorrowRequestsSection";
 import { useItems } from "hooks/useItems";
 import type { ItemStatus, BorrowRequestWithDetails } from "lib/types";
-import { getIncomingBorrowRequests, approveBorrowRequest, denyBorrowRequest } from "@/lib/borrow-requests-service";
+import { getIncomingBorrowRequests, approveBorrowRequest, denyBorrowRequest } from "@/lib/services/borrow-requests";
 import { supabase } from "@/lib/supabase";
 import * as toast from "@/lib/toast";
 import { ItemCard, calcCardLayout } from "@/components/ItemCard";

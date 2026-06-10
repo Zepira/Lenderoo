@@ -10,7 +10,7 @@ import { X } from "lucide-react-native";
 import { Button } from "./ui/button";
 import { Text } from "./ui/text";
 import { Textarea } from "./ui/textarea";
-import { submitFeedback } from "@/lib/feedback-service";
+import { submitFeedback } from "@/lib/services/feedback";
 import * as toast from "@/lib/toast";
 
 interface FeedbackModalProps {

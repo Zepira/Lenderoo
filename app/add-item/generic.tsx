@@ -23,7 +23,7 @@ import { useCreateItem, useItems } from "hooks";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
-import { uploadItemImage, validateImage } from "@/lib/storage-service";
+import { uploadItemImage, validateImage } from "@/lib/services/storage";
 import { supabase } from "@/lib/supabase";
 import * as toast from "@/lib/toast";
 import type { ItemCategory } from "lib/types";
@@ -350,7 +350,7 @@ export default function AddGenericItemScreen() {
         <Button
           onPress={handleSubmit}
           disabled={loading || uploading || !name.trim()}
-          style={{ borderRadius: 24 } as any}
+          className="rounded-full"
         >
           {(uploading || loading) && <ActivityIndicator size="small" color="#fff" />}
           <Text className="text-white font-bold">

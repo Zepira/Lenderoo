@@ -20,7 +20,7 @@ import {
   Caption,
   LabelStrong,
 } from "@/components/ui/typography";
-import { searchBooks } from "lib/hardcover-api";
+import { searchBooks } from "@/lib/services/hardcover";
 
 interface HardcoverBook {
   id: string;

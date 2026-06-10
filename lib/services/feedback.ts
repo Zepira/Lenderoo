@@ -7,7 +7,7 @@
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Application from 'expo-application';
-import { supabase } from './supabase';
+import { supabase } from '../supabase';
 
 export interface Feedback {
   id: string;
@@ -39,7 +39,6 @@ async function getDeviceInfo() {
       appVersion,
     };
   } catch (error) {
-    console.warn('Failed to get device info:', error);
     return {
       platform: Platform.OS,
       osVersion: undefined,

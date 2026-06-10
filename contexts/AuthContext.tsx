@@ -57,17 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         loadAppUser(session.user.id);
-      } else if (__DEV__) {
-        const devEmail = process.env.EXPO_PUBLIC_DEV_EMAIL;
-        const devPassword = process.env.EXPO_PUBLIC_DEV_PASSWORD;
-        if (devEmail && devPassword) {
-          // Auto-sign-in with test credentials in development.
-          // onAuthStateChange will fire and update state when this resolves.
-          supabase.auth.signInWithPassword({ email: devEmail, password: devPassword })
-            .catch(() => setLoading(false));
-        } else {
-          setLoading(false);
-        }
       } else {
         setLoading(false);
       }

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Item, ItemFilters } from 'lib/types'
-import * as db from 'lib/database-supabase'
+import * as db from '@/lib/services/database'
 import { queryKeys } from 'lib/query-client'
 
 export function useItems(filters?: ItemFilters) {

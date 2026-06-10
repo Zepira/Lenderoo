@@ -17,15 +17,22 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Primary — teal #00BFA6
+        // Primary — green #00BFA6
         default: cn(
           "bg-primary active:opacity-90 shadow-sm shadow-primary/20",
           Platform.select({ web: "hover:opacity-90" }),
         ),
-        // Destructive — coral #FF6B6B
+        // Destructive — red #FF6B6B
         destructive: cn(
           "bg-destructive active:opacity-90 shadow-sm shadow-destructive/20",
           Platform.select({ web: "hover:opacity-90" }),
+        ),
+        // Destructive outline — transparent bg, red border and text
+        "destructive-outline": cn(
+          "border-2 border-destructive bg-background active:bg-destructive/10 dark:bg-input/30 dark:border-destructive dark:active:bg-destructive/20",
+          Platform.select({
+            web: "hover:bg-destructive/10 dark:hover:bg-destructive/20",
+          }),
         ),
         // Outline
         outline: cn(
@@ -60,6 +67,11 @@ const buttonVariants = cva(
           "h-14 rounded-lg px-8",
           Platform.select({ web: "has-[>svg]:px-5" }),
         ),
+        // Compact card-sized button (e.g. ItemCard actions)
+        xs: cn(
+          "h-9 px-3 rounded-xl gap-1",
+          Platform.select({ web: "has-[>svg]:px-2.5" }),
+        ),
         icon: "h-14 w-14",
       },
     },
@@ -81,6 +93,10 @@ const buttonTextVariants = cva(
       variant: {
         default: "text-primary-foreground",
         destructive: "text-destructive-foreground",
+        "destructive-outline": cn(
+          "text-destructive group-active:text-destructive",
+          Platform.select({ web: "group-hover:text-destructive" }),
+        ),
         outline: cn(
           "text-foreground group-active:text-foreground",
           Platform.select({ web: "group-hover:text-foreground" }),
@@ -99,6 +115,7 @@ const buttonTextVariants = cva(
         default: "",
         sm: "text-base",
         lg: "",
+        xs: "text-xs normal-case tracking-normal",
         icon: "",
       },
     },
@@ -127,18 +144,21 @@ function Button({
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
 
-  // Inline background color for variants that need a specific brand color.
-  // NativeWind handles the color via className on web; inline style is for native.
   const getBackgroundColor = () => {
     if (variant === "default" || variant == null) return theme.primary;
     if (variant === "secondary") return theme.secondary;
     if (variant === "destructive") return theme.destructive;
-    if (variant === "outline") return Platform.OS === "web" ? undefined : "transparent";
-    if (variant === "outline-white") return Platform.OS === "web" ? undefined : "transparent";
+    if (variant === "outline")
+      return Platform.OS === "web" ? undefined : "transparent";
+    if (variant === "destructive-outline")
+      return Platform.OS === "web" ? undefined : "transparent";
+    if (variant === "outline-white")
+      return Platform.OS === "web" ? undefined : "transparent";
     return undefined;
   };
 
   const getShadowStyle = () => {
+    // Shadow color matches the button background so it reads as a "lift" of the same hue
     const shadowColor =
       variant === "default" || variant == null
         ? theme.primary
@@ -147,6 +167,7 @@ function Button({
           : variant === "destructive"
             ? theme.destructive
             : undefined;
+
     if (!shadowColor) return undefined;
     return {
       shadowColor,

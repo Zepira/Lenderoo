@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import * as LucideIcons from "lucide-react-native";
 import { formatDistanceToNow } from "date-fns";
 import { getInitials } from "@/lib/utils";
-import { resolveAvatarSource } from "@/lib/avatar-service";
+import { resolveAvatarSource } from "@/lib/services/avatar";
 import type { BorrowRequestWithDetails } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
 
@@ -30,32 +30,19 @@ export function BorrowRequestsSection({
   onDeny,
   processingId,
 }: BorrowRequestsSectionProps) {
-  console.log('📋 BorrowRequestsSection render:', {
-    requestCount: requests?.length || 0,
-    processingId,
-    hasOnApprove: !!onApprove,
-    hasOnDeny: !!onDeny
-  });
-
   if (!requests || requests.length === 0) {
-    console.log('📋 No requests to display');
     return null;
   }
 
   const handleApprove = (request: BorrowRequestWithDetails) => {
-    console.log('🔵 Approve button clicked for request:', request.id);
-
     if (Platform.OS === 'web') {
-      // Use window.confirm on web
       const confirmed = window.confirm(
         `Allow ${request.requesterName} to borrow "${request.itemName}"?`
       );
       if (confirmed) {
-        console.log('🟢 User confirmed approval (web confirm)');
         onApprove(request.id);
       }
     } else {
-      // Use Alert.alert on mobile
       Alert.alert(
         'Approve Request',
         `Allow ${request.requesterName} to borrow "${request.itemName}"?`,
@@ -63,10 +50,7 @@ export function BorrowRequestsSection({
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Approve',
-            onPress: () => {
-              console.log('🟢 User confirmed approval in alert');
-              onApprove(request.id);
-            },
+            onPress: () => { onApprove(request.id); },
           },
         ]
       );
@@ -196,11 +180,11 @@ export function BorrowRequestsSection({
               ) : (
                 <>
                   <Button
-                    variant="outline"
+                    variant="destructive-outline"
                     onPress={() => handleDeny(request)}
-                    className="flex-1 border-red-200"
+                    className="flex-1"
                   >
-                    <Text className="text-red-600">Deny</Text>
+                    <Text>Deny</Text>
                   </Button>
                   <Button
                     onPress={() => handleApprove(request)}

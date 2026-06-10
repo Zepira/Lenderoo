@@ -4,9 +4,9 @@
  * Handles creating, querying, and updating borrow requests between users.
  */
 
-import { supabase } from './supabase';
-import { addHistoryEntry } from './database-supabase';
-import type { BorrowRequest, BorrowRequestWithDetails, BorrowRequestRow } from './types';
+import { supabase } from '../supabase';
+import { addHistoryEntry } from './database';
+import type { BorrowRequest, BorrowRequestWithDetails, BorrowRequestRow } from '../types';
 
 // ============================================================================
 // Helper Functions
@@ -273,7 +273,6 @@ export async function getIncomingRequestCount(): Promise<number> {
     .eq('status', 'pending');
 
   if (error) {
-    console.error('Failed to fetch request count:', error);
     return 0;
   }
 
@@ -309,7 +308,6 @@ export async function approveBorrowRequest(
     .single();
 
   if (requestError) {
-    console.error('Failed to fetch request:', requestError);
     throw new Error(`Failed to fetch request: ${requestError.message}`);
   }
 

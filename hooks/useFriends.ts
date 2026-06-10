@@ -10,7 +10,7 @@ import {
   getItemsBorrowedByFriend,
   type FriendUser,
   type UserPublicProfile,
-} from 'lib/friends-service'
+} from '@/lib/services/friends'
 import { queryKeys } from 'lib/query-client'
 
 function convertFriendUserToFriend(friendUser: FriendUser): Friend {

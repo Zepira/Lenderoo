@@ -4,7 +4,7 @@
  * Handles user-to-user friend connections, friend codes, and friend search
  */
 
-import { supabase } from "./supabase";
+import { supabase } from "../supabase";
 
 export interface FriendUser {
   id: string;
@@ -416,11 +416,6 @@ export async function getFriendItemCounts(friendUserId: string): Promise<{
     .select("id")
     .eq("user_id", friendUserId);
 
-  if (ownedError) {
-    console.error("Error counting owned items:", ownedError);
-    console.error("Friend user ID:", friendUserId);
-  }
-
   // Count items they're currently borrowing from you
   const { data: borrowedData, error: borrowedError } = await supabase
     .from("items")
@@ -429,16 +424,8 @@ export async function getFriendItemCounts(friendUserId: string): Promise<{
     .eq("borrowed_by", friendUserId) // Borrowed by this friend
     .is("returned_date", null); // Not yet returned
 
-  if (borrowedError) {
-    console.error("Error counting borrowed items:", borrowedError);
-    console.error("My user ID:", user.id);
-    console.error("Friend user ID:", friendUserId);
-  }
-
   const ownedCount = ownedData?.length || 0;
   const borrowedCount = borrowedData?.length || 0;
-
-  console.log(`Friend ${friendUserId}: ${ownedCount} owned, ${borrowedCount} borrowed`);
 
   return {
     ownedCount,
@@ -481,8 +468,6 @@ export async function getPendingFriendRequests(): Promise<FriendRequest[]> {
 
   if (!user) throw new Error("Not authenticated");
 
-  console.log("🔍 Fetching friend requests for user:", user.id);
-
   // First get the friend connections
   const { data: connections, error: connectionsError } = await supabase
     .from("friend_connections")
@@ -492,11 +477,8 @@ export async function getPendingFriendRequests(): Promise<FriendRequest[]> {
     .order("created_at", { ascending: false });
 
   if (connectionsError) {
-    console.error("❌ Error fetching connections:", connectionsError);
     throw connectionsError;
   }
-
-  console.log("📦 Found connections:", connections);
 
   if (!connections || connections.length === 0) {
     return [];
@@ -510,11 +492,8 @@ export async function getPendingFriendRequests(): Promise<FriendRequest[]> {
     .in("id", requesterIds);
 
   if (usersError) {
-    console.error("❌ Error fetching user details:", usersError);
     throw usersError;
   }
-
-  console.log("👥 Found requesters:", requesters);
 
   // Map connections with user details
   const requestsWithUsers = connections.map((conn) => {
@@ -531,8 +510,6 @@ export async function getPendingFriendRequests(): Promise<FriendRequest[]> {
       userFriendCode: requester?.friend_code || "",
     };
   });
-
-  console.log("✅ Mapped friend requests:", requestsWithUsers);
 
   return requestsWithUsers;
 }

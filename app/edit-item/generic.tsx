@@ -390,18 +390,16 @@ export default function EditGenericItemScreen() {
           variant="outline"
           onPress={handleCancel}
           disabled={loading}
-          style={{ flex: 1 } as any}
+          className="flex-1"
         >
           <Text>Cancel</Text>
         </Button>
         <Button
           onPress={handleSubmit}
           disabled={loading || !name.trim()}
-          style={{ flex: 1 } as any}
+          className="flex-1"
         >
-          <Text className="text-white font-bold">
-            {loading ? "Updating…" : `Update ${categoryLabel}`}
-          </Text>
+          <Text>{loading ? "Updating…" : `Update ${categoryLabel}`}</Text>
         </Button>
       </View>
     </View>

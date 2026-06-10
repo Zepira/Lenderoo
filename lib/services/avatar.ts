@@ -1,17 +1,17 @@
-import { supabase } from './supabase';
+import { supabase } from '../supabase';
 
 // ── Preset avatars ────────────────────────────────────────────────────────────
 
 export const PRESET_AVATARS = [
-  { id: 'cat',        name: 'Cat',              source: require('../assets/images/avatars/cat avatar.png') },
-  { id: 'cockatoo',   name: 'Cockatoo',         source: require('../assets/images/avatars/cockatoo avatar.png') },
-  { id: 'devil',      name: 'Tasmanian Devil',  source: require('../assets/images/avatars/devil avatar.png') },
-  { id: 'echidna',    name: 'Echidna',          source: require('../assets/images/avatars/echidna avatar.png') },
-  { id: 'galah',      name: 'Galah',            source: require('../assets/images/avatars/Gallah avatar.png') },
-  { id: 'kangaroo',   name: 'Kangaroo',         source: require('../assets/images/avatars/kanagroo avatar.png') },
-  { id: 'koala',      name: 'Koala',            source: require('../assets/images/avatars/koala avatar.png') },
-  { id: 'kookaburra', name: 'Kookaburra',       source: require('../assets/images/avatars/kookaburra avatar.png') },
-  { id: 'platypus',   name: 'Platypus',         source: require('../assets/images/avatars/platypus avatar.png') },
+  { id: 'cat',        name: 'Cat',              source: require('../../assets/images/avatars/cat avatar.png') },
+  { id: 'cockatoo',   name: 'Cockatoo',         source: require('../../assets/images/avatars/cockatoo avatar.png') },
+  { id: 'devil',      name: 'Tasmanian Devil',  source: require('../../assets/images/avatars/devil avatar.png') },
+  { id: 'echidna',    name: 'Echidna',          source: require('../../assets/images/avatars/echidna avatar.png') },
+  { id: 'galah',      name: 'Galah',            source: require('../../assets/images/avatars/Gallah avatar.png') },
+  { id: 'kangaroo',   name: 'Kangaroo',         source: require('../../assets/images/avatars/kanagroo avatar.png') },
+  { id: 'koala',      name: 'Koala',            source: require('../../assets/images/avatars/koala avatar.png') },
+  { id: 'kookaburra', name: 'Kookaburra',       source: require('../../assets/images/avatars/kookaburra avatar.png') },
+  { id: 'platypus',   name: 'Platypus',         source: require('../../assets/images/avatars/platypus avatar.png') },
 ] as const;
 
 export type PresetAvatar = (typeof PRESET_AVATARS)[number];

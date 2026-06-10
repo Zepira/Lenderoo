@@ -168,7 +168,7 @@ export default function AddBookScreen() {
           imageUrl = trimmedCoverUrl;
         } else if (!isExternal) {
           try {
-            const { uploadItemImage } = await import("@/lib/storage-service");
+            const { uploadItemImage } = await import("@/lib/services/storage");
             imageUrl = await uploadItemImage(trimmedCoverUrl, user.id);
           } catch {
             // Continue without image
@@ -549,7 +549,7 @@ export default function AddBookScreen() {
         <Button
           onPress={handleSubmit}
           disabled={isLoading || !title.trim()}
-          style={{ borderRadius: 24 } as any}
+          className="rounded-full"
         >
           {isLoading && <ActivityIndicator size="small" color="#fff" />}
           <Text className="text-white font-bold">

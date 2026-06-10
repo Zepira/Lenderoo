@@ -43,9 +43,6 @@ function getHardcoverEndpoint(): string {
     // Use Supabase Edge Function proxy for web to avoid CORS
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) {
-      console.warn(
-        "⚠️ SUPABASE_URL not configured, falling back to direct API (may have CORS issues)"
-      );
       return "https://api.hardcover.app/v1/graphql";
     }
     return `${supabaseUrl}/functions/v1/hardcover-proxy`;
@@ -68,14 +65,6 @@ export async function queryHardcover({
   const endpoint = getHardcoverEndpoint();
 
   try {
-    console.log("🔍 Making Hardcover API request:", {
-      endpoint,
-      platform: Platform.OS,
-      isWeb,
-      hasToken: !!token,
-      variables,
-    });
-
     // Prepare headers
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -85,7 +74,6 @@ export async function queryHardcover({
     if (isWeb) {
       const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
       if (!supabaseAnonKey) {
-        console.error("❌ EXPO_PUBLIC_SUPABASE_ANON_KEY not configured");
         throw new Error("Supabase anon key not configured");
       }
       headers["apikey"] = supabaseAnonKey;
@@ -94,7 +82,6 @@ export async function queryHardcover({
     // For native, add Hardcover token directly
     else {
       if (!token) {
-        console.error("❌ EXPO_PUBLIC_HARDCOVER_API_TOKEN not configured");
         throw new Error("Hardcover API token not configured");
       }
       headers["Authorization"] = `Bearer ${token}`;
@@ -109,20 +96,14 @@ export async function queryHardcover({
       }),
     });
 
-    console.log("📡 Response status:", response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ API error response:", errorText);
       throw new Error(`Hardcover API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    console.log("✅ API response received");
-    console.log("📊 Full response data:", JSON.stringify(data, null, 2));
 
     if (data.errors) {
-      console.error("❌ GraphQL errors:", data.errors);
       throw new Error(
         `GraphQL errors: ${data.errors.map((e: any) => e.message).join(", ")}`
       );
@@ -130,21 +111,6 @@ export async function queryHardcover({
 
     return data.data;
   } catch (error) {
-    console.error("❌ Hardcover API error:", error);
-    // Check if it's a network/CORS error
-    if (
-      error instanceof TypeError &&
-      (error.message.includes("Network request failed") ||
-        error.message.includes("Failed to fetch"))
-    ) {
-      if (isWeb) {
-        console.error(
-          "🌐 CORS/Network error on web. Make sure Supabase Edge Function is deployed."
-        );
-      } else {
-        console.error("🌐 Network error. Check your internet connection.");
-      }
-    }
     throw error;
   }
 }
@@ -169,16 +135,12 @@ export async function searchBooks(searchQuery: string, token?: string) {
   const results = data.search?.results;
   if (!results) return [];
 
-  console.log("📦 Raw results:", results);
-
   // Hardcover API structure: results.hits contains the actual array of books
   if (results.hits && Array.isArray(results.hits)) {
-    console.log("✅ Found", results.hits.length, "books in results.hits");
     return results.hits;
   }
 
   // Fallback: if hits is not found, return empty array
-  console.warn("⚠️ No hits array found in results");
   return [];
 }
 
@@ -205,14 +167,8 @@ export async function getSeriesDetails(seriesName: string, token?: string) {
       variables: { name: seriesName },
     });
 
-    console.log("📚 Series details fetched:", data.series?.name);
     return data.series;
   } catch (error) {
-    console.error(
-      "❌ Failed to fetch series details for name:",
-      seriesName,
-      error
-    );
     return null;
   }
 }
@@ -229,7 +185,6 @@ export async function findBookPositionInSeries(
     const series = await getSeriesDetails(seriesName, token);
 
     if (!series || !series.books) {
-      console.warn("⚠️ No series data or books found");
       return null;
     }
 
@@ -237,7 +192,6 @@ export async function findBookPositionInSeries(
     const bookInSeries = series.books.find((book: any) => book.id === bookId);
 
     if (bookInSeries && bookInSeries.position) {
-      console.log(`✅ Found book position in series: ${bookInSeries.position}`);
       return bookInSeries.position;
     }
 
@@ -245,14 +199,11 @@ export async function findBookPositionInSeries(
     const bookIndex = series.books.findIndex((book: any) => book.id === bookId);
     if (bookIndex !== -1) {
       const position = bookIndex + 1;
-      console.log(`✅ Found book at index ${bookIndex}, position: ${position}`);
       return position;
     }
 
-    console.warn("⚠️ Book not found in series");
     return null;
   } catch (error) {
-    console.error("❌ Failed to find book position in series:", error);
     return null;
   }
 }

@@ -14,7 +14,7 @@ import {
   approveFriendRequest,
   denyFriendRequest,
   type FriendRequest,
-} from "@/lib/friends-service";
+} from "@/lib/services/friends";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 

@@ -39,7 +39,7 @@ import {
 } from "@/components/settings/SettingsItem";
 import * as toast from "@/lib/toast";
 import { AvatarPickerModal } from "@/components/AvatarPickerModal";
-import { resolveAvatarSource, uploadAvatarImage } from "@/lib/avatar-service";
+import { resolveAvatarSource, uploadAvatarImage } from "@/lib/services/avatar";
 
 const confirmAsync = (title: string, message: string): Promise<boolean> => {
   if (Platform.OS === "web") {

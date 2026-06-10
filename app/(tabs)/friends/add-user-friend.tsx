@@ -35,7 +35,7 @@ import {
   addFriendByUserId,
   regenerateFriendCode,
   type FriendUser,
-} from "@/lib/friends-service";
+} from "@/lib/services/friends";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import * as Clipboard from "expo-clipboard";
 import { FloatingBackButton } from "@/components/FloatingBackButton";

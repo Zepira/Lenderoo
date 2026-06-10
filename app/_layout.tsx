@@ -2,6 +2,11 @@ import "../global.css";
 
 import * as React from "react";
 import { View, LogBox } from "react-native";
+import {
+  configureNotifications,
+  registerPushToken,
+  addNotificationTapListener,
+} from "@/lib/notifications";
 
 // Suppress the SafeAreaView deprecation warning produced by expo-router's
 // internal components (DefaultNavigator, ErrorBoundary).  Our own code
@@ -50,6 +55,20 @@ function RootLayoutContent() {
     }),
     [isDark],
   );
+
+  // Configure foreground notification display once (no-op in Expo Go)
+  React.useEffect(() => {
+    configureNotifications();
+  }, []);
+
+  // Register push token when user logs in (no-op in Expo Go)
+  React.useEffect(() => {
+    if (!user) return;
+    registerPushToken(user.id).catch(() => {});
+  }, [user?.id]);
+
+  // Handle notification taps (app opened from background/killed via notification)
+  React.useEffect(() => addNotificationTapListener(), []);
 
   // Hide the native splash once auth and theme are ready, then navigate.
   React.useEffect(() => {

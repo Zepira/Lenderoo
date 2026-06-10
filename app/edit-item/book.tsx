@@ -495,19 +495,17 @@ export default function EditBookScreen() {
           variant="outline"
           onPress={handleCancel}
           disabled={saving}
-          style={{ flex: 1 } as any}
+          className="flex-1"
         >
           <Text>Cancel</Text>
         </Button>
         <Button
           onPress={handleSubmit}
           disabled={saving || !title.trim()}
-          style={{ flex: 1 } as any}
+          className="flex-1"
         >
           {saving && <ActivityIndicator size="small" color="#fff" />}
-          <Text className="text-white font-bold">
-            {saving ? "Updating…" : "Update Book"}
-          </Text>
+          <Text>{saving ? "Updating…" : "Update Book"}</Text>
         </Button>
       </View>
     </View>

@@ -25,8 +25,8 @@ import {
 } from "lucide-react-native";
 import { ItemCard } from "@/components/ItemCard";
 import { Text } from "@/components/ui/text";
-import { resolveAvatarSource } from "@/lib/avatar-service";
-import { getInitials } from "lib/utils";
+import { resolveAvatarSource } from "@/lib/services/avatar";
+import { getInitials, calculateItemStatus } from "lib/utils";
 import type { Item } from "lib/types";
 import {
   getFriendUserById,
@@ -34,12 +34,12 @@ import {
   getItemsOwnedByFriend,
   removeFriend,
   type FriendUser,
-} from "@/lib/friends-service";
+} from "@/lib/services/friends";
 import {
   createBorrowRequest,
   getBorrowRequestsForItem,
   getMyBorrowRequestForItem,
-} from "@/lib/borrow-requests-service";
+} from "@/lib/services/borrow-requests";
 import { useMarkItemReturned } from "hooks/useItems";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -268,7 +268,7 @@ export default function FriendDetailScreen() {
     try {
       setRequestingItemId(item.id);
       const { cancelBorrowRequest } =
-        await import("@/lib/borrow-requests-service");
+        await import("@/lib/services/borrow-requests");
       await cancelBorrowRequest(request.id);
       toast.success("Request cancelled");
       setBorrowRequests((prev) => {
@@ -438,32 +438,42 @@ export default function FriendDetailScreen() {
               </View>
 
               {/* Stats row */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "center",
-                  gap: 32,
-                }}
-              >
-                <View style={{ alignItems: "center" }}>
-                  <StatDisplay>{ownedItems.length}</StatDisplay>
-                  <TinyLabel>Items</TinyLabel>
-                </View>
-                <View style={{ width: 1, backgroundColor: theme.border }} />
-                <View style={{ alignItems: "center" }}>
-                  <StatDisplay className="text-secondary">
-                    {activeItems.length}
-                  </StatDisplay>
-                  <TinyLabel>Borrowed</TinyLabel>
-                </View>
-                <View style={{ width: 1, backgroundColor: theme.border }} />
-                <View style={{ alignItems: "center" }}>
-                  <StatDisplay className="text-muted-foreground">
-                    {returnedItems.length}
-                  </StatDisplay>
-                  <TinyLabel>Returned</TinyLabel>
-                </View>
-              </View>
+              {(() => {
+                const availableCount = ownedItems.filter(
+                  (i) => calculateItemStatus(i) === "available",
+                ).length;
+                const borrowedCount = ownedItems.length - availableCount;
+                return (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      gap: 32,
+                    }}
+                  >
+                    <View style={{ alignItems: "center" }}>
+                      <StatDisplay className="text-secondary">
+                        {ownedItems.length}
+                      </StatDisplay>
+                      <TinyLabel>Items</TinyLabel>
+                    </View>
+                    <View style={{ width: 1, backgroundColor: theme.border }} />
+                    <View style={{ alignItems: "center" }}>
+                      <StatDisplay className="text-primary">
+                        {availableCount}
+                      </StatDisplay>
+                      <TinyLabel>Available</TinyLabel>
+                    </View>
+                    <View style={{ width: 1, backgroundColor: theme.border }} />
+                    <View style={{ alignItems: "center" }}>
+                      <StatDisplay className="text-muted-foreground">
+                        {borrowedCount}
+                      </StatDisplay>
+                      <TinyLabel>Borrowed</TinyLabel>
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
           </SafeAreaView>
         </View>

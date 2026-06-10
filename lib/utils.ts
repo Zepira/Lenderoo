@@ -1,7 +1,9 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Item, Friend, ItemStatus, ItemWithDetails } from "./types";
+import type { BorrowRequest } from "./types";
 import { DUE_SOON_THRESHOLD_DAYS } from "./constants";
+import { THEME } from "./theme";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -241,7 +243,7 @@ export function pluralize(word: string, count: number, suffix = "s"): string {
 export function formatCount(
   count: number,
   singular: string,
-  plural?: string
+  plural?: string,
 ): string {
   const word = count === 1 ? singular : plural || singular + "s";
   return `${count} ${word}`;
@@ -269,7 +271,7 @@ export function searchItems(items: Item[], query: string): Item[] {
     (item) =>
       item.name.toLowerCase().includes(lowerQuery) ||
       item.description?.toLowerCase().includes(lowerQuery) ||
-      item.category.toLowerCase().includes(lowerQuery)
+      item.category.toLowerCase().includes(lowerQuery),
   );
 }
 
@@ -284,7 +286,7 @@ export function searchFriends(friends: Friend[], query: string): Friend[] {
     (friend) =>
       friend.name.toLowerCase().includes(lowerQuery) ||
       friend.email?.toLowerCase().includes(lowerQuery) ||
-      friend.phone?.toLowerCase().includes(lowerQuery)
+      friend.phone?.toLowerCase().includes(lowerQuery),
   );
 }
 
@@ -337,16 +339,19 @@ export function unique<T>(array: T[]): T[] {
  */
 export function groupBy<T, K extends string | number>(
   array: T[],
-  keyFn: (item: T) => K
+  keyFn: (item: T) => K,
 ): Record<K, T[]> {
-  return array.reduce((acc, item) => {
-    const key = keyFn(item);
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(item);
-    return acc;
-  }, {} as Record<K, T[]>);
+  return array.reduce(
+    (acc, item) => {
+      const key = keyFn(item);
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(item);
+      return acc;
+    },
+    {} as Record<K, T[]>,
+  );
 }
 
 /**
@@ -355,7 +360,7 @@ export function groupBy<T, K extends string | number>(
 export function sortBy<T>(
   array: T[],
   keyFn: (item: T) => string | number | Date,
-  order: "asc" | "desc" = "asc"
+  order: "asc" | "desc" = "asc",
 ): T[] {
   return [...array].sort((a, b) => {
     const aVal = keyFn(a);
@@ -451,8 +456,8 @@ export function shallowEqual(obj1: unknown, obj2: unknown): boolean {
 export function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return Object.fromEntries(
     Object.entries(obj).filter(
-      ([, value]) => value !== undefined && value !== null
-    )
+      ([, value]) => value !== undefined && value !== null,
+    ),
   ) as Partial<T>;
 }
 
@@ -465,7 +470,7 @@ export function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
  */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   fn: T,
-  delay: number
+  delay: number,
 ): (...args: Parameters<T>) => void {
   let timeoutId: ReturnType<typeof setTimeout>;
 
@@ -510,4 +515,25 @@ export function isWeb(): boolean {
  */
 export function isMobile(): boolean {
   return !isWeb();
+}
+
+export function getItemStatusDisplay(
+  itemStatus: ItemStatus,
+  isBorrowedByMe: boolean,
+  request?: Pick<BorrowRequest, "status">,
+): { label: string; color: string } {
+  const isUnavailable = itemStatus === "borrowed" || itemStatus === "overdue";
+  if (isUnavailable && isBorrowedByMe) {
+    return { label: "Borrowed by you", color: THEME.light.secondary };
+  }
+  if (request?.status === "approved") {
+    return { label: "Borrowing Next", color: THEME.light.mutedForeground };
+  }
+  if (request?.status === "pending") {
+    return { label: "Requested", color: THEME.light.secondary };
+  }
+  if (isUnavailable) {
+    return { label: "Borrowed", color: THEME.light.mutedForeground };
+  }
+  return { label: "Available", color: THEME.light.primary };
 }

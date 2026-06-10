@@ -4,8 +4,8 @@
  * Handles all CRUD operations for items, friends, and history using Supabase
  */
 
-import { supabase } from "./supabase";
-import { deleteItemImages } from "./storage-service";
+import { supabase } from "../supabase";
+import { deleteItemImages } from "./storage";
 import type {
   Item,
   Friend,
@@ -13,7 +13,7 @@ import type {
   BorrowHistoryWithUser,
   ItemFilters,
   FriendFilters,
-} from "./types";
+} from "../types";
 
 // ============================================================================
 // Type Conversion Helpers
@@ -146,8 +146,7 @@ export async function createItem(
   // Update friend's borrow count if item is being lent (non-blocking)
   if (itemData.borrowedBy) {
     // Don't await - let it update in the background
-    incrementFriendBorrowCount(itemData.borrowedBy).catch((err) => {
-      console.error('Failed to update friend borrow count:', err);
+    incrementFriendBorrowCount(itemData.borrowedBy).catch(() => {
       // Non-critical error - don't fail the item creation
     });
   }
@@ -243,7 +242,6 @@ export async function deleteItem(id: string): Promise<boolean> {
       try {
         await deleteItemImages(supabaseImages);
       } catch (error) {
-        console.error('Failed to delete item images:', error);
         // Continue with deletion even if image cleanup fails
       }
     }

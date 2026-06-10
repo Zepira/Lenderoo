@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
-import { resolveAvatarSource } from "@/lib/avatar-service";
+import { resolveAvatarSource } from "@/lib/services/avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 interface InfoPanelProps {
