@@ -18,7 +18,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ArrowLeft,
   Trash2,
-  Clock,
   History,
   Package,
   CheckCircle2,
@@ -37,9 +36,9 @@ import {
 } from "@/lib/services/friends";
 import {
   createBorrowRequest,
-  getBorrowRequestsForItem,
   getMyBorrowRequestForItem,
 } from "@/lib/services/borrow-requests";
+import { getHistoryByFriend } from "@/lib/services/database";
 import { useMarkItemReturned } from "hooks/useItems";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -104,6 +103,8 @@ export default function FriendDetailScreen() {
   const [ownedItemsLoading, setOwnedItemsLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [requestingItemId, setRequestingItemId] = useState<string | null>(null);
+  const [historyItems, setHistoryItems] = useState<Item[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Load friend
   useEffect(() => {
@@ -201,16 +202,53 @@ export default function FriendDetailScreen() {
     };
   }, [id, loadOwnedItems]);
 
-  // Refresh owned items whenever this screen comes back into focus
-  // (e.g. after returning an item from the item detail screen)
+  // Load borrow history for this friend (items I own that they have previously returned)
+  const loadHistory = useCallback(async () => {
+    if (!id) return;
+    try {
+      setHistoryLoading(true);
+      const history = await getHistoryByFriend(id);
+      const itemIds = [...new Set(history.map((h) => h.itemId))];
+      if (itemIds.length === 0) {
+        setHistoryItems([]);
+        return;
+      }
+      const { data } = await supabase
+        .from("items")
+        .select("*")
+        .in("id", itemIds);
+      setHistoryItems((data || []).map(convertItemFromDb));
+    } catch {
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadHistory();
+    if (!id) return;
+    const hch = supabase
+      .channel(`friend-${id}-history`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "borrow_history" },
+        loadHistory,
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(hch);
+    };
+  }, [id, loadHistory]);
+
+  // Refresh whenever this screen comes back into focus
   useFocusEffect(
     useCallback(() => {
       loadOwnedItems();
-    }, [loadOwnedItems]),
+      loadHistory();
+    }, [loadOwnedItems, loadHistory]),
   );
 
   const activeItems = items.filter((i) => !i.returnedDate);
-  const returnedItems = items.filter((i) => i.returnedDate);
 
   const handleDelete = async () => {
     if (!friend) return;
@@ -318,7 +356,7 @@ export default function FriendDetailScreen() {
   const TABS: { key: Tab; label: string; count: number }[] = [
     { key: "library", label: "Library", count: ownedItems.length },
     { key: "borrowing", label: "Borrowed", count: activeItems.length },
-    { key: "history", label: "History", count: returnedItems.length },
+    { key: "history", label: "History", count: historyItems.length },
   ];
 
   return (
@@ -543,39 +581,56 @@ export default function FriendDetailScreen() {
                   message={`${firstName} hasn't added any items yet`}
                 />
               ) : (
-                <View
-                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}
-                >
-                  {ownedItems.map((item) => {
-                    const borrowedByMe =
-                      !!user &&
-                      item.borrowedBy === user.id &&
-                      !!item.borrowedDate &&
-                      !item.returnedDate;
-                    return (
-                      <ItemCard
-                        key={item.id}
-                        item={item}
-                        request={borrowRequests.get(item.id)}
-                        isRequesting={requestingItemId === item.id}
-                        isBorrowedByMe={borrowedByMe}
-                        onPress={() => router.push(`/item/${item.id}` as any)}
-                        onBorrow={
-                          borrowedByMe
-                            ? undefined
-                            : () => handleRequestBorrow(item)
-                        }
-                        onCancel={
-                          borrowedByMe
-                            ? undefined
-                            : () => handleCancelRequest(item)
-                        }
-                        onReturn={
-                          borrowedByMe ? () => handleReturn(item) : undefined
-                        }
-                      />
-                    );
-                  })}
+                <View>
+                  <View
+                    style={{
+                      backgroundColor: theme.card,
+                      borderRadius: 12,
+                      padding: 10,
+                      alignItems: "center",
+                      gap: 12,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      marginBottom: 10,
+                      marginTop: -10,
+                    }}
+                  >
+                    <Caption className="text-center">{`Browse ${firstName}'s library`}</Caption>
+                  </View>
+                  <View
+                    style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}
+                  >
+                    {ownedItems.map((item) => {
+                      const borrowedByMe =
+                        !!user &&
+                        item.borrowedBy === user.id &&
+                        !!item.borrowedDate &&
+                        !item.returnedDate;
+                      return (
+                        <ItemCard
+                          key={item.id}
+                          item={item}
+                          request={borrowRequests.get(item.id)}
+                          isRequesting={requestingItemId === item.id}
+                          isBorrowedByMe={borrowedByMe}
+                          onPress={() => router.push(`/item/${item.id}` as any)}
+                          onBorrow={
+                            borrowedByMe
+                              ? undefined
+                              : () => handleRequestBorrow(item)
+                          }
+                          onCancel={
+                            borrowedByMe
+                              ? undefined
+                              : () => handleCancelRequest(item)
+                          }
+                          onReturn={
+                            borrowedByMe ? () => handleReturn(item) : undefined
+                          }
+                        />
+                      );
+                    })}
+                  </View>
                 </View>
               )}
             </View>
@@ -583,132 +638,86 @@ export default function FriendDetailScreen() {
 
           {/* ── Borrowing tab ── */}
           {activeTab === "borrowing" && (
-            <View style={{ gap: 12 }}>
+            <View>
               {activeItems.length === 0 ? (
                 <EmptyState
                   icon={<CheckCircle2 size={40} color={THEME.light.primary} />}
                   message={`${firstName} doesn't have any of your items right now`}
                 />
               ) : (
-                activeItems.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => router.push(`/item/${item.id}` as any)}
-                    style={({ pressed }) => ({
+                <View>
+                  <View
+                    style={{
                       backgroundColor: theme.card,
-                      borderRadius: 24,
-                      padding: 16,
-                      flexDirection: "row",
+                      borderRadius: 12,
+                      padding: 10,
                       alignItems: "center",
-                      justifyContent: "space-between",
+                      gap: 12,
                       borderWidth: 1,
                       borderColor: theme.border,
-                      opacity: pressed ? 0.7 : 1,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.04,
-                      shadowRadius: 4,
-                      elevation: 2,
-                    })}
+                      marginBottom: 10,
+                      marginTop: -10,
+                    }}
                   >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 14,
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 44,
-                          height: 44,
-                          borderRadius: 14,
-                          backgroundColor: THEME.light.secondary + "18",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Clock size={20} color={THEME.light.secondary} />
-                      </View>
-                      <View>
-                        <BodyStrong numberOfLines={1}>{item.name}</BodyStrong>
-                        <Caption style={{ marginTop: 2 }}>
-                          {item.dueDate
-                            ? `Due ${item.dueDate.toLocaleDateString("en-AU", { day: "numeric", month: "short" })}`
-                            : "No due date set"}
-                        </Caption>
-                      </View>
-                    </View>
-                    <TinyLabel
-                      className="normal-case tracking-normal"
-                      style={{ color: THEME.light.secondary }}
-                    >
-                      Active
-                    </TinyLabel>
-                  </Pressable>
-                ))
+                    <Caption className="text-center">{`See what ${firstName} has borrowed`}</Caption>
+                  </View>
+                  <View
+                    style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}
+                  >
+                    {activeItems.map((item) => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        onPress={() => router.push(`/item/${item.id}` as any)}
+                      />
+                    ))}
+                  </View>
+                </View>
               )}
             </View>
           )}
 
           {/* ── History tab ── */}
           {activeTab === "history" && (
-            <View style={{ gap: 12 }}>
-              {returnedItems.length === 0 ? (
+            <View>
+              {historyLoading ? (
+                <View style={{ paddingVertical: 40, alignItems: "center" }}>
+                  <ActivityIndicator color={THEME.light.primary} />
+                </View>
+              ) : historyItems.length === 0 ? (
                 <EmptyState
                   icon={<History size={40} color={theme.mutedForeground} />}
-                  message="No borrowing history yet"
+                  message={`${firstName} hasn't borrowed any of your items yet`}
                 />
               ) : (
-                returnedItems.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => router.push(`/item/${item.id}` as any)}
-                    style={({ pressed }) => ({
-                      backgroundColor: theme.card,
-                      borderRadius: 24,
-                      padding: 16,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      borderWidth: 1,
-                      borderColor: theme.border,
-                      opacity: pressed ? 0.6 : 0.75,
-                    })}
-                  >
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}
+                >
+                  <View>
                     <View
                       style={{
-                        flexDirection: "row",
+                        backgroundColor: theme.card,
+                        borderRadius: 12,
+                        padding: 10,
                         alignItems: "center",
-                        gap: 14,
+                        gap: 12,
+                        borderWidth: 1,
+                        borderColor: theme.border,
+                        marginBottom: 10,
+                        marginTop: -10,
                       }}
                     >
-                      <View
-                        style={{
-                          width: 44,
-                          height: 44,
-                          borderRadius: 14,
-                          backgroundColor: isDark ? theme.muted : "#F3F4F6",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <History size={20} color={theme.mutedForeground} />
-                      </View>
-                      <View>
-                        <BodyStrong numberOfLines={1}>{item.name}</BodyStrong>
-                        <Caption style={{ marginTop: 2 }}>
-                          {item.returnedDate
-                            ? `Returned ${item.returnedDate.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`
-                            : "Returned"}
-                        </Caption>
-                      </View>
+                      <Caption className="text-center">{`See ${firstName}'s borrowing history`}</Caption>
                     </View>
-                    <TinyLabel className="normal-case tracking-normal">
-                      Done
-                    </TinyLabel>
-                  </Pressable>
-                ))
+                    {historyItems.map((item) => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        onPress={() => router.push(`/item/${item.id}` as any)}
+                      />
+                    ))}
+                  </View>
+                </View>
               )}
             </View>
           )}
