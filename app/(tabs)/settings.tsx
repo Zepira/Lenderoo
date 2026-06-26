@@ -7,6 +7,7 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -22,6 +23,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Trash2,
 } from "lucide-react-native";
 import { Text } from "@/components/ui/text";
 import {
@@ -351,6 +353,15 @@ export default function SettingsScreen() {
               label="Help Center"
               badge={{ text: "Coming Soon", color: THEME.light.primary }}
               onPress={() => {}}
+            />
+            <SettingsItem
+              icon={<Trash2 size={20} color={THEME.light.destructive} />}
+              label="Delete Account"
+              onPress={() =>
+                Linking.openURL(
+                  "mailto:support@lenderoo.app?subject=Account%20Deletion%20Request&body=Please%20delete%20my%20account%20and%20all%20associated%20data.",
+                )
+              }
             />
             <SettingsItem
               icon={<LogOut size={20} color={THEME.light.destructive} />}
