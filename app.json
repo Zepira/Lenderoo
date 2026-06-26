@@ -12,12 +12,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.lenderoo.lenderoo",
+      "bundleIdentifier": "com.zepira.lenderoo",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -31,7 +29,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.lenderoo.lenderoo",
+      "package": "com.zepira.lenderoo",
       "intentFilters": [
         {
           "action": "VIEW",
@@ -42,10 +40,7 @@
               "host": "mobile.lenderoo.app"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         },
         {
           "action": "VIEW",
@@ -56,10 +51,7 @@
               "host": "mobile.lenderoo.app"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },
