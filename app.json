@@ -20,7 +20,6 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "associatedDomains": [
-        "applinks:mobile.lenderoo.app",
         "applinks:mobile.lenderoo.app"
       ]
     },
@@ -31,17 +30,6 @@
       },
       "package": "com.zepira.lenderoo",
       "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "mobile.lenderoo.app"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        },
         {
           "action": "VIEW",
           "autoVerify": true,
