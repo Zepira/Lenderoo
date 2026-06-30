@@ -5,6 +5,7 @@
  */
 
 import { supabase } from "../supabase";
+import type { Item } from "../types";
 
 export interface FriendUser {
   id: string;
@@ -431,6 +432,52 @@ export async function getFriendItemCounts(friendUserId: string): Promise<{
     ownedCount,
     borrowedCount,
   };
+}
+
+/**
+ * Get all items owned by all of the current user's friends in one query.
+ */
+export async function getAllFriendsItems(): Promise<Item[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: friendRows, error: friendError } = await supabase
+    .from("user_friends")
+    .select("friend_user_id")
+    .eq("user_id", user.id);
+
+  if (friendError) throw friendError;
+  if (!friendRows?.length) return [];
+
+  const friendIds = friendRows.map((f) => f.friend_user_id);
+
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .in("user_id", friendIds)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    name: row.name,
+    description: row.description,
+    category: row.category,
+    images: row.images,
+    borrowedBy: row.borrowed_by,
+    borrowedDate: row.borrowed_date ? new Date(row.borrowed_date) : undefined,
+    dueDate: row.due_date ? new Date(row.due_date) : undefined,
+    returnedDate: row.returned_date ? new Date(row.returned_date) : undefined,
+    notes: row.notes,
+    metadata: row.metadata,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  }));
 }
 
 /**
