@@ -1,45 +1,134 @@
-name: EAS Update (OTA)
+name: Deploy
 
 on:
   push:
     branches:
-      - master
+      - production
   workflow_dispatch:
     inputs:
-      channel:
-        description: 'Update channel'
-        required: true
-        default: 'preview'
-        type: choice
-        options:
-          - preview
-          - production
+      force_native:
+        description: 'Force full EAS build instead of OTA'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
-  update:
+  # ── Detect whether any native-layer files changed ──────────────────────────
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      native_changed: ${{ steps.check.outputs.native_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect native changes
+        id: check
+        run: |
+          # Manual override via workflow_dispatch
+          if [[ "${{ github.event.inputs.force_native }}" == "true" ]]; then
+            echo "native_changed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # On first commit HEAD~1 won't exist — treat as native to be safe
+          if ! git rev-parse HEAD~1 > /dev/null 2>&1; then
+            echo "No previous commit — treating as native build"
+            echo "native_changed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          NATIVE=false
+          while IFS= read -r file; do
+            case "$file" in
+              # Dependency / config files that can pull in native modules
+              package.json|yarn.lock|eas.json|app.json|app.config.js| \
+              babel.config.js|metro.config.js)
+                NATIVE=true
+                break
+                ;;
+              # Native platform directories
+              android/*|ios/*)
+                NATIVE=true
+                break
+                ;;
+            esac
+          done <<< "$CHANGED"
+
+          echo "native_changed=$NATIVE" >> $GITHUB_OUTPUT
+
+  # ── JS-only changes → OTA update (instant, no install required) ────────────
+  ota-update:
+    needs: detect
+    if: needs.detect.outputs.native_changed == 'false'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Setup Yarn
-        run: corepack enable
+      - run: corepack enable
 
-      - name: Install dependencies
-        run: yarn install --immutable
+      - name: Restore yarn cache
+        uses: actions/cache@v4
+        with:
+          path: $(yarn config get cacheFolder)
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: ${{ runner.os }}-yarn-
 
-      - name: Setup Expo and EAS
-        uses: expo/expo-github-action@v8
+      - run: yarn install --immutable
+
+      - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Publish EAS Update
+      - name: Publish OTA update
         run: |
-          CHANNEL=${{ github.event.inputs.channel || 'preview' }}
-          eas update --branch $CHANNEL --message "Update from ${{ github.sha }}" --non-interactive
+          eas update \
+            --branch production \
+            --message "OTA $(echo ${{ github.sha }} | cut -c1-7): ${{ github.event.head_commit.message }}" \
+            --non-interactive
+
+  # ── Native changes → full EAS build (queued async, no CI wait) ─────────────
+  native-build:
+    needs: detect
+    if: needs.detect.outputs.native_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: corepack enable
+
+      - name: Restore yarn cache
+        uses: actions/cache@v4
+        with:
+          path: $(yarn config get cacheFolder)
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: ${{ runner.os }}-yarn-
+
+      - run: yarn install --immutable
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Trigger EAS build (Android production)
+        run: |
+          eas build \
+            --platform android \
+            --profile production \
+            --non-interactive \
+            --no-wait

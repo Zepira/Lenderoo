@@ -8,7 +8,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHero, LabelStrong } from "@/components/ui/typography";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useActiveItems, useBorrowedByMeItems, useItems } from "hooks/useItems";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -40,6 +40,7 @@ export default function HomeScreen() {
   const loading = lentLoading || borrowedLoading;
   const error = lentError || borrowedError || allError;
 
+  const scrollRef = useRef<ScrollView>(null);
   const firstName = appUser?.name?.split(" ")[0] ?? "there";
 
   const refresh = async () => {
@@ -48,6 +49,7 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      scrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
       refresh();
     }, [refreshLent, refreshBorrowed, refreshAll]),
   );
@@ -57,6 +59,7 @@ export default function HomeScreen() {
       style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}
     >
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
