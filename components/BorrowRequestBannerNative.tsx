@@ -5,6 +5,7 @@
  */
 
 import { View, Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import * as LucideIcons from "lucide-react-native";
@@ -20,6 +21,8 @@ export function BorrowRequestBanner({
   onPress,
   onDismiss,
 }: BorrowRequestBannerProps) {
+  const insets = useSafeAreaInsets();
+
   if (count === 0) {
     return null;
   }
@@ -27,8 +30,8 @@ export function BorrowRequestBanner({
   return (
     <Pressable
       onPress={onPress}
-      className="bg-blue-50 dark:bg-blue-950 border-b border-blue-200 dark:border-blue-800 px-4 py-3 flex-row items-center gap-3"
-      style={{ opacity: 1 }}
+      className="bg-blue-50 dark:bg-blue-950 border-b border-blue-200 dark:border-blue-800 px-4 flex-row items-center gap-3"
+      style={{ paddingTop: insets.top + 10, paddingBottom: 12 }}
     >
       {/* Icon */}
       <LucideIcons.Bell size={20} color="#3b82f6" />

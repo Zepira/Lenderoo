@@ -100,7 +100,77 @@ npx @biomejs/biome check --write .   # lint + format
 
 ## Setup & Deployment
 
-See [SETUP.md](./SETUP.md) for:
-- Supabase project and database migration setup
-- Hardcover API edge function deploy (CORS fix for web)
-- GitHub Actions secrets and CI/CD
+See [SETUP.md](./SETUP.md) for Supabase and Hardcover API setup.
+
+---
+
+## Deployment
+
+### Branches
+
+| Branch | Purpose |
+|---|---|
+| `master` | Active development |
+| `production` | Triggers the deployment pipeline |
+
+Merge `master` → `production` to release.
+
+---
+
+### CI Pipelines (`.github/workflows/`)
+
+**`expo-update.yml`** — auto-triggers on push to `production`
+
+Detects what changed and picks the right deployment:
+
+| Files changed | What runs |
+|---|---|
+| JS/TS, assets, styles | OTA update via `eas update` — users get it on next cold launch |
+| `package.json`, `yarn.lock`, `app.json`, `eas.json`, `android/`, `ios/`, bundler config | Full EAS native build queued on Expo's servers |
+
+Can also be triggered manually from GitHub Actions with an option to force a native build regardless of what changed.
+
+**`expo-eas-build.yml`** — manual trigger only
+
+On-demand builds with custom platform/profile selection. Use this for one-off preview builds or to kick off a production build outside of the normal flow.
+
+---
+
+### Android Release Process
+
+#### JS-only changes (no new native packages or config)
+
+1. Merge to `production`
+2. CI publishes OTA update automatically
+3. Users receive it on next cold launch (kill app fully → reopen)
+
+#### Native changes (new packages, `app.json`, `eas.json`, `android/` edits)
+
+1. Merge to `production` — CI detects native changes and queues an EAS build automatically
+2. Or trigger manually: GitHub Actions → **EAS Build and Submit** → branch `production`, platform `android`, profile `production`
+3. Once the build finishes on Expo, submit it to the Play Store internal testing track:
+
+```bash
+eas submit --platform android --profile production --latest
+```
+
+4. Internal testers receive a Play Store notification to install
+
+> **iOS deployment** — to be documented once Apple distribution is configured.
+
+---
+
+### EAS Secrets
+
+Runtime env vars for EAS builds are stored as project secrets (not in `.env`):
+
+```bash
+eas secret:create --scope project --name VARIABLE_NAME --value value
+```
+
+Required:
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_HARDCOVER_API_TOKEN`
+
+GitHub Actions also needs `EXPO_TOKEN` set in the repo secrets.

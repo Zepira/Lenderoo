@@ -1,7 +1,7 @@
 import "../global.css";
 
 import * as React from "react";
-import { View, LogBox } from "react-native";
+import { View, LogBox, Linking } from "react-native";
 import {
   configureNotifications,
   registerPushToken,
@@ -32,6 +32,7 @@ import { Provider } from "components/Provider";
 import { useThemeContext } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { customStorage } from "../lib/async-storage-wrapper";
+import { supabase } from "@/lib/supabase";
 
 export { ErrorBoundary } from "expo-router";
 
@@ -55,6 +56,31 @@ function RootLayoutContent() {
     }),
     [isDark],
   );
+
+  // Handle password-reset deep links: lenderoo://reset-password#access_token=...&type=recovery
+  React.useEffect(() => {
+    const handleUrl = async ({ url }: { url: string }) => {
+      if (!url.includes("reset-password")) return;
+      const fragment = url.split("#")[1];
+      if (!fragment) return;
+      const params = Object.fromEntries(new URLSearchParams(fragment));
+      if (params.type === "recovery" && params.access_token) {
+        await supabase.auth.setSession({
+          access_token: params.access_token,
+          refresh_token: params.refresh_token ?? "",
+        });
+        router.replace("/reset-password");
+      }
+    };
+
+    const sub = Linking.addEventListener("url", handleUrl);
+    // Handle cold-start: app launched directly from the email link
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl({ url });
+    });
+
+    return () => sub.remove();
+  }, []);
 
   // Configure foreground notification display once (no-op in Expo Go)
   React.useEffect(() => {
@@ -83,7 +109,8 @@ function RootLayoutContent() {
     }
 
     const inAuthGroup = segments[0] === "(auth)";
-    if (!user && !inAuthGroup) {
+    const inResetFlow = segments[0] === "reset-password";
+    if (!user && !inAuthGroup && !inResetFlow) {
       customStorage.getItem("@lenderoo_has_signed_in").then((value) => {
         if (value) {
           router.replace("/(auth)/sign-in");
@@ -118,6 +145,7 @@ function RootLayoutContent() {
             contentStyle: { backgroundColor: "transparent" },
           }}
         />
+        <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         <Stack.Screen name="item" options={{ headerShown: false }} />
         <Stack.Screen name="edit-item" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />

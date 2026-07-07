@@ -5,6 +5,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { User } from '../lib/types';
@@ -168,8 +169,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Send password reset email
   async function resetPassword(email: string) {
+    const redirectTo = Platform.OS === 'web'
+      ? 'https://mobile.lenderoo.app/reset-password'
+      : 'lenderoo://reset-password';
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'lenderoo://reset-password',
+      redirectTo,
     });
 
     if (error) throw error;
