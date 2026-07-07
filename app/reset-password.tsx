@@ -34,7 +34,6 @@ export default function ResetPasswordScreen() {
       toast.error("Password must be at least 6 characters");
       return;
     }
-
     try {
       setLoading(true);
       const { error } = await supabase.auth.updateUser({ password });
@@ -47,6 +46,50 @@ export default function ResetPasswordScreen() {
       setLoading(false);
     }
   }
+
+  const fields = (
+    <View style={{ gap: 16 }}>
+      <View style={{ gap: 8 }}>
+        <Label nativeID="password">New password</Label>
+        <Input
+          nativeID="password"
+          placeholder="At least 6 characters"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          textContentType="newPassword"
+          editable={!loading}
+        />
+      </View>
+      <View style={{ gap: 8 }}>
+        <Label nativeID="confirm">Confirm password</Label>
+        <Input
+          nativeID="confirm"
+          placeholder="Repeat password"
+          value={confirm}
+          onChangeText={setConfirm}
+          secureTextEntry
+          autoCapitalize="none"
+          textContentType="newPassword"
+          editable={!loading}
+        />
+      </View>
+    </View>
+  );
+
+  const submitButton = (
+    <Button onPress={handleUpdate} disabled={loading}>
+      {loading ? (
+        <ActivityIndicator color="#fff" />
+      ) : (
+        <>
+          <Lock size={18} color="#fff" />
+          <Text>Update password</Text>
+        </>
+      )}
+    </Button>
+  );
 
   return (
     <KeyboardAvoidingView
@@ -66,45 +109,21 @@ export default function ResetPasswordScreen() {
               </Text>
             </View>
 
-            <View style={{ gap: 16 }}>
-              <View style={{ gap: 8 }}>
-                <Label nativeID="password">New password</Label>
-                <Input
-                  nativeID="password"
-                  placeholder="At least 6 characters"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  textContentType="newPassword"
-                  editable={!loading}
-                />
-              </View>
-              <View style={{ gap: 8 }}>
-                <Label nativeID="confirm">Confirm password</Label>
-                <Input
-                  nativeID="confirm"
-                  placeholder="Repeat password"
-                  value={confirm}
-                  onChangeText={setConfirm}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  textContentType="newPassword"
-                  editable={!loading}
-                />
-              </View>
-            </View>
-
-            <Button onPress={handleUpdate} disabled={loading}>
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Lock size={18} color="#fff" />
-                  <Text>Update password</Text>
-                </>
-              )}
-            </Button>
+            {Platform.OS === "web" ? (
+              // form wrapper silences browser password-manager warning on web
+              <form
+                onSubmit={(e) => { e.preventDefault(); handleUpdate(); }}
+                style={{ display: "contents" }}
+              >
+                {fields}
+                {submitButton}
+              </form>
+            ) : (
+              <>
+                {fields}
+                {submitButton}
+              </>
+            )}
           </View>
         </ScrollView>
       </SafeAreaWrapper>
