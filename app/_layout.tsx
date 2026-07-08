@@ -57,8 +57,11 @@ function RootLayoutContent() {
     [isDark],
   );
 
-  // Handle password-reset deep links: lenderoo://reset-password#access_token=...&type=recovery
+  // Handle password-reset deep links on native only: lenderoo://reset-password#access_token=...&type=recovery
+  // On web, detectSessionInUrl: true handles this automatically — no Linking needed.
   React.useEffect(() => {
+    if (Platform.OS === "web") return;
+
     const handleUrl = async ({ url }: { url: string }) => {
       if (!url.includes("reset-password")) return;
       const fragment = url.split("#")[1];

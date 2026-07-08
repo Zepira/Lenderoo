@@ -95,6 +95,7 @@ export default function ResetPasswordScreen() {
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
+      className="bg-background"
     >
       <SafeAreaWrapper>
         <ScrollView
