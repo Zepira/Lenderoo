@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   KeyboardAvoidingView,
@@ -16,10 +16,29 @@ import * as toast from "@/lib/toast";
 import { Lock } from "lucide-react-native";
 import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+
 export default function ResetPasswordScreen() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  // Web only: token extracted from the URL hash without touching localStorage
+  const [webAccessToken, setWebAccessToken] = useState<string | null>(null);
+  const [linkInvalid, setLinkInvalid] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const hash = window.location.hash.slice(1);
+    const params = Object.fromEntries(new URLSearchParams(hash));
+    if (params.type === "recovery" && params.access_token) {
+      setWebAccessToken(params.access_token);
+      // Remove tokens from address bar — cosmetic, nothing persisted
+      window.history.replaceState(null, "", window.location.pathname);
+    } else {
+      setLinkInvalid(true);
+    }
+  }, []);
 
   async function handleUpdate() {
     if (!password || !confirm) {
@@ -36,11 +55,35 @@ export default function ResetPasswordScreen() {
     }
     try {
       setLoading(true);
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
-      // Sign out to clear the recovery session from all tabs, then make the
-      // user sign in with their new password.
-      await supabase.auth.signOut();
+
+      if (Platform.OS === "web") {
+        if (!webAccessToken) {
+          toast.error("Invalid or expired link. Request a new one.");
+          return;
+        }
+        // Direct REST call — the recovery token never touches localStorage,
+        // so no other browser tab is authenticated before the reset completes.
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${webAccessToken}`,
+            apikey: SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ password }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.message || "Failed to update password");
+        }
+      } else {
+        // Native: session was already established in _layout.tsx via deep link
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        // Clear the recovery session so the user re-authenticates normally
+        await supabase.auth.signOut();
+      }
+
       toast.success("Password updated! Please sign in.");
       router.replace("/(auth)/sign-in");
     } catch (e: any) {
@@ -82,7 +125,7 @@ export default function ResetPasswordScreen() {
   );
 
   const submitButton = (
-    <Button onPress={handleUpdate} disabled={loading}>
+    <Button onPress={handleUpdate} disabled={loading || (Platform.OS === "web" && linkInvalid)}>
       {loading ? (
         <ActivityIndicator color="#fff" />
       ) : (
@@ -108,25 +151,32 @@ export default function ResetPasswordScreen() {
           <View style={{ gap: 32 }}>
             <View style={{ gap: 8 }}>
               <Text className="text-3xl font-bold">New password</Text>
-              <Text className="text-muted-foreground">
-                Enter your new password below
-              </Text>
+              {linkInvalid ? (
+                <Text className="text-destructive">
+                  This link is invalid or has expired. Please request a new password reset.
+                </Text>
+              ) : (
+                <Text className="text-muted-foreground">
+                  Enter your new password below
+                </Text>
+              )}
             </View>
 
-            {Platform.OS === "web" ? (
-              // form wrapper silences browser password-manager warning on web
-              <form
-                onSubmit={(e) => { e.preventDefault(); handleUpdate(); }}
-                style={{ display: "contents" }}
-              >
-                {fields}
-                {submitButton}
-              </form>
-            ) : (
-              <>
-                {fields}
-                {submitButton}
-              </>
+            {!linkInvalid && (
+              Platform.OS === "web" ? (
+                <form
+                  onSubmit={(e) => { e.preventDefault(); handleUpdate(); }}
+                  style={{ display: "contents" }}
+                >
+                  {fields}
+                  {submitButton}
+                </form>
+              ) : (
+                <>
+                  {fields}
+                  {submitButton}
+                </>
+              )
             )}
           </View>
         </ScrollView>

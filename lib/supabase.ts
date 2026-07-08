@@ -33,6 +33,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: customStorage as any,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: Platform.OS === "web",
+    // Keep false on all platforms — password recovery tokens are parsed
+    // manually in reset-password.tsx so they're never written to localStorage,
+    // preventing unauthenticated tabs from being signed in before the user
+    // has actually set a new password.
+    detectSessionInUrl: false,
   },
 });
