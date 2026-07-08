@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Linking,
 } from "react-native";
+import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import {
@@ -370,6 +371,13 @@ export default function SettingsScreen() {
               isLast
             />
           </View>
+          {/* Version */}
+          <Caption
+            style={{ textAlign: "center", marginTop: 8, color: theme.mutedForeground }}
+          >
+            Lenderoo v{Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? "—"}
+            {Constants.nativeBuildVersion ? ` (${Constants.nativeBuildVersion})` : ""}
+          </Caption>
         </View>
       </ScrollView>
 
