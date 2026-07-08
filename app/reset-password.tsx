@@ -38,8 +38,11 @@ export default function ResetPasswordScreen() {
       setLoading(true);
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      toast.success("Password updated!");
-      router.replace("/(tabs)");
+      // Sign out to clear the recovery session from all tabs, then make the
+      // user sign in with their new password.
+      await supabase.auth.signOut();
+      toast.success("Password updated! Please sign in.");
+      router.replace("/(auth)/sign-in");
     } catch (e: any) {
       toast.error(e?.message || "Failed to update password");
     } finally {
