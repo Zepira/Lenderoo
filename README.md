@@ -160,6 +160,67 @@ eas submit --platform android --profile production --latest
 
 ---
 
+### Push Notifications
+
+**Scheduled return reminders** (`supabase/functions/return-reminders/`) run weekly via a `pg_cron` job (see `supabase/migrations/026_return_reminders_cron.sql`), invoking the edge function with a `CRON_SECRET` bearer token pulled from Supabase Vault.
+
+Reminder timing and copy are DB-driven — no redeploy needed to change them:
+
+```sql
+-- Edit interval (days) or message copy. {{item}} is replaced with the item's name.
+update notification_settings
+set reminder_interval_days = 14,
+    reminder_title = 'Still got this?',
+    reminder_body = 'You borrowed "{{item}}" a week ago. Time to return it?'
+where id = true;
+```
+
+To change the cron schedule itself (e.g. day/time it runs): Supabase Dashboard → **Database → Cron Jobs**, or via SQL:
+
+```sql
+select cron.alter_job(
+  (select jobid from cron.job where jobname = 'return-reminders-weekly'),
+  schedule := '0 9 * * 1'  -- cron expression, e.g. Mon 9am UTC
+);
+```
+
+If `CRON_SECRET` is ever rotated, update it in both places or the cron job starts 401'ing:
+
+```bash
+npx supabase secrets set CRON_SECRET=<new-value> --project-ref ymboxvasluhlwgofrpya
+```
+```sql
+select vault.update_secret(
+  (select id from vault.secrets where name = 'return_reminders_cron_secret'),
+  '<same-new-value>'
+);
+```
+
+**Ad-hoc test pushes** — `supabase/functions/send-notification/` sends an immediate push to one, several, or all users with a registered `push_token`. Also authenticated with `CRON_SECRET`.
+
+```powershell
+Invoke-RestMethod -Uri "https://ymboxvasluhlwgofrpya.supabase.co/functions/v1/send-notification" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer <CRON_SECRET>" } `
+  -ContentType "application/json" `
+  -Body (@{
+    title   = "Hey"
+    body    = "Test push"
+    userIds = @("<user-uuid>")   # omit this field entirely to broadcast to every user with a push token
+  } | ConvertTo-Json)
+```
+
+Both edge functions must be deployed with `--no-verify-jwt` — they use their own `CRON_SECRET` check instead of Supabase's JWT gateway auth:
+
+```bash
+npx supabase functions deploy return-reminders --project-ref ymboxvasluhlwgofrpya --no-verify-jwt
+npx supabase functions deploy send-notification --project-ref ymboxvasluhlwgofrpya --no-verify-jwt
+```
+
+A user only receives pushes once `push_token` is populated for their row — this happens automatically on login/app-open once notification permission is granted, on a physical device, in a build that isn't Expo Go (Expo Go dropped remote push support in SDK 53).
+
+---
+
 ### EAS Secrets
 
 Runtime env vars for EAS builds are stored as project secrets (not in `.env`):

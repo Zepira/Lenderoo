@@ -6,6 +6,7 @@ import {
   configureNotifications,
   registerPushToken,
   addNotificationTapListener,
+  setNotificationsReady,
 } from "@/lib/notifications";
 
 // Suppress the SafeAreaView deprecation warning produced by expo-router's
@@ -98,6 +99,12 @@ function RootLayoutContent() {
 
   // Handle notification taps (app opened from background/killed via notification)
   React.useEffect(() => addNotificationTapListener(), []);
+
+  // Only replay a notification tap once auth has actually finished restoring —
+  // otherwise a cold-launch tap can navigate before the session is ready.
+  React.useEffect(() => {
+    setNotificationsReady(!!user && !authLoading);
+  }, [user, authLoading]);
 
   // Hide the native splash once auth and theme are ready, then navigate.
   React.useEffect(() => {

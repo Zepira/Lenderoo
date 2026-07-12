@@ -82,6 +82,25 @@ export async function registerPushToken(userId: string): Promise<void> {
   await supabase.from('users').update({ push_token: token }).eq('id', userId);
 }
 
+let notificationsReady = false;
+let pendingTapData: NotificationData | null = null;
+
+/**
+ * Call once auth has finished restoring (user + !loading). If a notification
+ * was tapped on a cold launch before the session was ready, this replays it —
+ * otherwise navigating immediately would hit screens that assume an
+ * authenticated user (e.g. the library tab's queries) before the Supabase
+ * session has actually been restored.
+ */
+export function setNotificationsReady(ready: boolean): void {
+  notificationsReady = ready;
+  if (ready && pendingTapData) {
+    const data = pendingTapData;
+    pendingTapData = null;
+    handleNotificationTap(data);
+  }
+}
+
 /**
  * Subscribe to notification taps. Returns a cleanup function for useEffect.
  */
@@ -91,7 +110,9 @@ export function addNotificationTapListener(): () => void {
 
   const sub = N.addNotificationResponseReceivedListener((response) => {
     const data = response.notification.request.content.data as NotificationData | undefined;
-    if (data?.type) handleNotificationTap(data);
+    if (!data?.type) return;
+    if (notificationsReady) handleNotificationTap(data);
+    else pendingTapData = data;
   });
 
   return () => sub.remove();
