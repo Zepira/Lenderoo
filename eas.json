@@ -20,6 +20,10 @@
       "android": {
         "serviceAccountKeyPath": "android/zepira-390c2fd69214.json",
         "track": "internal"
+      },
+      "ios": {
+        "ascAppId": "6788645728",
+        "appleTeamId": "DVQRL33C6H"
       }
     }
   }

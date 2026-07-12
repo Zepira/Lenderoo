@@ -1,7 +1,7 @@
 import "../global.css";
 
 import * as React from "react";
-import { View, LogBox, Linking } from "react-native";
+import { View, LogBox, Linking, Platform } from "react-native";
 import {
   configureNotifications,
   registerPushToken,

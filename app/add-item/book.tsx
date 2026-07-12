@@ -10,9 +10,10 @@ import {
   TextInput,
   Platform,
 } from "react-native";
-import { Camera, BookOpen } from "lucide-react-native";
+import { Camera, BookOpen, Library } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { TinyLabel, BodyStrong, Caption } from "@/components/ui/typography";
@@ -22,6 +23,23 @@ import { createItemSchema } from "lib/validation";
 import { supabase } from "@/lib/supabase";
 import { ImagePicker } from "components/ImagePicker";
 import type { BookMetadata } from "lib/types";
+import { searchSeriesBooks, findSeriesId } from "@/lib/services/hardcover";
+
+interface SeriesBook {
+  hardcoverId: string;
+  title: string;
+  author: string;
+  coverUrl?: string;
+  seriesName: string;
+  seriesId: number;
+  seriesNumber?: string;
+  genre: string;
+  description?: string;
+  isbn?: string;
+  pageCount?: number;
+  publicationYear?: number;
+  averageRating?: number;
+}
 
 export default function AddBookScreen() {
   const router = useRouter();
@@ -72,6 +90,13 @@ export default function AddBookScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
 
+  const [seriesBooks, setSeriesBooks] = useState<SeriesBook[]>([]);
+  const [loadingSeriesBooks, setLoadingSeriesBooks] = useState(false);
+  const [showSeriesPicker, setShowSeriesPicker] = useState(false);
+  const [selectedSeriesBookIds, setSelectedSeriesBookIds] = useState<Set<string>>(
+    new Set(),
+  );
+
   useEffect(() => {
     if (params.title) setTitle(params.title);
     if (params.author) setAuthor(params.author);
@@ -89,6 +114,84 @@ export default function AddBookScreen() {
     if (params.averageRating) setAverageRating(params.averageRating);
     if (params.hardcoverId) setHardcoverId(params.hardcoverId);
   }, [params]);
+
+  useEffect(() => {
+    const trimmedSeriesName = seriesName.trim();
+    if (!trimmedSeriesName) {
+      setSeriesBooks([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setLoadingSeriesBooks(true);
+      try {
+        const parsedSeriesId = seriesId ? parseInt(seriesId, 10) : NaN;
+        const resolved = !Number.isNaN(parsedSeriesId)
+          ? { id: parsedSeriesId, name: trimmedSeriesName }
+          : await findSeriesId(trimmedSeriesName);
+
+        if (cancelled || !resolved) {
+          if (!cancelled) setSeriesBooks([]);
+          return;
+        }
+
+        const books = await searchSeriesBooks(resolved.name, resolved.id);
+        if (cancelled) return;
+        const others = books.filter(
+          (b: SeriesBook) => b.hardcoverId !== hardcoverId,
+        );
+        setSeriesBooks(others);
+        setSelectedSeriesBookIds(new Set());
+      } catch {
+        if (!cancelled) setSeriesBooks([]);
+      } finally {
+        if (!cancelled) setLoadingSeriesBooks(false);
+      }
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [seriesName, seriesId, hardcoverId]);
+
+  const findDuplicateItem = (bookTitle: string, bookAuthor: string) => {
+    if (!bookTitle.trim()) return null;
+    return (
+      existingItems.find((item) => {
+        if (item.category !== "book") return false;
+        if (item.name.toLowerCase().trim() !== bookTitle.toLowerCase().trim())
+          return false;
+        if (bookAuthor.trim() && item.metadata) {
+          const itemAuthor = (item.metadata as BookMetadata).author
+            ?.toLowerCase()
+            .trim();
+          if (itemAuthor && itemAuthor !== bookAuthor.toLowerCase().trim())
+            return false;
+        }
+        return true;
+      }) || null
+    );
+  };
+
+  const duplicateItem = title.trim() ? findDuplicateItem(title, author) : null;
+  const duplicateWarning = duplicateItem
+    ? `"${duplicateItem.name}"${
+        (duplicateItem.metadata as BookMetadata)?.author
+          ? ` by ${(duplicateItem.metadata as BookMetadata).author}`
+          : ""
+      } is already in your library.`
+    : "";
+
+  const toggleSeriesBook = (hardcoverId: string) => {
+    setSelectedSeriesBookIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(hardcoverId)) next.delete(hardcoverId);
+      else next.add(hardcoverId);
+      return next;
+    });
+  };
 
   const handleSubmit = async () => {
     if (saving || isSubmitting.current || isLoading) return;
@@ -126,22 +229,9 @@ export default function AddBookScreen() {
         condition: condition || undefined,
       };
 
-      const duplicates = existingItems.filter((item) => {
-        if (item.category !== "book") return false;
-        if (item.name.toLowerCase().trim() !== title.toLowerCase().trim())
-          return false;
-        if (author.trim() && item.metadata) {
-          const itemAuthor = (item.metadata as BookMetadata).author
-            ?.toLowerCase()
-            .trim();
-          if (itemAuthor && itemAuthor !== author.toLowerCase().trim())
-            return false;
-        }
-        return true;
-      });
+      const dup = findDuplicateItem(title, author);
 
-      if (duplicates.length > 0) {
-        const dup = duplicates[0];
+      if (dup) {
         const dupAuthor = (dup.metadata as BookMetadata)?.author;
         const msg = `"${dup.name}"${dupAuthor ? ` by ${dupAuthor}` : ""} is already in your library.`;
         if (Platform.OS !== "web")
@@ -190,6 +280,45 @@ export default function AddBookScreen() {
       createItemSchema.parse(itemData);
       const result = await createItem({ ...itemData, userId: user.id });
       if (!result) throw new Error("Failed to create item");
+
+      const booksToAdd = seriesBooks.filter((b) =>
+        selectedSeriesBookIds.has(b.hardcoverId),
+      );
+      for (const book of booksToAdd) {
+        const alreadyOwned = existingItems.some(
+          (item) =>
+            item.category === "book" &&
+            item.name.toLowerCase().trim() === book.title.toLowerCase().trim(),
+        );
+        if (alreadyOwned) continue;
+
+        const seriesBookMetadata: BookMetadata = {
+          author: book.author || undefined,
+          seriesName: book.seriesName,
+          seriesNumber: book.seriesNumber || undefined,
+          seriesId: book.seriesId,
+          genre: book.genre || undefined,
+          synopsis: book.description || undefined,
+          isbn: book.isbn || undefined,
+          pageCount: book.pageCount,
+          publicationYear: book.publicationYear,
+          averageRating: book.averageRating,
+          hardcoverId: book.hardcoverId || undefined,
+        };
+
+        try {
+          await createItem({
+            name: book.title,
+            category: "book",
+            images: book.coverUrl ? [book.coverUrl] : undefined,
+            metadata: seriesBookMetadata,
+            userId: user.id,
+          });
+        } catch {
+          // Skip books that fail to add; primary book is already saved.
+        }
+      }
+
       router.replace("/(tabs)/library");
     } catch (error) {
       isSubmitting.current = false;
@@ -252,6 +381,22 @@ export default function AddBookScreen() {
           gap: 16,
         }}
       >
+        {duplicateWarning && (
+          <View
+            style={{
+              backgroundColor: theme.destructive + "18",
+              borderRadius: 16,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: theme.destructive + "33",
+            }}
+          >
+            <Caption style={{ color: theme.destructive }}>
+              {duplicateWarning}
+            </Caption>
+          </View>
+        )}
+
         {errors.general && (
           <View
             style={{
@@ -456,6 +601,95 @@ export default function AddBookScreen() {
               />
             </View>
           </View>
+
+          {/* Series bulk-add */}
+          {loadingSeriesBooks && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <ActivityIndicator size="small" color={theme.mutedForeground} />
+              <Caption>Checking for other books in this series…</Caption>
+            </View>
+          )}
+
+          {!loadingSeriesBooks && seriesBooks.length > 0 && (
+            <View style={{ gap: 12 }}>
+              <Caption>
+                This book is part of a series, would you like to add other the
+                books in the series?
+              </Caption>
+
+              {!showSeriesPicker ? (
+                <Button
+                  variant="secondary"
+                  onPress={() => {
+                    setSelectedSeriesBookIds(
+                      new Set(seriesBooks.map((b) => b.hardcoverId)),
+                    );
+                    setShowSeriesPicker(true);
+                  }}
+                >
+                  <Library size={16} color={theme.secondaryForeground} />
+                  <Text>Add more books in this series</Text>
+                </Button>
+              ) : (
+                <View style={{ gap: 10 }}>
+                  {seriesBooks.map((book) => {
+                    const checked = selectedSeriesBookIds.has(book.hardcoverId);
+                    return (
+                      <Pressable
+                        key={book.hardcoverId}
+                        onPress={() => toggleSeriesBook(book.hardcoverId)}
+                        style={({ pressed }) => ({
+                          padding: 12,
+                          borderRadius: 16,
+                          backgroundColor: isDark ? theme.muted : "#F3F4F6",
+                          opacity: pressed ? 0.75 : 1,
+                          gap: 4,
+                        })}
+                      >
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
+                        >
+                          <Checkbox checked={checked} onCheckedChange={() => {}} />
+                          <View
+                            style={{
+                              width: 32,
+                              height: 46,
+                              borderRadius: 6,
+                              overflow: "hidden",
+                              backgroundColor: theme.card,
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {book.coverUrl ? (
+                              <Image
+                                source={{ uri: book.coverUrl }}
+                                style={{ width: 32, height: 46 }}
+                                resizeMode="cover"
+                              />
+                            ) : (
+                              <BookOpen size={16} color={theme.mutedForeground} />
+                            )}
+                          </View>
+                          <BodyStrong style={{ flex: 1 }} numberOfLines={1}>
+                            {book.title}
+                          </BodyStrong>
+                        </View>
+                        <Caption style={{ marginLeft: 24 + 12 + 32 + 12 }} numberOfLines={1}>
+                          {book.seriesNumber ? `Book ${book.seriesNumber}` : book.author}
+                        </Caption>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Synopsis + notes */}

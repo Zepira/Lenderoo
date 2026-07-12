@@ -145,6 +145,87 @@ export async function searchBooks(searchQuery: string, token?: string) {
 }
 
 /**
+ * Resolve a series name to its Hardcover series id. Many individual book
+ * records (study guides, companion volumes, low-quality duplicates) lack
+ * `featured_series` data even when the canonical edition has it, so this
+ * re-searches by series name and looks for any hit that carries the link.
+ */
+export async function findSeriesId(seriesName: string, token?: string) {
+  const results = await searchBooks(seriesName, token);
+  const normalized = seriesName.toLowerCase().trim();
+
+  let fallback: { id: number; name: string } | null = null;
+  for (const entry of results) {
+    const series = entry.document?.featured_series?.series;
+    if (!series?.id || !series?.name) continue;
+    if (series.name.toLowerCase().trim() === normalized) {
+      return { id: series.id, name: series.name };
+    }
+    if (!fallback) fallback = { id: series.id, name: series.name };
+  }
+  return fallback;
+}
+
+/**
+ * Search for other books belonging to a given series (by Hardcover series id).
+ * Reuses the books search endpoint (series-detail lookups aren't reliable on
+ * this API) and filters/sorts the hits client-side.
+ */
+export async function searchSeriesBooks(
+  seriesName: string,
+  seriesId: number,
+  token?: string,
+) {
+  const results = await searchBooks(seriesName, token);
+
+  const books = results
+    .map((entry: any) => entry.document)
+    .filter((book: any) => book?.featured_series?.series?.id === seriesId)
+    .map((book: any) => {
+      const publicationYear = book.release_date
+        ? new Date(book.release_date).getFullYear()
+        : undefined;
+      const author: string[] = [];
+      (book.contributions || []).forEach((c: any) => {
+        if (!c.contribution && c.author?.name) author.push(c.author.name);
+      });
+      return {
+        hardcoverId: book.id?.toString() || "",
+        title: book.title || "",
+        author: author.join(", "),
+        coverUrl: book.image?.url || book.cover_image_url,
+        seriesName: book.featured_series?.series?.name || seriesName,
+        seriesId,
+        seriesNumber:
+          book.featured_series_position != null
+            ? String(book.featured_series_position)
+            : undefined,
+        genre: (book.genres || []).join(", "),
+        description: book.description || undefined,
+        isbn: book.isbn_13 || book.isbn_10 || undefined,
+        pageCount: book.pages || undefined,
+        publicationYear,
+        averageRating: book.rating || undefined,
+      };
+    });
+
+  const seen = new Set<string>();
+  const deduped = books.filter((b: any) => {
+    if (!b.hardcoverId || seen.has(b.hardcoverId)) return false;
+    seen.add(b.hardcoverId);
+    return true;
+  });
+
+  deduped.sort((a: any, b: any) => {
+    const an = a.seriesNumber ? parseFloat(a.seriesNumber) : Infinity;
+    const bn = b.seriesNumber ? parseFloat(b.seriesNumber) : Infinity;
+    return an - bn;
+  });
+
+  return deduped;
+}
+
+/**
  * Get series details including all books in the series
  */
 export async function getSeriesDetails(seriesName: string, token?: string) {
