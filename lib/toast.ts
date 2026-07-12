@@ -82,9 +82,10 @@ export function error(message: string, options?: ToastOptions) {
     });
   } else {
     if (Burnt) {
-      Burnt.alert({
+      Burnt.toast({
         title: options?.title || message,
         preset: "error",
+        haptic: "error",
         duration: (options?.duration || 3000) / 1000,
       });
     } else {

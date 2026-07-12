@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from './supabase';
@@ -11,7 +12,7 @@ const isExpoGo = Constants.appOwnership === 'expo';
 // Lazily load expo-notifications so it is never imported in Expo Go
 // (the module throws a hard error at initialisation time in that environment).
 function loadNotifications(): typeof import('expo-notifications') | null {
-  if (isExpoGo || !Constants.isDevice) return null;
+  if (isExpoGo || !Device.isDevice) return null;
   try {
     // require() is lazy — only executes when this function is called, after the
     // isExpoGo guard above has already short-circuited in Expo Go.

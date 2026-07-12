@@ -1,7 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
-const REMINDER_INTERVAL_DAYS = 7;
 
 interface ExpoPushMessage {
   to: string;
@@ -32,7 +31,18 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  const cutoff = new Date(Date.now() - REMINDER_INTERVAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data: settings } = await supabase
+    .from('notification_settings')
+    .select('reminder_interval_days, reminder_title, reminder_body')
+    .eq('id', true)
+    .single();
+
+  const intervalDays = settings?.reminder_interval_days ?? 7;
+  const titleTemplate = settings?.reminder_title ?? 'Still got this?';
+  const bodyTemplate =
+    settings?.reminder_body ?? 'You borrowed "{{item}}" a week ago. Time to return it?';
+
+  const cutoff = new Date(Date.now() - intervalDays * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: items, error } = await supabase
     .from('items')
@@ -58,8 +68,8 @@ Deno.serve(async (req) => {
     if (!token) continue;
     messages.push({
       to: token,
-      title: 'Still got this?',
-      body: `You borrowed "${item.name}" a week ago. Time to return it?`,
+      title: titleTemplate.replaceAll('{{item}}', item.name),
+      body: bodyTemplate.replaceAll('{{item}}', item.name),
       data: { type: 'return_reminder', itemId: item.id },
       sound: 'default',
     });
