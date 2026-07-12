@@ -5,8 +5,15 @@
  */
 
 import { useState } from "react";
-import { Modal, View, ActivityIndicator, Alert, Platform, Pressable } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import {
+  Modal,
+  View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  KeyboardAvoidingView,
+} from "react-native";
 import { X } from "lucide-react-native";
 import { Button } from "./ui/button";
 import { Text } from "./ui/text";

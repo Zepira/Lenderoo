@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, Pressable } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Stack, useRouter } from "expo-router";
 import { useCreateFriend } from "hooks";
 import { createFriendSchema } from "lib/validation";
@@ -78,7 +78,7 @@ export default function AddFriendScreen() {
       <KeyboardAwareScrollView
         className="flex-1 bg-background"
         keyboardShouldPersistTaps="handled"
-        bottomOffset={24}
+        extraScrollHeight={24}
       >
         <View className="p-4 gap-4">
           {errors.general && (

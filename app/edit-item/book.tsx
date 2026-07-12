@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { View, Image, ActivityIndicator, Alert, Pressable } from "react-native";
 import {
-  KeyboardAwareScrollView,
-  KeyboardStickyView,
-  type KeyboardAwareScrollViewRef,
-} from "react-native-keyboard-controller";
+  View,
+  Image,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -52,7 +56,7 @@ export default function EditBookScreen() {
   const { friends } = useFriends();
   const { updateItem, loading: saving } = useUpdateItem();
   const { items: existingItems } = useItems();
-  const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
+  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -116,7 +120,7 @@ export default function EditBookScreen() {
       if (!title.trim()) {
         console.error("❌ Validation failed: Title is required");
         setErrors({ name: "Title is required" });
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        scrollViewRef.current?.scrollToPosition(0, 0, true);
         Alert.alert("Missing Information", "Please enter a book title.");
         return;
       }
@@ -165,7 +169,7 @@ export default function EditBookScreen() {
         );
 
         setErrors({ name: "This book is already in your library" });
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        scrollViewRef.current?.scrollToPosition(0, 0, true);
         return;
       }
 
@@ -242,7 +246,7 @@ export default function EditBookScreen() {
         });
 
         setErrors(fieldErrors);
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        scrollViewRef.current?.scrollToPosition(0, 0, true);
 
         Alert.alert(
           "Validation Error",
@@ -254,7 +258,7 @@ export default function EditBookScreen() {
         const errorMessage = error.message || "An unknown error occurred";
         console.error("Error details:", errorMessage);
         setErrors({ general: `Failed to add book: ${errorMessage}` });
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        scrollViewRef.current?.scrollToPosition(0, 0, true);
 
         Alert.alert(
           "Error",
@@ -267,7 +271,7 @@ export default function EditBookScreen() {
         setErrors({
           general: "An unexpected error occurred. Please try again.",
         });
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        scrollViewRef.current?.scrollToPosition(0, 0, true);
 
         Alert.alert(
           "Error",
@@ -294,11 +298,15 @@ export default function EditBookScreen() {
         }
       />
 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
       <KeyboardAwareScrollView
         ref={scrollViewRef}
         className="flex-1"
         keyboardShouldPersistTaps="handled"
-        bottomOffset={100}
+        extraScrollHeight={100}
       >
         <View className="px-4 pt-6 pb-4 gap-4">
           {errors.general && (
@@ -482,37 +490,36 @@ export default function EditBookScreen() {
         </View>
       </KeyboardAwareScrollView>
 
-      {/* Sticky action buttons — pinned above the keyboard when open */}
-      <KeyboardStickyView>
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 12,
-            padding: 16,
-            paddingBottom: 24,
-            backgroundColor: isDark ? theme.muted : "#F3F4F6",
-            borderTopWidth: 1,
-            borderTopColor: theme.border,
-          }}
+      {/* Sticky action buttons — shifts with the keyboard via the outer KeyboardAvoidingView */}
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 12,
+          padding: 16,
+          paddingBottom: 24,
+          backgroundColor: isDark ? theme.muted : "#F3F4F6",
+          borderTopWidth: 1,
+          borderTopColor: theme.border,
+        }}
+      >
+        <Button
+          variant="outline"
+          onPress={handleCancel}
+          disabled={saving}
+          className="flex-1"
         >
-          <Button
-            variant="outline"
-            onPress={handleCancel}
-            disabled={saving}
-            className="flex-1"
-          >
-            <Text>Cancel</Text>
-          </Button>
-          <Button
-            onPress={handleSubmit}
-            disabled={saving || !title.trim()}
-            className="flex-1"
-          >
-            {saving && <ActivityIndicator size="small" color="#fff" />}
-            <Text>{saving ? "Updating…" : "Update Book"}</Text>
-          </Button>
-        </View>
-      </KeyboardStickyView>
+          <Text>Cancel</Text>
+        </Button>
+        <Button
+          onPress={handleSubmit}
+          disabled={saving || !title.trim()}
+          className="flex-1"
+        >
+          {saving && <ActivityIndicator size="small" color="#fff" />}
+          <Text>{saving ? "Updating…" : "Update Book"}</Text>
+        </Button>
+      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }

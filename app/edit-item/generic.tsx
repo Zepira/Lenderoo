@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { View, Alert, Pressable } from "react-native";
-import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
+import { View, Alert, Pressable, KeyboardAvoidingView, Platform } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -143,10 +143,14 @@ export default function EditGenericItemScreen() {
         ) : undefined}
       />
 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
       <KeyboardAwareScrollView
         className="flex-1"
         keyboardShouldPersistTaps="handled"
-        bottomOffset={100}
+        extraScrollHeight={100}
       >
         <View className="px-4 pt-6 pb-4 gap-4">
           {errors.general && (
@@ -379,36 +383,35 @@ export default function EditGenericItemScreen() {
         </View>
       </KeyboardAwareScrollView>
 
-      {/* Sticky action buttons — pinned above the keyboard when open */}
-      <KeyboardStickyView>
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 12,
-            padding: 16,
-            paddingBottom: 24,
-            backgroundColor: isDark ? theme.muted : "#F3F4F6",
-            borderTopWidth: 1,
-            borderTopColor: theme.border,
-          }}
+      {/* Sticky action buttons — shifts with the keyboard via the outer KeyboardAvoidingView */}
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 12,
+          padding: 16,
+          paddingBottom: 24,
+          backgroundColor: isDark ? theme.muted : "#F3F4F6",
+          borderTopWidth: 1,
+          borderTopColor: theme.border,
+        }}
+      >
+        <Button
+          variant="outline"
+          onPress={handleCancel}
+          disabled={loading}
+          className="flex-1"
         >
-          <Button
-            variant="outline"
-            onPress={handleCancel}
-            disabled={loading}
-            className="flex-1"
-          >
-            <Text>Cancel</Text>
-          </Button>
-          <Button
-            onPress={handleSubmit}
-            disabled={loading || !name.trim()}
-            className="flex-1"
-          >
-            <Text>{loading ? "Updating…" : `Update ${categoryLabel}`}</Text>
-          </Button>
-        </View>
-      </KeyboardStickyView>
+          <Text>Cancel</Text>
+        </Button>
+        <Button
+          onPress={handleSubmit}
+          disabled={loading || !name.trim()}
+          className="flex-1"
+        >
+          <Text>{loading ? "Updating…" : `Update ${categoryLabel}`}</Text>
+        </Button>
+      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }

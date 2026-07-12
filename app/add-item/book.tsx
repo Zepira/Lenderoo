@@ -9,10 +9,7 @@ import {
   TextInput,
   Platform,
 } from "react-native";
-import {
-  KeyboardAwareScrollView,
-  type KeyboardAwareScrollViewRef,
-} from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Camera, BookOpen, Library } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -69,7 +66,7 @@ export default function AddBookScreen() {
 
   const { createItem, loading: saving } = useCreateItem();
   const { items: existingItems } = useItems();
-  const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
+  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
   const isSubmitting = useRef(false);
 
   const [title, setTitle] = useState("");
@@ -206,7 +203,7 @@ export default function AddBookScreen() {
 
       if (!title.trim()) {
         setErrors({ name: "Title is required" });
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        scrollViewRef.current?.scrollToPosition(0, 0, true);
         if (Platform.OS !== "web")
           Alert.alert("Missing Information", "Please enter a book title.");
         isSubmitting.current = false;
@@ -377,7 +374,7 @@ export default function AddBookScreen() {
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        bottomOffset={24}
+        extraScrollHeight={24}
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingTop: 24,

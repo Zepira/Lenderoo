@@ -12,6 +12,22 @@ import { queryKeys } from 'lib/query-client'
  */
 const SYNCED_TOPICS = ['rt-items', 'rt-friends', 'rt-borrow-requests']
 
+// supabase.removeChannel() only removes the channel from the client's
+// internal list (via channel.teardown()) if unsubscribe() resolves 'ok' —
+// on a timeout/error it silently leaves the channel registered, which then
+// permanently reproduces "cannot add postgres_changes callbacks after
+// subscribe()" on every future mount (channel() reuses by topic name
+// regardless of subscribe state). Tear down unconditionally ourselves
+// instead of trusting that conditional.
+async function forceRemoveChannel(channel: ReturnType<typeof supabase.channel>) {
+  try {
+    await channel.unsubscribe()
+  } catch {
+    // ignore — we tear down below regardless of outcome
+  }
+  channel.teardown()
+}
+
 export function useRealtimeSync() {
   const queryClient = useQueryClient()
 
@@ -23,14 +39,14 @@ export function useRealtimeSync() {
 
     const setup = async () => {
       // On a fast remount (e.g. auth state flipping during sign-in), a
-      // previous run's removeChannel() may still be mid-teardown — supabase
-      // reuses a channel by topic name regardless of its subscribe state, so
-      // calling .on() on that stale, already-subscribed channel throws. Clear
-      // out any leftovers for our topics before creating fresh ones.
+      // previous run's cleanup may still be mid-teardown — supabase reuses a
+      // channel by topic name regardless of its subscribe state, so calling
+      // .on() on that stale, already-subscribed channel throws. Clear out
+      // any leftovers for our topics before creating fresh ones.
       const stale = supabase
         .getChannels()
         .filter((c) => SYNCED_TOPICS.some((t) => c.topic === `realtime:${t}`))
-      await Promise.all(stale.map((c) => supabase.removeChannel(c)))
+      await Promise.all(stale.map(forceRemoveChannel))
       if (cancelled) return
 
       itemsChannel = supabase
@@ -81,9 +97,9 @@ export function useRealtimeSync() {
 
     return () => {
       cancelled = true
-      if (itemsChannel) supabase.removeChannel(itemsChannel)
-      if (friendsChannel) supabase.removeChannel(friendsChannel)
-      if (requestsChannel) supabase.removeChannel(requestsChannel)
+      if (itemsChannel) forceRemoveChannel(itemsChannel)
+      if (friendsChannel) forceRemoveChannel(friendsChannel)
+      if (requestsChannel) forceRemoveChannel(requestsChannel)
     }
   }, [queryClient])
 }

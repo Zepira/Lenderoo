@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router, Stack } from "expo-router";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
@@ -205,7 +205,7 @@ export default function AddUserFriendScreen() {
       <KeyboardAwareScrollView
         className="flex-1 bg-background"
         keyboardShouldPersistTaps="handled"
-        bottomOffset={24}
+        extraScrollHeight={24}
       >
         <SafeAreaWrapper>
           <FloatingBackButton />
