@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useRouter, useRootNavigation } from "expo-router";
 import {
-  ScrollView,
   View,
   Image,
   ActivityIndicator,
   Pressable,
   TextInput,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Search, BookOpen } from "lucide-react-native";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/button";
@@ -124,9 +124,10 @@ export default function SearchBookScreen() {
         icon={{ Icon: BookOpen, color: "#3B82F6" }}
       />
 
-      <ScrollView
+      <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        bottomOffset={24}
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 16 }}
       >
         {/* Search card */}
@@ -277,7 +278,7 @@ export default function SearchBookScreen() {
             Can't find it? Enter manually
           </Caption>
         </Pressable>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

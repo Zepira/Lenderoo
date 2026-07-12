@@ -1,11 +1,11 @@
 import { useState, useRef } from "react";
 import {
   View,
-  ScrollView,
   TextInput,
   Pressable,
   ActivityIndicator,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, User, Mail, Lock, Eye, EyeOff } from "lucide-react-native";
@@ -187,9 +187,10 @@ export default function ProfileScreen() {
         </SafeAreaView>
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        bottomOffset={24}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
       >
         {/* ── Personal info card ── */}
@@ -339,7 +340,7 @@ export default function ProfileScreen() {
             </Text>
           </Button>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

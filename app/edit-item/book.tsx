@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { View, Image, ActivityIndicator, Alert, Pressable } from "react-native";
 import {
-  ScrollView,
-  View,
-  Image,
-  ActivityIndicator,
-  Alert,
-  Pressable,
-} from "react-native";
+  KeyboardAwareScrollView,
+  KeyboardStickyView,
+  type KeyboardAwareScrollViewRef,
+} from "react-native-keyboard-controller";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -54,7 +52,7 @@ export default function EditBookScreen() {
   const { friends } = useFriends();
   const { updateItem, loading: saving } = useUpdateItem();
   const { items: existingItems } = useItems();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -296,7 +294,12 @@ export default function EditBookScreen() {
         }
       />
 
-      <ScrollView ref={scrollViewRef} className="flex-1">
+      <KeyboardAwareScrollView
+        ref={scrollViewRef}
+        className="flex-1"
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={100}
+      >
         <View className="px-4 pt-6 pb-4 gap-4">
           {errors.general && (
             <View className="p-3 bg-red-50 rounded-lg border border-red-200">
@@ -477,37 +480,39 @@ export default function EditBookScreen() {
             </View>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
-      {/* Sticky action buttons */}
-      <View
-        style={{
-          flexDirection: "row",
-          gap: 12,
-          padding: 16,
-          paddingBottom: 24,
-          backgroundColor: isDark ? theme.muted : "#F3F4F6",
-          borderTopWidth: 1,
-          borderTopColor: theme.border,
-        }}
-      >
-        <Button
-          variant="outline"
-          onPress={handleCancel}
-          disabled={saving}
-          className="flex-1"
+      {/* Sticky action buttons — pinned above the keyboard when open */}
+      <KeyboardStickyView>
+        <View
+          style={{
+            flexDirection: "row",
+            gap: 12,
+            padding: 16,
+            paddingBottom: 24,
+            backgroundColor: isDark ? theme.muted : "#F3F4F6",
+            borderTopWidth: 1,
+            borderTopColor: theme.border,
+          }}
         >
-          <Text>Cancel</Text>
-        </Button>
-        <Button
-          onPress={handleSubmit}
-          disabled={saving || !title.trim()}
-          className="flex-1"
-        >
-          {saving && <ActivityIndicator size="small" color="#fff" />}
-          <Text>{saving ? "Updating…" : "Update Book"}</Text>
-        </Button>
-      </View>
+          <Button
+            variant="outline"
+            onPress={handleCancel}
+            disabled={saving}
+            className="flex-1"
+          >
+            <Text>Cancel</Text>
+          </Button>
+          <Button
+            onPress={handleSubmit}
+            disabled={saving || !title.trim()}
+            className="flex-1"
+          >
+            {saving && <ActivityIndicator size="small" color="#fff" />}
+            <Text>{saving ? "Updating…" : "Update Book"}</Text>
+          </Button>
+        </View>
+      </KeyboardStickyView>
     </View>
   );
 }

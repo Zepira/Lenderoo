@@ -5,7 +5,14 @@
  */
 
 import { useState } from "react";
-import { Modal, View, ActivityIndicator, Alert } from "react-native";
+import {
+  Modal,
+  View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { X } from "lucide-react-native";
 import { Button } from "./ui/button";
 import { Text } from "./ui/text";
@@ -75,6 +82,10 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
       animationType="slide"
       onRequestClose={handleClose}
     >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1"
+      >
       <View className="flex-1 bg-black/50 justify-end">
         <View className="bg-background rounded-t-3xl p-6 pb-8">
           {/* Header */}
@@ -137,6 +148,7 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
           </View>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -4779,6 +4779,54 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-dev-client@npm:~6.0.21":
+  version: 6.0.21
+  resolution: "expo-dev-client@npm:6.0.21"
+  dependencies:
+    expo-dev-launcher: "npm:6.0.21"
+    expo-dev-menu: "npm:7.0.19"
+    expo-dev-menu-interface: "npm:2.0.0"
+    expo-manifests: "npm:~1.0.11"
+    expo-updates-interface: "npm:~2.0.0"
+  peerDependencies:
+    expo: "*"
+  checksum: 10/a8bdc3a51d86e9a92f89298736b004eb428ed93161bea502d8fab4eb6bd1071f677cf60d8b7a361b1b35e3927677bc97abb3a73222baa62e2b6cef95ece28309
+  languageName: node
+  linkType: hard
+
+"expo-dev-launcher@npm:6.0.21":
+  version: 6.0.21
+  resolution: "expo-dev-launcher@npm:6.0.21"
+  dependencies:
+    ajv: "npm:^8.11.0"
+    expo-dev-menu: "npm:7.0.19"
+    expo-manifests: "npm:~1.0.11"
+  peerDependencies:
+    expo: "*"
+  checksum: 10/5b0c0de4630911097b300061c22d9684c3340470c9f5fb6da9440e3a251eb0432293306b7ebaddf7748bcef7839235ba4555509567d8795afbcd3c1969dde314
+  languageName: node
+  linkType: hard
+
+"expo-dev-menu-interface@npm:2.0.0":
+  version: 2.0.0
+  resolution: "expo-dev-menu-interface@npm:2.0.0"
+  peerDependencies:
+    expo: "*"
+  checksum: 10/ff73f50230161abcc41cb541d752b14bf6770c7b7702c5f2fd367729ffaa5bd200a3c9b4c22e20e66d7949547541ceb88625867789af297b0f6e922c2d723cc1
+  languageName: node
+  linkType: hard
+
+"expo-dev-menu@npm:7.0.19":
+  version: 7.0.19
+  resolution: "expo-dev-menu@npm:7.0.19"
+  dependencies:
+    expo-dev-menu-interface: "npm:2.0.0"
+  peerDependencies:
+    expo: "*"
+  checksum: 10/bb20018df23761fb9cff380a032f8566a05083c7f3dced293b9156cbaa2de321b9c3cd92f04e50ad8e6cab066ed0faba09a032cadfd298b4c4a295fee0b62944
+  languageName: node
+  linkType: hard
+
 "expo-device@npm:^8.0.10":
   version: 8.0.10
   resolution: "expo-device@npm:8.0.10"
@@ -6184,6 +6232,7 @@ __metadata:
     expo-application: "npm:^7.0.8"
     expo-build-properties: "npm:~1.0.9"
     expo-clipboard: "npm:^8.0.8"
+    expo-dev-client: "npm:~6.0.21"
     expo-device: "npm:^8.0.10"
     expo-file-system: "npm:^19.0.23"
     expo-font: "npm:~14.0.12"
@@ -6205,6 +6254,7 @@ __metadata:
     react-dom: "npm:19.1.0"
     react-native: "npm:0.81.5"
     react-native-gesture-handler: "npm:~2.28.0"
+    react-native-keyboard-controller: "npm:^1.22.0"
     react-native-reanimated: "npm:~4.1.1"
     react-native-safe-area-context: "npm:~5.6.0"
     react-native-screens: "npm:~4.16.0"
@@ -8222,6 +8272,19 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10/dc82d54e0bf8f89208a538bb0d14e4891af6efae27ed5b7b21be683a72c38c5219ab9be1ea9bd40aa1c905d481174e649d0b71aeceaa9946e6c707f251568282
+  languageName: node
+  linkType: hard
+
+"react-native-keyboard-controller@npm:^1.22.0":
+  version: 1.22.0
+  resolution: "react-native-keyboard-controller@npm:1.22.0"
+  dependencies:
+    react-native-is-edge-to-edge: "npm:^1.2.1"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+    react-native-reanimated: ">=3.0.0"
+  checksum: 10/84f2b51ea58438575b78ab9b45c6308c4213179087d900590fb61917bd3e6e96e6367bac09d55a736d74b9dbac1448e3993436878990ba166b9ba9af446728d1
   languageName: node
   linkType: hard
 

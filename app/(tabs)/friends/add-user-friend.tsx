@@ -9,12 +9,11 @@
 import { useState, useEffect } from "react";
 import {
   View,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { router, Stack } from "expo-router";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
@@ -203,7 +202,11 @@ export default function AddUserFriendScreen() {
         }}
       /> */}
 
-      <ScrollView className="flex-1 bg-background">
+      <KeyboardAwareScrollView
+        className="flex-1 bg-background"
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={24}
+      >
         <SafeAreaWrapper>
           <FloatingBackButton />
           <View className="gap-3 p-4 bg-primary/5 rounded-lg border border-primary/20">
@@ -384,7 +387,7 @@ export default function AddUserFriendScreen() {
             </View>
           )}
         </SafeAreaWrapper>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </>
   );
 }

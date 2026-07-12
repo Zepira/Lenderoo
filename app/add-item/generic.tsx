@@ -1,13 +1,13 @@
 import { useState, useRef } from "react";
 import { useRouter, useLocalSearchParams, useRootNavigation } from "expo-router";
 import {
-  ScrollView,
   View,
   Alert,
   ActivityIndicator,
   Pressable,
   TextInput,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Image } from "expo-image";
 import { Camera } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
@@ -173,9 +173,10 @@ export default function AddGenericItemScreen() {
         icon={{ Icon: cfg.Icon, color: cfg.color }}
       />
 
-      <ScrollView
+      <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        bottomOffset={24}
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 16 }}
       >
         {errors.general && (
@@ -357,7 +358,7 @@ export default function AddGenericItemScreen() {
             {uploading ? "Uploading…" : loading ? "Saving…" : "Add to Library"}
           </Text>
         </Button>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

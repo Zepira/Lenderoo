@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ScrollView, View, Alert, Pressable } from "react-native";
+import { View, Alert, Pressable } from "react-native";
+import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -142,7 +143,11 @@ export default function EditGenericItemScreen() {
         ) : undefined}
       />
 
-      <ScrollView className="flex-1">
+      <KeyboardAwareScrollView
+        className="flex-1"
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={100}
+      >
         <View className="px-4 pt-6 pb-4 gap-4">
           {errors.general && (
             <View className="p-3 bg-red-50 rounded-lg border border-red-200">
@@ -372,36 +377,38 @@ export default function EditGenericItemScreen() {
             />
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
-      {/* Sticky action buttons */}
-      <View
-        style={{
-          flexDirection: "row",
-          gap: 12,
-          padding: 16,
-          paddingBottom: 24,
-          backgroundColor: isDark ? theme.muted : "#F3F4F6",
-          borderTopWidth: 1,
-          borderTopColor: theme.border,
-        }}
-      >
-        <Button
-          variant="outline"
-          onPress={handleCancel}
-          disabled={loading}
-          className="flex-1"
+      {/* Sticky action buttons — pinned above the keyboard when open */}
+      <KeyboardStickyView>
+        <View
+          style={{
+            flexDirection: "row",
+            gap: 12,
+            padding: 16,
+            paddingBottom: 24,
+            backgroundColor: isDark ? theme.muted : "#F3F4F6",
+            borderTopWidth: 1,
+            borderTopColor: theme.border,
+          }}
         >
-          <Text>Cancel</Text>
-        </Button>
-        <Button
-          onPress={handleSubmit}
-          disabled={loading || !name.trim()}
-          className="flex-1"
-        >
-          <Text>{loading ? "Updating…" : `Update ${categoryLabel}`}</Text>
-        </Button>
-      </View>
+          <Button
+            variant="outline"
+            onPress={handleCancel}
+            disabled={loading}
+            className="flex-1"
+          >
+            <Text>Cancel</Text>
+          </Button>
+          <Button
+            onPress={handleSubmit}
+            disabled={loading || !name.trim()}
+            className="flex-1"
+          >
+            <Text>{loading ? "Updating…" : `Update ${categoryLabel}`}</Text>
+          </Button>
+        </View>
+      </KeyboardStickyView>
     </View>
   );
 }
