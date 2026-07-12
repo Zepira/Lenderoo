@@ -5,14 +5,8 @@
  */
 
 import { useState } from "react";
-import {
-  Modal,
-  View,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { Modal, View, ActivityIndicator, Alert, Platform, Pressable } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { X } from "lucide-react-native";
 import { Button } from "./ui/button";
 import { Text } from "./ui/text";
@@ -84,9 +78,13 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
+        style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}
       >
-      <View className="flex-1 bg-black/50 justify-end">
+        {/* Backdrop tap-to-close — safety net so the sheet is never unreachable */}
+        <Pressable
+          onPress={handleClose}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        />
         <View className="bg-background rounded-t-3xl p-6 pb-8">
           {/* Header */}
           <View className="flex-row items-center justify-between mb-4">
@@ -147,7 +145,6 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
             </Button>
           </View>
         </View>
-      </View>
       </KeyboardAvoidingView>
     </Modal>
   );
