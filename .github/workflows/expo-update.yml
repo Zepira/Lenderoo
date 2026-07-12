@@ -126,7 +126,9 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Write Android service account key
-        run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_JSON }}' > android/zepira-390c2fd69214.json
+        run: |
+          mkdir -p android
+          echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_JSON }}' > android/zepira-390c2fd69214.json
 
       - name: Trigger EAS builds + submit (Android + iOS production)
         run: |
