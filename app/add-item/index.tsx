@@ -1,11 +1,17 @@
+import { useState } from "react";
 import { useRouter, useRootNavigation } from "expo-router";
-import { View, Pressable, useWindowDimensions } from "react-native";
+import { View, Pressable, ScrollView, useWindowDimensions, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, X } from "lucide-react-native";
+import { ArrowLeft, X, ScanBarcode } from "lucide-react-native";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { PageTitle, TinyLabel, Caption } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { BarcodeScannerModal } from "@/components/BarcodeScannerModal";
+import { lookupBarcode } from "@/lib/services/upcitemdb";
+import * as toast from "@/lib/toast";
 import type { ItemCategory } from "lib/types";
 
 const CATEGORIES = Object.keys(CATEGORY_CONFIG) as ItemCategory[];
@@ -28,20 +34,46 @@ export default function SelectCategoryScreen() {
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
   const { width } = useWindowDimensions();
+  const [showScanner, setShowScanner] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
+
+  const handleBarcodeScanned = async (barcode: string) => {
+    setShowScanner(false);
+    setLookingUp(true);
+    try {
+      const result = await lookupBarcode(barcode);
+      if (!result) {
+        toast.error("Couldn't find that barcode. Try entering it manually.");
+        return;
+      }
+      const params = new URLSearchParams({
+        category: result.category,
+        ...(result.title && { name: result.title }),
+        ...(result.description && { description: result.description }),
+        ...(result.images?.[0] && { imageUrl: result.images[0] }),
+      });
+      router.push(`/add-item/generic?${params.toString()}` as any);
+    } catch {
+      toast.error("Barcode lookup failed. Try entering it manually.");
+    } finally {
+      setLookingUp(false);
+    }
+  };
 
   const outerPadding = 24;
   const gap = 12;
   const availableWidth = width - outerPadding * 2;
 
-  // ~100px min gives 3 cols on 390px phone, more on tablets
+  // ~90px min gives 4 cols on 390px phone, more on tablets — keeps the grid
+  // compact so it plus the scan button fits on shorter Android screens.
   const numColumns = Math.max(
-    2,
-    Math.floor((availableWidth + gap) / (100 + gap)),
+    3,
+    Math.floor((availableWidth + gap) / (90 + gap)),
   );
   const itemWidth = Math.floor(
     (availableWidth - gap * (numColumns - 1)) / numColumns,
   );
-  const itemHeight = Math.round(itemWidth * 1.15);
+  const itemHeight = Math.round(itemWidth * 1.0);
 
   // Split into rows, padding the last row with nulls so widths stay consistent
   const rows: (ItemCategory | null)[][] = [];
@@ -160,8 +192,9 @@ export default function SelectCategoryScreen() {
       </View>
 
       {/* Content */}
-      <View
-        style={{
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
           paddingHorizontal: outerPadding,
           paddingTop: 24,
           paddingBottom: 24,
@@ -185,7 +218,27 @@ export default function SelectCategoryScreen() {
             </View>
           ))}
         </View>
-      </View>
+
+        <Button
+          variant="outline"
+          onPress={() => setShowScanner(true)}
+          disabled={lookingUp}
+        >
+          {lookingUp ? (
+            <ActivityIndicator size="small" color={theme.foreground} />
+          ) : (
+            <ScanBarcode size={18} color={theme.foreground} />
+          )}
+          <Text>{lookingUp ? "Looking up…" : "Scan Barcode"}</Text>
+        </Button>
+      </ScrollView>
+
+      <BarcodeScannerModal
+        visible={showScanner}
+        onClose={() => setShowScanner(false)}
+        title="Scan Barcode"
+        onScanned={handleBarcodeScanned}
+      />
     </View>
   );
 }

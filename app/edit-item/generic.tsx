@@ -144,12 +144,14 @@ export default function EditGenericItemScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior="padding"
+        enabled={Platform.OS === "ios"}
         style={{ flex: 1 }}
       >
       <KeyboardAwareScrollView
         className="flex-1"
         keyboardShouldPersistTaps="handled"
+        enableOnAndroid
         extraScrollHeight={100}
       >
         <View className="px-4 pt-6 pb-4 gap-4">

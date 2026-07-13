@@ -73,7 +73,13 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Lenderoo to access your camera to scan barcodes."
+        }
+      ]
     ],
     "extra": {
       "router": {},

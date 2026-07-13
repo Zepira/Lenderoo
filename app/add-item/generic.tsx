@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter, useLocalSearchParams, useRootNavigation } from "expo-router";
 import {
   View,
@@ -49,8 +49,13 @@ const PLACEHOLDERS: Partial<Record<ItemCategory, string>> = {
 };
 
 export default function AddGenericItemScreen() {
-  const { category: categoryParam } = useLocalSearchParams<{ category: string }>();
-  const category = (categoryParam || "other") as ItemCategory;
+  const params = useLocalSearchParams<{
+    category: string;
+    name?: string;
+    description?: string;
+    imageUrl?: string;
+  }>();
+  const category = (params.category || "other") as ItemCategory;
   const router = useRouter();
   const rootNavigation = useRootNavigation();
   const { activeTheme } = useThemeContext();
@@ -70,6 +75,13 @@ export default function AddGenericItemScreen() {
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showImagePicker, setShowImagePicker] = useState(false);
+
+  useEffect(() => {
+    if (params.name) setName(params.name);
+    if (params.description) setDescription(params.description);
+    if (params.imageUrl) setImageUrl(params.imageUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cfg = CATEGORY_CONFIG[category] ?? CATEGORY_CONFIG.other;
   const categoryLabel = CATEGORY_LABELS[category] ?? "Item";
@@ -176,6 +188,7 @@ export default function AddGenericItemScreen() {
       <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        enableOnAndroid
         extraScrollHeight={24}
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 16 }}
       >

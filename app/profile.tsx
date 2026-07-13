@@ -190,6 +190,7 @@ export default function ProfileScreen() {
       <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        enableOnAndroid
         extraScrollHeight={24}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
       >

@@ -78,6 +78,7 @@ export default function AddFriendScreen() {
       <KeyboardAwareScrollView
         className="flex-1 bg-background"
         keyboardShouldPersistTaps="handled"
+        enableOnAndroid
         extraScrollHeight={24}
       >
         <View className="p-4 gap-4">

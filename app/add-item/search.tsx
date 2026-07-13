@@ -8,7 +8,7 @@ import {
   TextInput,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { Search, BookOpen } from "lucide-react-native";
+import { Search, BookOpen, ScanBarcode } from "lucide-react-native";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -21,6 +21,7 @@ import {
   LabelStrong,
 } from "@/components/ui/typography";
 import { searchBooks } from "@/lib/services/hardcover";
+import { BarcodeScannerModal } from "@/components/BarcodeScannerModal";
 
 interface HardcoverBook {
   id: string;
@@ -49,14 +50,16 @@ export default function SearchBookScreen() {
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<HardcoverBook[]>([]);
   const [error, setError] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const handleSearch = async (queryOverride?: string) => {
+    const query = queryOverride ?? searchQuery;
+    if (!query.trim()) return;
     try {
       setSearching(true);
       setError("");
       const apiToken = process.env.EXPO_PUBLIC_HARDCOVER_API_TOKEN || "";
-      const results = await searchBooks(searchQuery, apiToken);
+      const results = await searchBooks(query, apiToken);
 
       const books: HardcoverBook[] = results.map((entry: any) => {
         const book = entry.document;
@@ -127,6 +130,7 @@ export default function SearchBookScreen() {
       <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        enableOnAndroid
         extraScrollHeight={24}
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 16 }}
       >
@@ -160,7 +164,7 @@ export default function SearchBookScreen() {
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
+              onSubmitEditing={() => handleSearch()}
               placeholder="Title or author…"
               placeholderTextColor={theme.mutedForeground}
               returnKeyType="search"
@@ -175,7 +179,7 @@ export default function SearchBookScreen() {
           </View>
 
           <Button
-            onPress={handleSearch}
+            onPress={() => handleSearch()}
             disabled={!searchQuery.trim() || searching}
           >
             {searching ? (
@@ -183,6 +187,11 @@ export default function SearchBookScreen() {
             ) : (
               <Text className="text-white font-bold">Search</Text>
             )}
+          </Button>
+
+          <Button variant="outline" onPress={() => setShowScanner(true)}>
+            <ScanBarcode size={18} color={theme.foreground} />
+            <Text>Scan ISBN Barcode</Text>
           </Button>
 
           {error ? (
@@ -279,6 +288,17 @@ export default function SearchBookScreen() {
           </Caption>
         </Pressable>
       </KeyboardAwareScrollView>
+
+      <BarcodeScannerModal
+        visible={showScanner}
+        onClose={() => setShowScanner(false)}
+        title="Scan ISBN Barcode"
+        onScanned={(isbn) => {
+          setShowScanner(false);
+          setSearchQuery(isbn);
+          handleSearch(isbn);
+        }}
+      />
     </View>
   );
 }

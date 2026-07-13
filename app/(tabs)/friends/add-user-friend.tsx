@@ -205,6 +205,7 @@ export default function AddUserFriendScreen() {
       <KeyboardAwareScrollView
         className="flex-1 bg-background"
         keyboardShouldPersistTaps="handled"
+        enableOnAndroid
         extraScrollHeight={24}
       >
         <SafeAreaWrapper>
