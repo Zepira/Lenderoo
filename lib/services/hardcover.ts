@@ -127,20 +127,29 @@ export async function searchBooks(searchQuery: string, token?: string) {
     }
   `;
 
+  console.log("[hardcover] searchBooks query:", JSON.stringify(searchQuery));
+
   const data = await queryHardcover({
     query,
     variables: { query: searchQuery },
   });
 
+  console.log("[hardcover] searchBooks raw response:", JSON.stringify(data));
+
   const results = data.search?.results;
-  if (!results) return [];
+  if (!results) {
+    console.log("[hardcover] searchBooks: no results object in response");
+    return [];
+  }
 
   // Hardcover API structure: results.hits contains the actual array of books
   if (results.hits && Array.isArray(results.hits)) {
+    console.log("[hardcover] searchBooks hit count:", results.hits.length);
     return results.hits;
   }
 
   // Fallback: if hits is not found, return empty array
+  console.log("[hardcover] searchBooks: results.hits missing/not an array");
   return [];
 }
 

@@ -3148,13 +3148,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/emscripten@npm:^1.41.5":
-  version: 1.41.5
-  resolution: "@types/emscripten@npm:1.41.5"
-  checksum: 10/60dfcced39b2d0c94f31907c5cf5d97fe06ed35ed6cb134650a1a96bae861302722d4a6f459b484ea09588cde70cbcc034974454a746be3ce9688b52398d2953
-  languageName: node
-  linkType: hard
-
 "@types/graceful-fs@npm:^4.1.3":
   version: 4.1.9
   resolution: "@types/graceful-fs@npm:4.1.9"
@@ -3736,15 +3729,6 @@ __metadata:
   version: 4.0.4
   resolution: "balanced-match@npm:4.0.4"
   checksum: 10/fb07bb66a0959c2843fc055838047e2a95ccebb837c519614afb067ebfdf2fa967ca8d712c35ced07f2cd26fc6f07964230b094891315ad74f11eba3d53178a0
-  languageName: node
-  linkType: hard
-
-"barcode-detector@npm:^3.0.0":
-  version: 3.2.1
-  resolution: "barcode-detector@npm:3.2.1"
-  dependencies:
-    zxing-wasm: "npm:3.1.1"
-  checksum: 10/17ba87cea89d3068794bb106851b09db0744fc4de1ae2998835564ac662876d8d9437ed89f7984c6765c941f2b366b0d33a4f5e8cc8d1c5a05f073a2b628cfce
   languageName: node
   linkType: hard
 
@@ -4771,11 +4755,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-camera@npm:^57.0.1":
-  version: 57.0.1
-  resolution: "expo-camera@npm:57.0.1"
+"expo-camera@npm:~17.0.10":
+  version: 17.0.10
+  resolution: "expo-camera@npm:17.0.10"
   dependencies:
-    barcode-detector: "npm:^3.0.0"
+    invariant: "npm:^2.2.4"
   peerDependencies:
     expo: "*"
     react: "*"
@@ -4784,7 +4768,7 @@ __metadata:
   peerDependenciesMeta:
     react-native-web:
       optional: true
-  checksum: 10/b29e307cb87ef51e3a9858ccd9c123aa5a2973aa9737abf0e128afd1ea345b898e20bbf3f32c247968edd15c4dc9a85d68bd92df64ab21b53f43b0f9b322ca97
+  checksum: 10/f46f3ebe48120d4cf4ea77c1de7f553e1fe76c108ad08de85f6e133575a58d57015fdfd2ecb508a0e87af1953f57c2c8a3bb436a633b3f4d974142cb9f030cf2
   languageName: node
   linkType: hard
 
@@ -6264,7 +6248,7 @@ __metadata:
     expo: "npm:^54.0.35"
     expo-application: "npm:^7.0.8"
     expo-build-properties: "npm:~1.0.9"
-    expo-camera: "npm:^57.0.1"
+    expo-camera: "npm:~17.0.10"
     expo-clipboard: "npm:^8.0.8"
     expo-dev-client: "npm:~6.0.21"
     expo-device: "npm:^8.0.10"
@@ -9293,13 +9277,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tagged-tag@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "tagged-tag@npm:1.0.0"
-  checksum: 10/e37653df3e495daa7ea7790cb161b810b00075bba2e4d6c93fb06a709e747e3ae9da11a120d0489833203926511b39e038a2affbd9d279cfb7a2f3fcccd30b5d
-  languageName: node
-  linkType: hard
-
 "tailwind-merge@npm:^3.4.0":
   version: 3.6.0
   resolution: "tailwind-merge@npm:3.6.0"
@@ -9494,15 +9471,6 @@ __metadata:
   version: 0.7.1
   resolution: "type-fest@npm:0.7.1"
   checksum: 10/0699b6011bb3f7fac5fd5385e2e09432cde08fa89283f24084f29db00ec69a5445cd3aa976438ec74fc552a9a96f4a04ed390b5cb62eb7483aa4b6e5b935e059
-  languageName: node
-  linkType: hard
-
-"type-fest@npm:^5.8.0":
-  version: 5.8.0
-  resolution: "type-fest@npm:5.8.0"
-  dependencies:
-    tagged-tag: "npm:^1.0.0"
-  checksum: 10/4dbe4c78ac6933d3d165b01f9d552991a84d63e5352110e01bebb5c46499fb1f44d199fc88835b18ee5662ee44c73926621f59525e46f7faa031086ac00b2686
   languageName: node
   linkType: hard
 
@@ -10031,17 +9999,5 @@ __metadata:
     use-sync-external-store:
       optional: true
   checksum: 10/136ab316fa4fa479ce7cc0cf485665dcee9e1bd926d4e51e138cd40d6602900fd2a4b6bb172b39b03bd7b6df073a0656679e5a237c28dd026d8fd4e5228e1b7c
-  languageName: node
-  linkType: hard
-
-"zxing-wasm@npm:3.1.1":
-  version: 3.1.1
-  resolution: "zxing-wasm@npm:3.1.1"
-  dependencies:
-    "@types/emscripten": "npm:^1.41.5"
-    type-fest: "npm:^5.8.0"
-  peerDependencies:
-    "@types/emscripten": ">=1.39.6"
-  checksum: 10/1a714b50156ca7dce5eecb1c1b1c843925c75b354cd030d743bab905e16eb20c9c65646260574aeb21b03639f17d790412b945b9d32890ffdba3ec9d7643fca3
   languageName: node
   linkType: hard

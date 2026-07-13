@@ -24,9 +24,10 @@ export function BarcodeScannerModal({
   const [permission, requestPermission] = useCameraPermissions();
   const hasScanned = useRef(false);
 
-  const handleBarcodeScanned = ({ data }: { data: string }) => {
+  const handleBarcodeScanned = ({ data, type }: { data: string; type?: string }) => {
     if (hasScanned.current) return;
     hasScanned.current = true;
+    console.log("[barcode scanner] detected:", JSON.stringify({ type, data }));
     onScanned(data);
   };
 

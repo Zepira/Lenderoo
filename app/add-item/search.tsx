@@ -55,6 +55,7 @@ export default function SearchBookScreen() {
   const handleSearch = async (queryOverride?: string) => {
     const query = queryOverride ?? searchQuery;
     if (!query.trim()) return;
+    console.log("[book search] searching for:", JSON.stringify(query));
     try {
       setSearching(true);
       setError("");
@@ -88,11 +89,13 @@ export default function SearchBookScreen() {
         };
       });
 
+      console.log("[book search] mapped results count:", books.length);
       setSearchResults(books);
       if (books.length === 0) {
         setError("No books found. Try a different search or enter manually.");
       }
-    } catch {
+    } catch (err) {
+      console.log("[book search] error:", err);
       setError("Failed to search. Please try again or enter manually.");
     } finally {
       setSearching(false);
@@ -294,6 +297,7 @@ export default function SearchBookScreen() {
         onClose={() => setShowScanner(false)}
         title="Scan ISBN Barcode"
         onScanned={(isbn) => {
+          console.log("[book search] scanned barcode raw value:", JSON.stringify(isbn));
           setShowScanner(false);
           setSearchQuery(isbn);
           handleSearch(isbn);

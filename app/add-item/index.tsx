@@ -11,8 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { BarcodeScannerModal } from "@/components/BarcodeScannerModal";
 import { lookupBarcode } from "@/lib/services/upcitemdb";
+import { searchBooks } from "@/lib/services/hardcover";
 import * as toast from "@/lib/toast";
 import type { ItemCategory } from "lib/types";
+
+// ISBN-13 barcodes always carry the Bookland EAN prefix 978/979 — UPCitemdb's
+// free tier has weak book coverage, so route these straight to Hardcover
+// (the same source the dedicated book-search flow uses) instead.
+const ISBN_13_PATTERN = /^97[89]\d{10}$/;
 
 const CATEGORIES = Object.keys(CATEGORY_CONFIG) as ItemCategory[];
 
@@ -37,13 +43,65 @@ export default function SelectCategoryScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
 
+  const handleBookIsbnScan = async (isbn: string): Promise<boolean> => {
+    const apiToken = process.env.EXPO_PUBLIC_HARDCOVER_API_TOKEN || "";
+    const results = await searchBooks(isbn, apiToken);
+    console.log("[add-item] hardcover ISBN search hit count:", results.length);
+    const entry = results[0];
+    if (!entry) return false;
+
+    const book = entry.document;
+    const author: string[] = [];
+    (book.contributions || []).forEach((c: any) => {
+      if (!c.contribution && c.author?.name) author.push(c.author.name);
+    });
+    const publicationYear = book.release_date
+      ? new Date(book.release_date).getFullYear()
+      : undefined;
+    const genres = book.genres || [];
+
+    const params = new URLSearchParams({
+      title: book.title || "",
+      author: author.join(", "),
+      ...(book.featured_series?.series?.name && {
+        seriesName: book.featured_series.series.name,
+      }),
+      ...(book.featured_series_position && {
+        seriesNumber: String(book.featured_series_position),
+      }),
+      ...(book.featured_series?.series?.id && {
+        seriesId: String(book.featured_series.series.id),
+      }),
+      ...((book.image?.url || book.cover_image_url) && {
+        coverUrl: book.image?.url || book.cover_image_url,
+      }),
+      ...(genres.length > 0 && { genre: genres.join(", ") }),
+      ...(book.description && { description: book.description }),
+      isbn,
+      ...(book.pages && { pageCount: String(book.pages) }),
+      ...(publicationYear && { publicationYear: String(publicationYear) }),
+      ...(book.rating && { averageRating: String(book.rating) }),
+      ...(book.id && { hardcoverId: String(book.id) }),
+    });
+    router.push(`/add-item/book?${params.toString()}` as any);
+    return true;
+  };
+
   const handleBarcodeScanned = async (barcode: string) => {
+    console.log("[add-item] scanned barcode:", JSON.stringify(barcode));
     setShowScanner(false);
     setLookingUp(true);
     try {
+      if (ISBN_13_PATTERN.test(barcode)) {
+        const found = await handleBookIsbnScan(barcode);
+        if (found) return;
+        console.log("[add-item] ISBN not found in Hardcover, falling back to UPCitemdb");
+      }
+
       const result = await lookupBarcode(barcode);
+      console.log("[add-item] lookupBarcode result:", JSON.stringify(result));
       if (!result) {
-        toast.error("Couldn't find that barcode. Try entering it manually.");
+        toast.error("Couldn't find that barcode.");
         return;
       }
       const params = new URLSearchParams({
@@ -53,8 +111,9 @@ export default function SelectCategoryScreen() {
         ...(result.images?.[0] && { imageUrl: result.images[0] }),
       });
       router.push(`/add-item/generic?${params.toString()}` as any);
-    } catch {
-      toast.error("Barcode lookup failed. Try entering it manually.");
+    } catch (err) {
+      console.log("[add-item] barcode lookup error:", err);
+      toast.error("Barcode lookup failed.");
     } finally {
       setLookingUp(false);
     }

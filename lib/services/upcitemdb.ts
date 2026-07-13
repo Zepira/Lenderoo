@@ -77,13 +77,20 @@ function guessCategory(rawCategory?: string, title?: string): ItemCategory {
 export async function lookupBarcode(
   barcode: string,
 ): Promise<BarcodeLookupResult | null> {
-  const { data: cached } = await supabase
+  console.log("[upcitemdb] lookupBarcode:", JSON.stringify(barcode));
+
+  const { data: cached, error: cacheError } = await supabase
     .from("barcode_lookups")
     .select("barcode, title, brand, category, description, images")
     .eq("barcode", barcode)
     .maybeSingle();
 
+  if (cacheError) {
+    console.log("[upcitemdb] cache lookup error:", cacheError);
+  }
+
   if (cached) {
+    console.log("[upcitemdb] cache hit:", JSON.stringify(cached));
     return {
       barcode: cached.barcode,
       title: cached.title ?? undefined,
@@ -94,14 +101,27 @@ export async function lookupBarcode(
     };
   }
 
-  const response = await fetch(
-    `${UPCITEMDB_TRIAL_URL}?upc=${encodeURIComponent(barcode)}`,
-  );
-  if (!response.ok) return null;
+  console.log("[upcitemdb] cache miss, calling UPCitemdb trial endpoint");
+  const url = `${UPCITEMDB_TRIAL_URL}?upc=${encodeURIComponent(barcode)}`;
+  console.log("[upcitemdb] request URL:", url);
 
-  const data = await response.json();
+  const response = await fetch(url);
+  console.log("[upcitemdb] response status:", response.status);
+
+  const bodyText = await response.text();
+  console.log("[upcitemdb] response body:", bodyText);
+
+  if (!response.ok) {
+    console.log("[upcitemdb] non-OK response, returning null");
+    return null;
+  }
+
+  const data = JSON.parse(bodyText);
   const item = data?.items?.[0];
-  if (!item) return null;
+  if (!item) {
+    console.log("[upcitemdb] no items in response, returning null");
+    return null;
+  }
 
   const rawCategory: string | undefined = item.category || undefined;
   const category = guessCategory(rawCategory, item.title);
@@ -115,23 +135,22 @@ export async function lookupBarcode(
     images: Array.isArray(item.images) ? item.images : undefined,
   };
 
+  console.log("[upcitemdb] parsed result:", JSON.stringify(result));
+
   // Best-effort cache write — a failure here (e.g. duplicate race) shouldn't
   // block returning the result to the user.
-  await supabase
-    .from("barcode_lookups")
-    .insert({
-      barcode: result.barcode,
-      title: result.title,
-      brand: result.brand,
-      category: result.category,
-      description: result.description,
-      images: result.images,
-      raw_response: item,
-    })
-    .then(
-      () => {},
-      () => {},
-    );
+  const { error: insertError } = await supabase.from("barcode_lookups").insert({
+    barcode: result.barcode,
+    title: result.title,
+    brand: result.brand,
+    category: result.category,
+    description: result.description,
+    images: result.images,
+    raw_response: item,
+  });
+  if (insertError) {
+    console.log("[upcitemdb] cache write error (non-fatal):", insertError);
+  }
 
   return result;
 }
