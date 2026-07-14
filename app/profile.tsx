@@ -8,7 +8,7 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, User, Mail, Lock, Eye, EyeOff } from "lucide-react-native";
+import { ArrowLeft, User, Mail, Phone, Lock, Eye, EyeOff } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
@@ -32,6 +32,7 @@ export default function ProfileScreen() {
   // ── Personal info ─────────────────────────────────────────────────────────
   const [name, setName] = useState(appUser?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
+  const [phone, setPhone] = useState(appUser?.phone ?? "");
   const [savingInfo, setSavingInfo] = useState(false);
 
   // ── Password ──────────────────────────────────────────────────────────────
@@ -73,14 +74,18 @@ export default function ProfileScreen() {
     try {
       const nameChanged = name.trim() !== (appUser?.name ?? "");
       const emailChanged = email.trim() !== (user?.email ?? "");
+      const phoneChanged = phone.trim() !== (appUser?.phone ?? "");
 
-      if (!nameChanged && !emailChanged) {
+      if (!nameChanged && !emailChanged && !phoneChanged) {
         toast.error("No changes to save");
         return;
       }
 
-      if (nameChanged) {
-        await updateProfile({ name: name.trim() });
+      if (nameChanged || phoneChanged) {
+        await updateProfile({
+          ...(nameChanged ? { name: name.trim() } : {}),
+          ...(phoneChanged ? { phone: phone.trim() } : {}),
+        });
       }
 
       if (emailChanged) {
@@ -241,6 +246,26 @@ export default function ProfileScreen() {
             </View>
             <Caption style={{ color: theme.mutedForeground }}>
               Changing your email will send a confirmation link to the new address.
+            </Caption>
+          </View>
+
+          {/* Phone */}
+          <View style={{ gap: 8 }}>
+            <TinyLabel style={{ color: theme.mutedForeground }}>Phone (optional)</TinyLabel>
+            <View style={rowStyle}>
+              <Phone size={18} color={theme.mutedForeground} />
+              <TextInput
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="Your phone number"
+                placeholderTextColor={theme.mutedForeground}
+                keyboardType="phone-pad"
+                autoCorrect={false}
+                style={inputStyle}
+              />
+            </View>
+            <Caption style={{ color: theme.mutedForeground }}>
+              Not verified — used only so friends can find you via their contacts.
             </Caption>
           </View>
 

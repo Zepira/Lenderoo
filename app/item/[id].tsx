@@ -25,10 +25,13 @@ import { Text } from "@/components/ui/text";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
+  Bell,
+  BellOff,
   Check,
   ChevronRight,
   Clock,
   Edit,
+  EyeOff,
   Package,
   RotateCcw,
   Send,
@@ -69,10 +72,16 @@ import {
   getHistoryForItemWithUsers,
   markItemReturnedToNext,
 } from "@/lib/services/database";
+import {
+  subscribeToItemAvailability,
+  unsubscribeFromItemAvailability,
+  getMyAvailabilitySubscriptionForItem,
+} from "@/lib/services/availability";
 import type {
   BorrowRequest,
   BorrowHistoryWithUser,
   BorrowRequestWithDetails,
+  ItemAvailabilitySubscription,
 } from "lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
@@ -149,6 +158,11 @@ export default function ItemDetailScreen() {
     [],
   );
 
+  // "Notify when available" subscription (for friend-viewer actions)
+  const [availabilitySub, setAvailabilitySub] =
+    useState<ItemAvailabilitySubscription | null>(null);
+  const [subscribing, setSubscribing] = useState(false);
+
   const loadBorrowRequest = useCallback(async () => {
     if (!item || isOwner || isBorrower) return;
     try {
@@ -176,13 +190,31 @@ export default function ItemDetailScreen() {
     } catch {}
   }, [item?.id, item?.borrowedBy]);
 
+  const loadAvailabilitySubscription = useCallback(async () => {
+    if (!item || isOwner) {
+      setAvailabilitySub(null);
+      return;
+    }
+    try {
+      const sub = await getMyAvailabilitySubscriptionForItem(item.id);
+      setAvailabilitySub(sub);
+    } catch {}
+  }, [item?.id, isOwner]);
+
   useFocusEffect(
     useCallback(() => {
       refresh();
       loadBorrowRequest();
       loadBorrowHistory();
       loadBorrowQueue();
-    }, [refresh, loadBorrowRequest, loadBorrowHistory, loadBorrowQueue]),
+      loadAvailabilitySubscription();
+    }, [
+      refresh,
+      loadBorrowRequest,
+      loadBorrowHistory,
+      loadBorrowQueue,
+      loadAvailabilitySubscription,
+    ]),
   );
 
   // Live-update borrow request status (e.g. owner approves while this screen is open)
@@ -260,6 +292,40 @@ export default function ItemDetailScreen() {
       toast.error(e?.message || "Failed to cancel request");
     } finally {
       setRequesting(false);
+    }
+  };
+
+  const handleToggleUnavailable = async () => {
+    if (!item) return;
+    const nextUnavailable = !item.isUnavailable;
+    try {
+      await updateItem(item.id, { isUnavailable: nextUnavailable });
+      toast.success(
+        nextUnavailable ? "Item marked unavailable" : "Item marked available",
+      );
+      refresh();
+    } catch {
+      toast.error("Failed to update availability");
+    }
+  };
+
+  const handleToggleNotify = async () => {
+    if (!item) return;
+    setSubscribing(true);
+    try {
+      if (availabilitySub) {
+        await unsubscribeFromItemAvailability(availabilitySub.id);
+        setAvailabilitySub(null);
+        toast.success("Notification cancelled");
+      } else {
+        const sub = await subscribeToItemAvailability(item.id);
+        setAvailabilitySub(sub);
+        toast.success("We'll notify you when it's available");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to update notification");
+    } finally {
+      setSubscribing(false);
     }
   };
 
@@ -345,16 +411,21 @@ export default function ItemDetailScreen() {
     perfect: "#3B82F6",
   } as const;
 
-  const statusLabel = isAvailable
-    ? "Available"
-    : isOverdue
-      ? "Overdue"
-      : "Lent Out";
-  const statusColor = isAvailable
-    ? theme.primary
-    : isOverdue
-      ? theme.destructive
-      : theme.secondary;
+  const isMarkedUnavailable = isAvailable && !!item.isUnavailable;
+  const statusLabel = isMarkedUnavailable
+    ? "Unavailable"
+    : isAvailable
+      ? "Available"
+      : isOverdue
+        ? "Overdue"
+        : "Lent Out";
+  const statusColor = isMarkedUnavailable
+    ? theme.mutedForeground
+    : isAvailable
+      ? theme.primary
+      : isOverdue
+        ? theme.destructive
+        : theme.secondary;
 
   const handleMarkReturned = async () => {
     if (!item) return;
@@ -1295,8 +1366,8 @@ export default function ItemDetailScreen() {
                   </Button>
                 )}
 
-                {/* Lend to — only when available */}
-                {isAvailable && (
+                {/* Lend to — only when available and not marked unavailable */}
+                {isAvailable && !isMarkedUnavailable && (
                   <Button
                     onPress={() => {
                       setLendPickerOpen(true);
@@ -1307,6 +1378,31 @@ export default function ItemDetailScreen() {
                     <Users size={16} color="#fff" />
                     <Text>
                       {friends.length === 0 ? "No friends yet" : "Lend to…"}
+                    </Text>
+                  </Button>
+                )}
+
+                {/* Mark unavailable / available — only while not lent out */}
+                {isAvailable && (
+                  <Button
+                    variant={isMarkedUnavailable ? "default" : "outline"}
+                    onPress={handleToggleUnavailable}
+                    disabled={deleting || returning || lending}
+                  >
+                    {isMarkedUnavailable ? (
+                      <Check
+                        size={16}
+                        color={
+                          isMarkedUnavailable ? "#fff" : theme.foreground
+                        }
+                      />
+                    ) : (
+                      <EyeOff size={16} color={theme.foreground} />
+                    )}
+                    <Text>
+                      {isMarkedUnavailable
+                        ? "Mark Available"
+                        : "Mark Unavailable"}
                     </Text>
                   </Button>
                 )}
@@ -1332,10 +1428,31 @@ export default function ItemDetailScreen() {
               /* Viewer is a friend — matches ItemCard button logic */
               <>
                 {/* Borrow: item available, no active request — default green */}
-                {isAvailable && !borrowRequest && (
+                {isAvailable && !isMarkedUnavailable && !borrowRequest && (
                   <Button onPress={handleBorrow} disabled={requesting}>
                     <Send size={16} color="#fff" />
                     <Text>{requesting ? "Sending…" : "Borrow"}</Text>
+                  </Button>
+                )}
+                {/* Owner marked it unavailable — offer to notify when it's back */}
+                {isMarkedUnavailable && (
+                  <Button
+                    variant={availabilitySub ? "outline" : "default"}
+                    onPress={handleToggleNotify}
+                    disabled={subscribing}
+                  >
+                    {availabilitySub ? (
+                      <BellOff size={16} color={theme.foreground} />
+                    ) : (
+                      <Bell size={16} color="#fff" />
+                    )}
+                    <Text>
+                      {subscribing
+                        ? "Please wait…"
+                        : availabilitySub
+                          ? "Cancel Notification"
+                          : "Notify When Available"}
+                    </Text>
                   </Button>
                 )}
                 {/* Request Next: item unavailable, no active request — default green */}

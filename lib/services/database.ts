@@ -51,6 +51,7 @@ function convertItemFromDb(data: any): Item {
     returnedDate: data.returned_date ? new Date(data.returned_date) : undefined,
     notes: data.notes,
     metadata: data.metadata,
+    isUnavailable: data.is_unavailable ?? false,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };
@@ -200,6 +201,8 @@ export async function updateItem(
     updateData.returned_date = updates.returnedDate?.toISOString() ?? null;
   if ('notes' in updates) updateData.notes = updates.notes ?? null;
   if ('metadata' in updates) updateData.metadata = updates.metadata ?? null;
+  if ('isUnavailable' in updates)
+    updateData.is_unavailable = updates.isUnavailable ?? false;
 
   const { data, error } = await supabase
     .from("items")

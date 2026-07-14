@@ -521,9 +521,10 @@ export function getItemStatusDisplay(
   itemStatus: ItemStatus,
   isBorrowedByMe: boolean,
   request?: Pick<BorrowRequest, "status">,
+  isMarkedUnavailable?: boolean,
 ): { label: string; color: string } {
-  const isUnavailable = itemStatus === "borrowed" || itemStatus === "overdue";
-  if (isUnavailable && isBorrowedByMe) {
+  const isLentOut = itemStatus === "borrowed" || itemStatus === "overdue";
+  if (isLentOut && isBorrowedByMe) {
     return { label: "Borrowed by you", color: THEME.light.secondary };
   }
   if (request?.status === "approved") {
@@ -532,8 +533,11 @@ export function getItemStatusDisplay(
   if (request?.status === "pending") {
     return { label: "Requested", color: THEME.light.secondary };
   }
-  if (isUnavailable) {
+  if (isLentOut) {
     return { label: "Borrowed", color: THEME.light.mutedForeground };
+  }
+  if (isMarkedUnavailable) {
+    return { label: "Unavailable", color: THEME.light.mutedForeground };
   }
   return { label: "Available", color: THEME.light.primary };
 }

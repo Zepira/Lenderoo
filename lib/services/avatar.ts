@@ -1,22 +1,58 @@
-import { supabase } from '../supabase';
+import { supabase } from "../supabase";
 
 // ── Preset avatars ────────────────────────────────────────────────────────────
 
 export const PRESET_AVATARS = [
-  { id: 'cat',        name: 'Cat',              source: require('../../assets/images/avatars/cat avatar.png') },
-  { id: 'cockatoo',   name: 'Cockatoo',         source: require('../../assets/images/avatars/cockatoo avatar.png') },
-  { id: 'devil',      name: 'Tasmanian Devil',  source: require('../../assets/images/avatars/devil avatar.png') },
-  { id: 'echidna',    name: 'Echidna',          source: require('../../assets/images/avatars/echidna avatar.png') },
-  { id: 'galah',      name: 'Galah',            source: require('../../assets/images/avatars/Gallah avatar.png') },
-  { id: 'kangaroo',   name: 'Kangaroo',         source: require('../../assets/images/avatars/kanagroo avatar.png') },
-  { id: 'koala',      name: 'Koala',            source: require('../../assets/images/avatars/koala avatar.png') },
-  { id: 'kookaburra', name: 'Kookaburra',       source: require('../../assets/images/avatars/kookaburra avatar.png') },
-  { id: 'platypus',   name: 'Platypus',         source: require('../../assets/images/avatars/platypus avatar.png') },
+  {
+    id: "quokka",
+    name: "Quokka",
+    source: require("../../assets/images/avatars/cat avatar.png"),
+  },
+  {
+    id: "cockatoo",
+    name: "Cockatoo",
+    source: require("../../assets/images/avatars/cockatoo avatar.png"),
+  },
+  {
+    id: "devil",
+    name: "Tasmanian Devil",
+    source: require("../../assets/images/avatars/devil avatar.png"),
+  },
+  {
+    id: "echidna",
+    name: "Echidna",
+    source: require("../../assets/images/avatars/echidna avatar.png"),
+  },
+  {
+    id: "galah",
+    name: "Galah",
+    source: require("../../assets/images/avatars/Gallah avatar.png"),
+  },
+  {
+    id: "kangaroo",
+    name: "Kangaroo",
+    source: require("../../assets/images/avatars/kanagroo avatar.png"),
+  },
+  {
+    id: "koala",
+    name: "Koala",
+    source: require("../../assets/images/avatars/koala avatar.png"),
+  },
+  {
+    id: "kookaburra",
+    name: "Kookaburra",
+    source: require("../../assets/images/avatars/kookaburra avatar.png"),
+  },
+  {
+    id: "platypus",
+    name: "Platypus",
+    source: require("../../assets/images/avatars/platypus avatar.png"),
+  },
 ] as const;
 
 export type PresetAvatar = (typeof PRESET_AVATARS)[number];
 
-const PRESET_PREFIX = 'preset:';
+const PRESET_PREFIX = "preset:";
 
 export function isPresetAvatar(url: string): boolean {
   return url.startsWith(PRESET_PREFIX);
@@ -38,7 +74,7 @@ export function resolveAvatarSource(
   return { uri: avatarUrl };
 }
 
-export function presetId(id: PresetAvatar['id']): string {
+export function presetId(id: PresetAvatar["id"]): string {
   return `${PRESET_PREFIX}${id}`;
 }
 
@@ -55,23 +91,27 @@ export async function uploadAvatarImage(
   userId: string,
   uri: string,
 ): Promise<string> {
-  const ext = (uri.split('.').pop()?.split('?')[0] ?? 'jpg').toLowerCase();
-  const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+  const ext = (uri.split(".").pop()?.split("?")[0] ?? "jpg").toLowerCase();
+  const mimeType = ext === "png" ? "image/png" : "image/jpeg";
   const path = `${userId}/${Date.now()}.${ext}`;
 
   // React Native FormData accepts { uri, name, type } as a file entry.
   const formData = new FormData();
-  formData.append('file', { uri, name: `avatar.${ext}`, type: mimeType } as any);
+  formData.append("file", {
+    uri,
+    name: `avatar.${ext}`,
+    type: mimeType,
+  } as any);
 
   const { error } = await supabase.storage
-    .from('avatars')
+    .from("avatars")
     .upload(path, formData, { upsert: true, contentType: mimeType });
 
   if (error) throw error;
 
   const {
     data: { publicUrl },
-  } = supabase.storage.from('avatars').getPublicUrl(path);
+  } = supabase.storage.from("avatars").getPublicUrl(path);
 
   return publicUrl;
 }

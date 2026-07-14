@@ -79,6 +79,12 @@
         {
           "cameraPermission": "Allow Lenderoo to access your camera to scan barcodes."
         }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow Lenderoo to access your contacts to find friends who are already using the app."
+        }
       ]
     ],
     "extra": {

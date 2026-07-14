@@ -22,6 +22,7 @@ import {
   UserPlus,
   Hash,
   Search,
+  Contact,
   Copy,
   RefreshCw,
   X,
@@ -35,6 +36,11 @@ import {
   regenerateFriendCode,
   type FriendUser,
 } from "@/lib/services/friends";
+import {
+  requestContactsPermission,
+  findContactsOnLenderoo,
+  type MatchedContactUser,
+} from "@/lib/services/contacts";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import * as Clipboard from "expo-clipboard";
 import { FloatingBackButton } from "@/components/FloatingBackButton";
@@ -44,7 +50,9 @@ export default function AddUserFriendScreen() {
   const isDark = activeTheme === "dark";
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"code" | "search">("code");
+  const [activeTab, setActiveTab] = useState<"code" | "search" | "contacts">(
+    "code",
+  );
 
   // Friend code state
   const [friendCodeInput, setFriendCodeInput] = useState("");
@@ -59,6 +67,15 @@ export default function AddUserFriendScreen() {
   const [myFriendCode, setMyFriendCode] = useState<string | null>(null);
   const [loadingMyCode, setLoadingMyCode] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+
+  // Contacts state
+  const [contactsChecked, setContactsChecked] = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [contactMatches, setContactMatches] = useState<MatchedContactUser[]>(
+    [],
+  );
+  const [unmatchedContactCount, setUnmatchedContactCount] = useState(0);
+  const [contactsDenied, setContactsDenied] = useState(false);
 
   // Load user's friend code on mount
   useEffect(() => {
@@ -179,11 +196,36 @@ export default function AddUserFriendScreen() {
     try {
       await addFriendByUserId(userId);
       toast.success(`Friend request sent to ${userName}!`);
-      // Remove from search results
+      // Remove from search results / contact matches
       setSearchResults((prev) => prev.filter((u) => u.id !== userId));
+      setContactMatches((prev) => prev.filter((u) => u.id !== userId));
     } catch (error: any) {
       console.error("Error sending friend request:", error);
       toast.error(error.message || "Failed to send friend request");
+    }
+  }
+
+  async function handleFindContacts() {
+    try {
+      setLoadingContacts(true);
+      setContactsDenied(false);
+      const granted = await requestContactsPermission();
+      if (!granted) {
+        setContactsDenied(true);
+        return;
+      }
+      const { matches, unmatchedCount } = await findContactsOnLenderoo();
+      setContactMatches(matches);
+      setUnmatchedContactCount(unmatchedCount);
+      setContactsChecked(true);
+      if (matches.length === 0) {
+        toast.info("None of your contacts are on Lenderoo yet");
+      }
+    } catch (error: any) {
+      console.error("Error matching contacts:", error);
+      toast.error(error.message || "Failed to check contacts");
+    } finally {
+      setLoadingContacts(false);
     }
   }
 
@@ -207,6 +249,7 @@ export default function AddUserFriendScreen() {
         keyboardShouldPersistTaps="handled"
         enableOnAndroid
         extraScrollHeight={24}
+        contentContainerStyle={{ paddingBottom: 160 }}
       >
         <SafeAreaWrapper>
           <FloatingBackButton />
@@ -276,6 +319,15 @@ export default function AddUserFriendScreen() {
             >
               <Search size={16} />
               <Text>Search</Text>
+            </Button>
+
+            <Button
+              variant={activeTab === "contacts" ? "default" : "outline"}
+              className="flex-1"
+              onPress={() => setActiveTab("contacts")}
+            >
+              <Contact size={16} />
+              <Text>Contacts</Text>
             </Button>
           </View>
 
@@ -383,6 +435,92 @@ export default function AddUserFriendScreen() {
                       </Button>
                     </View>
                   ))}
+                </View>
+              )}
+            </View>
+          )}
+
+          {activeTab === "contacts" && (
+            <View className="gap-4 mt-6">
+              <View className="gap-2">
+                <Text variant="base" className="font-semibold">
+                  Find Friends From Contacts
+                </Text>
+                <Text variant="small" className="text-muted-foreground">
+                  We check your contacts against Lenderoo accounts on-device —
+                  only anonymized matches are sent, never your contact list.
+                </Text>
+              </View>
+
+              <Button onPress={handleFindContacts} disabled={loadingContacts}>
+                {loadingContacts ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Contact size={20} color="#fff" />
+                    <Text className="text-white">
+                      {contactsChecked ? "Check Again" : "Check My Contacts"}
+                    </Text>
+                  </>
+                )}
+              </Button>
+
+              {contactsDenied && (
+                <Text variant="small" className="text-muted-foreground">
+                  Contacts permission was denied. Enable it for Lenderoo in
+                  your device settings to use this feature.
+                </Text>
+              )}
+
+              {contactsChecked && !loadingContacts && (
+                <View className="gap-2">
+                  {contactMatches.length > 0 && (
+                    <Text variant="small" className="text-muted-foreground">
+                      {contactMatches.length} contact
+                      {contactMatches.length !== 1 ? "s" : ""} found on
+                      Lenderoo
+                    </Text>
+                  )}
+
+                  {contactMatches.map((matchedUser) => (
+                    <View
+                      key={matchedUser.id}
+                      className="flex-row items-center justify-between p-4 bg-card rounded-lg border border-border"
+                    >
+                      <View className="flex-1 gap-1">
+                        <Text variant="base" className="font-semibold">
+                          {matchedUser.name}
+                        </Text>
+                        <Text
+                          variant="small"
+                          className="text-muted-foreground"
+                        >
+                          {matchedUser.email}
+                        </Text>
+                      </View>
+
+                      <Button
+                        size="sm"
+                        onPress={() =>
+                          handleAddUser(matchedUser.id, matchedUser.name)
+                        }
+                      >
+                        <UserPlus size={16} color="#fff" />
+                        <Text className="text-white text-xs">Request</Text>
+                      </Button>
+                    </View>
+                  ))}
+
+                  {unmatchedContactCount > 0 && (
+                    <Text
+                      variant="small"
+                      className="text-muted-foreground text-center"
+                    >
+                      {unmatchedContactCount} contact
+                      {unmatchedContactCount !== 1 ? "s aren't" : " isn't"} on
+                      Lenderoo yet
+                    </Text>
+                  )}
                 </View>
               )}
             </View>

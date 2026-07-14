@@ -38,11 +38,20 @@ import {
   createBorrowRequest,
   getMyBorrowRequestForItem,
 } from "@/lib/services/borrow-requests";
+import {
+  subscribeToItemAvailability,
+  unsubscribeFromItemAvailability,
+  getMyAvailabilitySubscriptionsForItems,
+} from "@/lib/services/availability";
 import { getHistoryByFriend } from "@/lib/services/database";
 import { useMarkItemReturned } from "hooks/useItems";
 import { useAuth } from "@/contexts/AuthContext";
 
-import type { BorrowRequest, BorrowRequestWithDetails } from "@/lib/types";
+import type {
+  BorrowRequest,
+  BorrowRequestWithDetails,
+  ItemAvailabilitySubscription,
+} from "@/lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
 import { THEME } from "@/lib/theme";
@@ -75,6 +84,7 @@ function convertItemFromDb(data: any): Item {
     returnedDate: data.returned_date ? new Date(data.returned_date) : undefined,
     notes: data.notes,
     metadata: data.metadata,
+    isUnavailable: data.is_unavailable ?? false,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };
@@ -103,6 +113,9 @@ export default function FriendDetailScreen() {
   const [ownedItemsLoading, setOwnedItemsLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [requestingItemId, setRequestingItemId] = useState<string | null>(null);
+  const [subscriptions, setSubscriptions] = useState<
+    Map<string, ItemAvailabilitySubscription>
+  >(new Map());
   const [historyItems, setHistoryItems] = useState<Item[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -171,6 +184,10 @@ export default function FriendDetailScreen() {
         }),
       );
       setBorrowRequests(map);
+      const subs = await getMyAvailabilitySubscriptionsForItems(
+        converted.map((i) => i.id),
+      );
+      setSubscriptions(subs);
     } catch {
     } finally {
       setOwnedItemsLoading(false);
@@ -316,6 +333,30 @@ export default function FriendDetailScreen() {
       });
     } catch (e: any) {
       toast.error(e?.message || "Failed to cancel request");
+    } finally {
+      setRequestingItemId(null);
+    }
+  };
+
+  const handleNotify = async (item: Item) => {
+    const existing = subscriptions.get(item.id);
+    try {
+      setRequestingItemId(item.id);
+      if (existing) {
+        await unsubscribeFromItemAvailability(existing.id);
+        setSubscriptions((prev) => {
+          const m = new Map(prev);
+          m.delete(item.id);
+          return m;
+        });
+        toast.success("Notification cancelled");
+      } else {
+        const sub = await subscribeToItemAvailability(item.id);
+        setSubscriptions((prev) => new Map(prev).set(item.id, sub));
+        toast.success("We'll notify you when it's available");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to update notification");
     } finally {
       setRequestingItemId(null);
     }
@@ -626,6 +667,10 @@ export default function FriendDetailScreen() {
                           }
                           onReturn={
                             borrowedByMe ? () => handleReturn(item) : undefined
+                          }
+                          isSubscribed={subscriptions.has(item.id)}
+                          onNotify={
+                            borrowedByMe ? undefined : () => handleNotify(item)
                           }
                         />
                       );

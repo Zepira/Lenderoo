@@ -30,7 +30,8 @@ export type NotificationData =
   | { type: 'borrow_request_cancelled' }
   | { type: 'friend_request_new' }
   | { type: 'friend_request_accepted' }
-  | { type: 'return_reminder'; itemId: string };
+  | { type: 'return_reminder'; itemId: string }
+  | { type: 'item_available'; itemId: string };
 
 /**
  * Set the foreground notification handler (show banner + sound when app is open).
@@ -138,6 +139,7 @@ export function handleNotificationTap(data: NotificationData): void {
       router.push('/(tabs)/friends' as any);
       break;
     case 'return_reminder':
+    case 'item_available':
       router.push(`/item/${data.itemId}` as any);
       break;
   }

@@ -20,12 +20,22 @@ import {
   createBorrowRequest,
   cancelBorrowRequest,
 } from "@/lib/services/borrow-requests";
+import {
+  subscribeToItemAvailability,
+  unsubscribeFromItemAvailability,
+  getMyAvailabilitySubscriptionsForItems,
+} from "@/lib/services/availability";
 import * as toast from "@/lib/toast";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { TinyLabel } from "@/components/ui/typography";
 import { Text } from "@/components/ui/text";
-import type { ItemCategory, Item, BorrowRequest } from "lib/types";
+import type {
+  ItemCategory,
+  Item,
+  BorrowRequest,
+  ItemAvailabilitySubscription,
+} from "lib/types";
 
 const CATEGORIES = Object.keys(CATEGORY_CONFIG) as ItemCategory[];
 
@@ -93,6 +103,10 @@ export default function ExploreScreen() {
   const [error, setError] = useState<string | null>(null);
   const [requestMap, setRequestMap] = useState<Map<string, BorrowRequest>>(new Map());
   const [requestingId, setRequestingId] = useState<string | null>(null);
+  const [subscriptionMap, setSubscriptionMap] = useState<
+    Map<string, ItemAvailabilitySubscription>
+  >(new Map());
+  const [notifyingId, setNotifyingId] = useState<string | null>(null);
 
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
@@ -116,12 +130,43 @@ export default function ExploreScreen() {
         }
       }
       setRequestMap(map);
+      const subs = await getMyAvailabilitySubscriptionsForItems(
+        data.map((i) => i.id),
+      );
+      setSubscriptionMap(subs);
     } catch {
       setError("Failed to load friends' items");
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const handleNotify = useCallback(
+    async (item: Item) => {
+      const existing = subscriptionMap.get(item.id);
+      setNotifyingId(item.id);
+      try {
+        if (existing) {
+          await unsubscribeFromItemAvailability(existing.id);
+          setSubscriptionMap((prev) => {
+            const next = new Map(prev);
+            next.delete(item.id);
+            return next;
+          });
+          toast.success("Notification cancelled");
+        } else {
+          const sub = await subscribeToItemAvailability(item.id);
+          setSubscriptionMap((prev) => new Map(prev).set(item.id, sub));
+          toast.success("We'll notify you when it's available");
+        }
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to update notification");
+      } finally {
+        setNotifyingId(null);
+      }
+    },
+    [subscriptionMap],
+  );
 
   const handleBorrow = useCallback(async (item: Item) => {
     setRequestingId(item.id);
@@ -321,9 +366,11 @@ export default function ExploreScreen() {
               <ItemCard
                 item={item}
                 request={req}
-                isRequesting={requestingId === item.id}
+                isRequesting={requestingId === item.id || notifyingId === item.id}
                 onBorrow={() => handleBorrow(item)}
                 onCancel={req ? () => handleCancel(req) : undefined}
+                isSubscribed={subscriptionMap.has(item.id)}
+                onNotify={() => handleNotify(item)}
                 style={{ flex: 1 }}
                 onPress={() => router.push(`/item/${item.id}` as any)}
               />

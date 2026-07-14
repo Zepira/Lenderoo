@@ -475,6 +475,7 @@ export async function getAllFriendsItems(): Promise<Item[]> {
     returnedDate: row.returned_date ? new Date(row.returned_date) : undefined,
     notes: row.notes,
     metadata: row.metadata,
+    isUnavailable: row.is_unavailable ?? false,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   }));

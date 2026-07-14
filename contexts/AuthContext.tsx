@@ -22,7 +22,7 @@ interface AuthContextType {
   loading: boolean;
 
   // Auth methods
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string, phone?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -109,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: data.email,
           name: data.name,
           avatarUrl: data.avatar_url,
+          phone: data.phone ?? undefined,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
         });
@@ -121,13 +122,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Sign up with email and password
-  async function signUp(email: string, password: string, name: string) {
+  async function signUp(email: string, password: string, name: string, phone?: string) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           name,
+          ...(phone ? { phone } : {}),
         },
       },
     });
@@ -189,6 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .update({
         name: updates.name,
         avatar_url: updates.avatarUrl,
+        phone: updates.phone,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);

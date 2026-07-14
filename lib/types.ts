@@ -63,6 +63,8 @@ export interface User {
   name: string;
   /** URL to user's avatar image */
   avatarUrl?: string;
+  /** Optional, unverified phone number — used for contact-based friend discovery */
+  phone?: string;
   /** Account creation timestamp */
   createdAt: Date;
   /** Last update timestamp */
@@ -129,6 +131,8 @@ export interface Item {
   notes?: string;
   /** Estimated value of the item (optional) */
   value?: number;
+  /** Owner has temporarily disabled borrowing for this item (independent of borrowedBy) */
+  isUnavailable?: boolean;
   /** Category-specific metadata (author, ISBN, etc.) */
   metadata?: ItemMetadata;
   /** Item record creation timestamp */
@@ -257,6 +261,23 @@ export interface BorrowRequest {
  * Borrow request with item and user details
  * Used for display in request lists
  */
+/**
+ * A friend's subscription to be notified when an unavailable item
+ * becomes available again.
+ */
+export interface ItemAvailabilitySubscription {
+  /** Unique subscription identifier */
+  id: string;
+  /** ID of the item being watched */
+  itemId: string;
+  /** ID of the user who wants to be notified */
+  userId: string;
+  /** Subscription creation timestamp */
+  createdAt: Date;
+  /** When the notification was sent (null while still waiting) */
+  notifiedAt?: Date;
+}
+
 export interface BorrowRequestWithDetails extends BorrowRequest {
   /** Name of the item */
   itemName: string;
@@ -622,3 +643,4 @@ export type FriendRow = WithTimestamps<Friend>;
 export type BorrowHistoryRow = WithTimestamps<BorrowHistory>;
 export type UserRow = WithTimestamps<User>;
 export type BorrowRequestRow = WithTimestamps<BorrowRequest>;
+export type ItemAvailabilitySubscriptionRow = WithTimestamps<ItemAvailabilitySubscription>;

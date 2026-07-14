@@ -35,6 +35,7 @@ export default function SignUpScreen() {
   const { signUp } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -96,7 +97,7 @@ export default function SignUpScreen() {
 
     try {
       setLoading(true);
-      await signUp(email.trim(), password, name.trim());
+      await signUp(email.trim(), password, name.trim(), phone.trim() || undefined);
       await customStorage.setItem("@lenderoo_has_signed_in", "true");
       toast.success("Account created successfully!");
       // Navigation is handled by auth state change in _layout.tsx
@@ -179,6 +180,24 @@ export default function SignUpScreen() {
                   {errors.email}
                 </Text>
               )}
+            </View>
+
+            <View>
+              <Label nativeID="phone" className="mb-2">
+                Phone (optional)
+              </Label>
+              <Input
+                placeholder="Your phone number"
+                value={phone}
+                onChangeText={setPhone}
+                autoComplete="tel"
+                keyboardType="phone-pad"
+                textContentType="telephoneNumber"
+                editable={!loading}
+              />
+              <Text className="text-muted-foreground text-xs mt-1">
+                Not verified — lets friends find you via their contacts.
+              </Text>
             </View>
 
             <View>

@@ -23,7 +23,7 @@ export function calcCardLayout(screenWidth: number) {
     (screenWidth - H_PADDING - COL_GAP * (numColumns - 1)) / numColumns;
   return { numColumns, cardWidth };
 }
-import { Send, X, RotateCcw } from "lucide-react-native";
+import { Send, X, RotateCcw, Bell, BellOff } from "lucide-react-native";
 import type { Item, BorrowRequest } from "lib/types";
 import { calculateItemStatus, getItemStatusDisplay } from "lib/utils";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
@@ -49,6 +49,10 @@ interface ItemCardProps {
   onReturn?: () => void;
   /** Called when the card itself is tapped (library screen navigation). */
   onPress?: () => void;
+  /** True when the current user has an active "notify when available" subscription. */
+  isSubscribed?: boolean;
+  /** Called when the user taps Notify/Cancel Notification (owner marked item unavailable). */
+  onNotify?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -61,6 +65,8 @@ export function ItemCard({
   isBorrowedByMe = false,
   onReturn,
   onPress,
+  isSubscribed = false,
+  onNotify,
   style,
 }: ItemCardProps) {
   const { width: screenWidth } = useWindowDimensions();
@@ -74,12 +80,15 @@ export function ItemCard({
   const hasPending = request?.status === "pending";
   const hasApproved = request?.status === "approved";
   const itemStatus = calculateItemStatus(item);
-  const isUnavailable = itemStatus === "borrowed" || itemStatus === "overdue";
+  const isLentOut = itemStatus === "borrowed" || itemStatus === "overdue";
+  const isMarkedUnavailable = itemStatus === "available" && !!item.isUnavailable;
+  const isUnavailable = isLentOut || isMarkedUnavailable;
 
   const { label: statusLabel, color: statusColor } = getItemStatusDisplay(
     itemStatus,
     isBorrowedByMe,
     request,
+    isMarkedUnavailable,
   );
 
   const width = calcCardLayout(screenWidth).cardWidth;
@@ -224,8 +233,8 @@ export function ItemCard({
           </Button>
         )}
 
-        {/* Request Next — default green, item unavailable with no active request */}
-        {isUnavailable &&
+        {/* Request Next — default green, item lent out with no active request */}
+        {isLentOut &&
           !isBorrowedByMe &&
           !hasPending &&
           !hasApproved &&
@@ -241,6 +250,30 @@ export function ItemCard({
               )}
             </Button>
           )}
+
+        {/* Notify When Available — owner marked item unavailable */}
+        {isMarkedUnavailable && !isBorrowedByMe && onNotify && (
+          <Button
+            variant={isSubscribed ? "outline" : "default"}
+            size="xs"
+            onPress={onNotify}
+            disabled={isRequesting}
+          >
+            {isRequesting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : isSubscribed ? (
+              <>
+                <BellOff size={12} color={theme.foreground} />
+                <Text>Cancel Notify</Text>
+              </>
+            ) : (
+              <>
+                <Bell size={12} color="#fff" />
+                <Text>Notify Me</Text>
+              </>
+            )}
+          </Button>
+        )}
       </View>
     </Pressable>
   );
