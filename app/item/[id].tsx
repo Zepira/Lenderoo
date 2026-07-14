@@ -32,6 +32,7 @@ import {
   Clock,
   Edit,
   EyeOff,
+  Heart,
   Package,
   RotateCcw,
   Send,
@@ -72,6 +73,7 @@ import {
   getHistoryForItemWithUsers,
   markItemReturnedToNext,
 } from "@/lib/services/database";
+import { isItemFavourited, setItemFavourite } from "@/lib/services/favourites";
 import {
   subscribeToItemAvailability,
   unsubscribeFromItemAvailability,
@@ -163,6 +165,16 @@ export default function ItemDetailScreen() {
     useState<ItemAvailabilitySubscription | null>(null);
   const [subscribing, setSubscribing] = useState(false);
 
+  // Current viewer's favourite status for this item
+  const [isFavourite, setIsFavourite] = useState(false);
+
+  const loadFavourite = useCallback(async () => {
+    if (!item) return;
+    try {
+      setIsFavourite(await isItemFavourited(item.id));
+    } catch {}
+  }, [item?.id]);
+
   const loadBorrowRequest = useCallback(async () => {
     if (!item || isOwner || isBorrower) return;
     try {
@@ -208,12 +220,14 @@ export default function ItemDetailScreen() {
       loadBorrowHistory();
       loadBorrowQueue();
       loadAvailabilitySubscription();
+      loadFavourite();
     }, [
       refresh,
       loadBorrowRequest,
       loadBorrowHistory,
       loadBorrowQueue,
       loadAvailabilitySubscription,
+      loadFavourite,
     ]),
   );
 
@@ -306,6 +320,18 @@ export default function ItemDetailScreen() {
       refresh();
     } catch {
       toast.error("Failed to update availability");
+    }
+  };
+
+  const handleToggleFavourite = async () => {
+    if (!item) return;
+    const next = !isFavourite;
+    setIsFavourite(next);
+    try {
+      await setItemFavourite(item.id, next);
+    } catch {
+      setIsFavourite(!next);
+      toast.error("Failed to update favourite");
     }
   };
 
@@ -565,6 +591,40 @@ export default function ItemDetailScreen() {
           })}
         >
           <ArrowLeft size={22} color={theme.foreground} />
+        </Pressable>
+      </View>
+
+      {/* Favourite heart — mirrors back button */}
+      <View
+        style={{
+          position: "absolute",
+          top: insets.top + 12,
+          right: 20,
+          zIndex: 10,
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          backgroundColor: isDark ? theme.muted : "#F3F4F6",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Pressable
+          onPress={handleToggleFavourite}
+          style={({ pressed }) => ({
+            flex: 1,
+            width: "100%",
+            borderRadius: 12,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Heart
+            size={20}
+            color={isFavourite ? theme.destructive : theme.foreground}
+            fill={isFavourite ? theme.destructive : "transparent"}
+          />
         </Pressable>
       </View>
 

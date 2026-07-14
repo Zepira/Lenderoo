@@ -8,8 +8,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHero, LabelStrong } from "@/components/ui/typography";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useActiveItems, useBorrowedByMeItems, useItems } from "hooks/useItems";
+import * as toast from "@/lib/toast";
+import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
+import type { Item } from "lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
@@ -36,9 +39,38 @@ export default function HomeScreen() {
     refresh: refreshBorrowed,
   } = useBorrowedByMeItems();
   const { items: allItems, error: allError, refresh: refreshAll } = useItems();
+  const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set());
 
   const loading = lentLoading || borrowedLoading;
   const error = lentError || borrowedError || allError;
+
+  useEffect(() => {
+    const ids = [...lentOutItems, ...borrowedItems].map((i) => i.id);
+    if (ids.length === 0) return;
+    getMyFavouriteItemIds(ids).then(setFavouriteIds);
+  }, [lentOutItems, borrowedItems]);
+
+  const withFavourite = (list: Item[]) =>
+    list.map((i) => ({ ...i, isFavourite: favouriteIds.has(i.id) }));
+
+  const handleToggleFavourite = async (item: Item) => {
+    const next = !favouriteIds.has(item.id);
+    setFavouriteIds((prev) => {
+      const set = new Set(prev);
+      next ? set.add(item.id) : set.delete(item.id);
+      return set;
+    });
+    try {
+      await setItemFavourite(item.id, next);
+    } catch {
+      setFavouriteIds((prev) => {
+        const set = new Set(prev);
+        next ? set.delete(item.id) : set.add(item.id);
+        return set;
+      });
+      toast.error("Failed to update favourite");
+    }
+  };
 
   const scrollRef = useRef<ScrollView>(null);
   const firstName = appUser?.name?.split(" ")[0] ?? "there";
@@ -171,14 +203,16 @@ export default function HomeScreen() {
             <>
               <DashboardSection
                 title="Borrowed"
-                items={borrowedItems}
+                items={withFavourite(borrowedItems)}
                 onItemPress={(item) => router.push(`/item/${item.id}` as any)}
+                onToggleFavourite={handleToggleFavourite}
                 onViewAll={() => router.push("/(tabs)/library")}
               />
               <DashboardSection
                 title="Lent Out"
-                items={lentOutItems}
+                items={withFavourite(lentOutItems)}
                 onItemPress={(item) => router.push(`/item/${item.id}` as any)}
+                onToggleFavourite={handleToggleFavourite}
                 onViewAll={() => router.push("/(tabs)/library")}
               />
             </>

@@ -4,10 +4,12 @@ import { router, useFocusEffect } from "expo-router";
 import { Plus } from "lucide-react-native";
 import { BorrowRequestsSection } from "components/BorrowRequestsSection";
 import { useItems } from "hooks/useItems";
-import type { ItemStatus, BorrowRequestWithDetails } from "lib/types";
+import type { Item, ItemStatus, BorrowRequestWithDetails } from "lib/types";
 import { getIncomingBorrowRequests, approveBorrowRequest, denyBorrowRequest } from "@/lib/services/borrow-requests";
+import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
 import { supabase } from "@/lib/supabase";
 import * as toast from "@/lib/toast";
+import { sortFavouritesFirst } from "@/lib/utils";
 import { ItemCard, calcCardLayout } from "@/components/ItemCard";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
@@ -39,12 +41,46 @@ export default function ItemsScreen() {
 
   const { items, loading, error, refresh } = useItems(filter);
   const { items: allItems } = useItems();
+  const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    getMyFavouriteItemIds(items.map((i) => i.id)).then(setFavouriteIds);
+  }, [items]);
 
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return items;
     const q = search.toLowerCase();
-    return items.filter((item) => item.name.toLowerCase().includes(q));
-  }, [items, search]);
+    const result = search.trim()
+      ? items.filter((item) => item.name.toLowerCase().includes(q))
+      : items;
+    const withFavourites = result.map((i) => ({
+      ...i,
+      isFavourite: favouriteIds.has(i.id),
+    }));
+    return sortFavouritesFirst(withFavourites);
+  }, [items, search, favouriteIds]);
+
+  const handleToggleFavourite = useCallback(
+    async (item: Item) => {
+      const next = !favouriteIds.has(item.id);
+      setFavouriteIds((prev) => {
+        const set = new Set(prev);
+        next ? set.add(item.id) : set.delete(item.id);
+        return set;
+      });
+      try {
+        await setItemFavourite(item.id, next);
+      } catch {
+        setFavouriteIds((prev) => {
+          const set = new Set(prev);
+          next ? set.delete(item.id) : set.add(item.id);
+          return set;
+        });
+        toast.error("Failed to update favourite");
+      }
+    },
+    [favouriteIds],
+  );
 
   const allCount = allItems.length;
   const availableCount = useMemo(
@@ -191,7 +227,7 @@ export default function ItemsScreen() {
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 160, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 160, gap: 12 }}
         showsVerticalScrollIndicator={false}
         onRefresh={refresh}
         refreshing={loading}
@@ -220,6 +256,7 @@ export default function ItemsScreen() {
           <ItemCard
             item={item}
             onPress={() => router.push(`/item/${item.id}` as any)}
+            onToggleFavourite={() => handleToggleFavourite(item)}
             style={{ flex: 1 }}
           />
         )}

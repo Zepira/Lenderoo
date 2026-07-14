@@ -15,6 +15,8 @@ import { ItemCard, calcCardLayout } from "@/components/ItemCard";
 import { ErrorState } from "@/components/ErrorState";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { getAllFriendsItems } from "@/lib/services/friends";
+import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
+import { sortFavouritesFirst } from "@/lib/utils";
 import {
   getOutgoingBorrowRequests,
   createBorrowRequest,
@@ -107,6 +109,7 @@ export default function ExploreScreen() {
     Map<string, ItemAvailabilitySubscription>
   >(new Map());
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
+  const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set());
 
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
@@ -134,6 +137,8 @@ export default function ExploreScreen() {
         data.map((i) => i.id),
       );
       setSubscriptionMap(subs);
+      const favIds = await getMyFavouriteItemIds(data.map((i) => i.id));
+      setFavouriteIds(favIds);
     } catch {
       setError("Failed to load friends' items");
     } finally {
@@ -188,6 +193,28 @@ export default function ExploreScreen() {
     }
   }, []);
 
+  const handleToggleFavourite = useCallback(
+    async (item: Item) => {
+      const next = !favouriteIds.has(item.id);
+      setFavouriteIds((prev) => {
+        const set = new Set(prev);
+        next ? set.add(item.id) : set.delete(item.id);
+        return set;
+      });
+      try {
+        await setItemFavourite(item.id, next);
+      } catch (e: any) {
+        setFavouriteIds((prev) => {
+          const set = new Set(prev);
+          next ? set.delete(item.id) : set.add(item.id);
+          return set;
+        });
+        toast.error(e?.message || "Failed to update favourite");
+      }
+    },
+    [favouriteIds],
+  );
+
   const handleCancel = useCallback(async (req: BorrowRequest) => {
     setRequestingId(req.itemId);
     try {
@@ -220,8 +247,12 @@ export default function ExploreScreen() {
       const q = search.toLowerCase();
       result = result.filter((i) => i.name.toLowerCase().includes(q));
     }
-    return result;
-  }, [items, selectedCategory, search]);
+    const withFavourites = result.map((i) => ({
+      ...i,
+      isFavourite: favouriteIds.has(i.id),
+    }));
+    return sortFavouritesFirst(withFavourites);
+  }, [items, selectedCategory, search, favouriteIds]);
 
   const router = useRouter();
   const showGrid = selectedCategory === null && search.trim() === "";
@@ -371,6 +402,7 @@ export default function ExploreScreen() {
                 onCancel={req ? () => handleCancel(req) : undefined}
                 isSubscribed={subscriptionMap.has(item.id)}
                 onNotify={() => handleNotify(item)}
+                onToggleFavourite={() => handleToggleFavourite(item)}
                 style={{ flex: 1 }}
                 onPress={() => router.push(`/item/${item.id}` as any)}
               />

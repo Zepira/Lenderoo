@@ -164,6 +164,16 @@ export function calculateItemStatus(item: Item): ItemStatus {
 
   return "available";
 }
+
+/**
+ * Stable sort that puts favourited items first, preserving relative order otherwise.
+ */
+export function sortFavouritesFirst<T extends { isFavourite?: boolean }>(
+  items: T[],
+): T[] {
+  return [...items].sort((a, b) => Number(!!b.isFavourite) - Number(!!a.isFavourite));
+}
+
 /**
  * Convert Item to ItemWithDetails by adding computed properties
  */

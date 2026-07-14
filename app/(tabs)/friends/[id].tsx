@@ -25,7 +25,7 @@ import {
 import { ItemCard } from "@/components/ItemCard";
 import { Text } from "@/components/ui/text";
 import { resolveAvatarSource } from "@/lib/services/avatar";
-import { getInitials, calculateItemStatus } from "lib/utils";
+import { getInitials, calculateItemStatus, sortFavouritesFirst } from "lib/utils";
 import type { Item } from "lib/types";
 import {
   getFriendUserById,
@@ -44,6 +44,7 @@ import {
   getMyAvailabilitySubscriptionsForItems,
 } from "@/lib/services/availability";
 import { getHistoryByFriend } from "@/lib/services/database";
+import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
 import { useMarkItemReturned } from "hooks/useItems";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -118,6 +119,7 @@ export default function FriendDetailScreen() {
   >(new Map());
   const [historyItems, setHistoryItems] = useState<Item[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set());
 
   // Load friend
   useEffect(() => {
@@ -265,7 +267,40 @@ export default function FriendDetailScreen() {
     }, [loadOwnedItems, loadHistory]),
   );
 
-  const activeItems = items.filter((i) => !i.returnedDate);
+  // Refresh the current user's favourites whenever the loaded item lists change
+  useEffect(() => {
+    const ids = [...items, ...ownedItems, ...historyItems].map((i) => i.id);
+    if (ids.length === 0) return;
+    getMyFavouriteItemIds(ids).then(setFavouriteIds);
+  }, [items, ownedItems, historyItems]);
+
+  const withFavourite = (list: Item[]) =>
+    list.map((i) => ({ ...i, isFavourite: favouriteIds.has(i.id) }));
+
+  const activeItems = sortFavouritesFirst(
+    withFavourite(items.filter((i) => !i.returnedDate)),
+  );
+  const sortedOwnedItems = sortFavouritesFirst(withFavourite(ownedItems));
+  const sortedHistoryItems = sortFavouritesFirst(withFavourite(historyItems));
+
+  const handleToggleFavourite = async (item: Item) => {
+    const next = !favouriteIds.has(item.id);
+    setFavouriteIds((prev) => {
+      const set = new Set(prev);
+      next ? set.add(item.id) : set.delete(item.id);
+      return set;
+    });
+    try {
+      await setItemFavourite(item.id, next);
+    } catch (e: any) {
+      setFavouriteIds((prev) => {
+        const set = new Set(prev);
+        next ? set.delete(item.id) : set.add(item.id);
+        return set;
+      });
+      toast.error(e?.message || "Failed to update favourite");
+    }
+  };
 
   const handleDelete = async () => {
     if (!friend) return;
@@ -641,7 +676,7 @@ export default function FriendDetailScreen() {
                   <View
                     style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}
                   >
-                    {ownedItems.map((item) => {
+                    {sortedOwnedItems.map((item) => {
                       const borrowedByMe =
                         !!user &&
                         item.borrowedBy === user.id &&
@@ -672,6 +707,7 @@ export default function FriendDetailScreen() {
                           onNotify={
                             borrowedByMe ? undefined : () => handleNotify(item)
                           }
+                          onToggleFavourite={() => handleToggleFavourite(item)}
                         />
                       );
                     })}
@@ -714,6 +750,7 @@ export default function FriendDetailScreen() {
                         key={item.id}
                         item={item}
                         onPress={() => router.push(`/item/${item.id}` as any)}
+                        onToggleFavourite={() => handleToggleFavourite(item)}
                       />
                     ))}
                   </View>
@@ -754,11 +791,12 @@ export default function FriendDetailScreen() {
                     >
                       <Caption className="text-center">{`See ${firstName}'s borrowing history`}</Caption>
                     </View>
-                    {historyItems.map((item) => (
+                    {sortedHistoryItems.map((item) => (
                       <ItemCard
                         key={item.id}
                         item={item}
                         onPress={() => router.push(`/item/${item.id}` as any)}
+                        onToggleFavourite={() => handleToggleFavourite(item)}
                       />
                     ))}
                   </View>

@@ -133,6 +133,10 @@ export interface Item {
   value?: number;
   /** Owner has temporarily disabled borrowing for this item (independent of borrowedBy) */
   isUnavailable?: boolean;
+  /** Whether the CURRENT VIEWER has favourited this item (heart icon). Not a DB
+   *  column on items — computed client-side per user from item_favourites and
+   *  merged onto the item before rendering. See lib/services/favourites.ts. */
+  isFavourite?: boolean;
   /** Category-specific metadata (author, ISBN, etc.) */
   metadata?: ItemMetadata;
   /** Item record creation timestamp */

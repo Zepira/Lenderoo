@@ -1,3 +1,5 @@
+import { memo } from "react";
+import type { ReactNode } from "react";
 import {
   View,
   Image,
@@ -9,7 +11,7 @@ import type { StyleProp, ViewStyle } from "react-native";
 
 // ── Layout calculator (exported so FlatList screens can use matching numColumns) ─
 const H_PADDING = 32; // 16px left + 16px right
-const COL_GAP = 32;
+const COL_GAP = 12; // matches columnWrapperStyle={{ gap: 12 }} on every grid FlatList
 const MIN_CARD_WIDTH = 120;
 
 export function calcCardLayout(screenWidth: number) {
@@ -23,7 +25,7 @@ export function calcCardLayout(screenWidth: number) {
     (screenWidth - H_PADDING - COL_GAP * (numColumns - 1)) / numColumns;
   return { numColumns, cardWidth };
 }
-import { Send, X, RotateCcw, Bell, BellOff } from "lucide-react-native";
+import { X, RotateCcw, Bell, BellOff, Heart } from "lucide-react-native";
 import type { Item, BorrowRequest } from "lib/types";
 import { calculateItemStatus, getItemStatusDisplay } from "lib/utils";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
@@ -53,10 +55,12 @@ interface ItemCardProps {
   isSubscribed?: boolean;
   /** Called when the user taps Notify/Cancel Notification (owner marked item unavailable). */
   onNotify?: () => void;
+  /** Called when the user taps the heart icon to toggle favourite status. */
+  onToggleFavourite?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
-export function ItemCard({
+export const ItemCard = memo(function ItemCard({
   item,
   request,
   isRequesting = false,
@@ -67,6 +71,7 @@ export function ItemCard({
   onPress,
   isSubscribed = false,
   onNotify,
+  onToggleFavourite,
   style,
 }: ItemCardProps) {
   const { width: screenWidth } = useWindowDimensions();
@@ -95,6 +100,112 @@ export function ItemCard({
 
   const canBeBorrowed =
     !isUnavailable && !hasPending && !hasApproved && onBorrow;
+
+  // Mutually-exclusive per-status action button (Borrow / Cancel / Return /
+  // Request Next / Notify) — computed once so it can share a row with the
+  // favourite heart below instead of each being a separate full-width block.
+  let actionButton: ReactNode = null;
+  if (canBeBorrowed) {
+    actionButton = (
+      <Button size="xs" onPress={onBorrow} disabled={isRequesting}>
+        {isRequesting ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text>Borrow</Text>
+        )}
+      </Button>
+    );
+  } else if ((hasPending || hasApproved) && onCancel) {
+    actionButton = (
+      <Button
+        variant="destructive"
+        size="xs"
+        onPress={onCancel}
+        disabled={isRequesting}
+      >
+        {isRequesting ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <>
+            <X size={12} color="#fff" />
+            <Text>{hasApproved ? "Leave Queue" : "Cancel Request"}</Text>
+          </>
+        )}
+      </Button>
+    );
+  } else if (isUnavailable && isBorrowedByMe && onReturn) {
+    actionButton = (
+      <Button
+        variant="secondary"
+        size="xs"
+        onPress={onReturn}
+        disabled={isRequesting}
+      >
+        {isRequesting ? (
+          <ActivityIndicator size="small" color={theme.secondaryForeground} />
+        ) : (
+          <>
+            <RotateCcw size={12} color={theme.secondaryForeground} />
+            <Text>Return</Text>
+          </>
+        )}
+      </Button>
+    );
+  } else if (
+    isLentOut &&
+    !isBorrowedByMe &&
+    !hasPending &&
+    !hasApproved &&
+    onBorrow !== undefined
+  ) {
+    actionButton = (
+      <Button size="xs" onPress={onBorrow} disabled={isRequesting}>
+        {isRequesting ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text>Request Next</Text>
+        )}
+      </Button>
+    );
+  } else if (isMarkedUnavailable && !isBorrowedByMe && onNotify) {
+    actionButton = (
+      <Button
+        variant={isSubscribed ? "outline" : "default"}
+        size="xs"
+        onPress={onNotify}
+        disabled={isRequesting}
+      >
+        {isRequesting ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : isSubscribed ? (
+          <>
+            <BellOff size={12} color={theme.foreground} />
+            <Text>Cancel Notify</Text>
+          </>
+        ) : (
+          <>
+            <Bell size={12} color="#fff" />
+            <Text>Notify Me</Text>
+          </>
+        )}
+      </Button>
+    );
+  }
+
+  const heartButton = onToggleFavourite && (
+    <Button
+      variant="outline"
+      size="xs"
+      className="w-9 px-0 border-0 shadow-sm shadow-black/15"
+      onPress={onToggleFavourite}
+    >
+      <Heart
+        size={15}
+        color="#EF4444"
+        fill={item.isFavourite ? "#EF4444" : "none"}
+      />
+    </Button>
+  );
 
   return (
     <Pressable
@@ -181,100 +292,14 @@ export function ItemCard({
           </BodyStrong>
         </View>
 
-        {/* Borrow button */}
-        {canBeBorrowed && (
-          <Button size="xs" onPress={onBorrow} disabled={isRequesting}>
-            {isRequesting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Send size={12} color="#fff" />
-                <Text>Borrow</Text>
-              </>
-            )}
-          </Button>
-        )}
-
-        {/* Cancel / leave queue — destructive red */}
-        {(hasPending || hasApproved) && onCancel && (
-          <Button
-            variant="destructive"
-            size="xs"
-            onPress={onCancel}
-            disabled={isRequesting}
-          >
-            {isRequesting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <X size={12} color="#fff" />
-                <Text>{hasApproved ? "Leave Queue" : "Cancel Request"}</Text>
-              </>
-            )}
-          </Button>
-        )}
-
-        {/* Return — secondary yellow */}
-        {isUnavailable && isBorrowedByMe && onReturn && (
-          <Button
-            variant="secondary"
-            size="xs"
-            onPress={onReturn}
-            disabled={isRequesting}
-          >
-            {isRequesting ? (
-              <ActivityIndicator size="small" color={theme.secondaryForeground} />
-            ) : (
-              <>
-                <RotateCcw size={12} color={theme.secondaryForeground} />
-                <Text>Return</Text>
-              </>
-            )}
-          </Button>
-        )}
-
-        {/* Request Next — default green, item lent out with no active request */}
-        {isLentOut &&
-          !isBorrowedByMe &&
-          !hasPending &&
-          !hasApproved &&
-          onBorrow !== undefined && (
-            <Button size="xs" onPress={onBorrow} disabled={isRequesting}>
-              {isRequesting ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Send size={12} color="#fff" />
-                  <Text>Request Next</Text>
-                </>
-              )}
-            </Button>
-          )}
-
-        {/* Notify When Available — owner marked item unavailable */}
-        {isMarkedUnavailable && !isBorrowedByMe && onNotify && (
-          <Button
-            variant={isSubscribed ? "outline" : "default"}
-            size="xs"
-            onPress={onNotify}
-            disabled={isRequesting}
-          >
-            {isRequesting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : isSubscribed ? (
-              <>
-                <BellOff size={12} color={theme.foreground} />
-                <Text>Cancel Notify</Text>
-              </>
-            ) : (
-              <>
-                <Bell size={12} color="#fff" />
-                <Text>Notify Me</Text>
-              </>
-            )}
-          </Button>
+        {/* Action button + favourite heart, inline */}
+        {(actionButton || heartButton) && (
+          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+            {actionButton && <View style={{ flex: 1 }}>{actionButton}</View>}
+            {heartButton}
+          </View>
         )}
       </View>
     </Pressable>
   );
-}
+});

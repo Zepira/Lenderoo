@@ -4,12 +4,14 @@ import { SectionHeading, BodyStrong } from '@/components/ui/typography';
 import { Button } from '@/components/ui/button';
 import { THEME } from '@/lib/theme';
 import { ItemCard } from '@/components/ItemCard';
+import { sortFavouritesFirst } from '@/lib/utils';
 import type { Item } from 'lib/types';
 
 interface DashboardSectionProps {
   title: string;
   items: Item[];
   onItemPress?: (item: Item) => void;
+  onToggleFavourite?: (item: Item) => void;
   onViewAll?: () => void;
 }
 
@@ -17,9 +19,11 @@ export function DashboardSection({
   title,
   items,
   onItemPress,
+  onToggleFavourite,
   onViewAll,
 }: DashboardSectionProps) {
   if (items.length === 0) return null;
+  const sortedItems = sortFavouritesFirst(items);
 
   return (
     <View>
@@ -37,11 +41,14 @@ export function DashboardSection({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 12, paddingBottom: 4 }}
       >
-        {items.map((item) => (
+        {sortedItems.map((item) => (
           <ItemCard
             key={item.id}
             item={item}
             onPress={() => onItemPress?.(item)}
+            onToggleFavourite={
+              onToggleFavourite ? () => onToggleFavourite(item) : undefined
+            }
           />
         ))}
       </ScrollView>
