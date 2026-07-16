@@ -7,7 +7,7 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Plus } from "lucide-react-native";
 import { BorrowRequestsSection } from "components/BorrowRequestsSection";
 import { useItems } from "hooks/useItems";
@@ -28,7 +28,10 @@ import { ErrorState } from "@/components/ErrorState";
 type FilterTab = "all" | "available" | "lent";
 
 export default function ItemsScreen() {
-  const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
+  const params = useLocalSearchParams<{ filter?: FilterTab }>();
+  const [activeFilter, setActiveFilter] = useState<FilterTab>(
+    params.filter === "available" || params.filter === "lent" ? params.filter : "all"
+  );
   const [search, setSearch] = useState("");
   const [incomingRequests, setIncomingRequests] = useState<BorrowRequestWithDetails[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);

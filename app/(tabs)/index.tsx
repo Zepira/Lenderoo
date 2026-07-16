@@ -254,7 +254,7 @@ export default function HomeScreen() {
                 items={withFavourite(borrowedItems)}
                 onItemPress={(item) => router.push(`/item/${item.id}` as any)}
                 onToggleFavourite={handleToggleFavourite}
-                onViewAll={() => router.push("/(tabs)/library")}
+                onViewAll={() => router.push("/borrowed" as any)}
                 onChanged={refresh}
                 getPriority={(item) => getPendingActionPriority(item, user?.id)}
               />
@@ -263,7 +263,7 @@ export default function HomeScreen() {
                 items={withFavourite(lentOutItems)}
                 onItemPress={(item) => router.push(`/item/${item.id}` as any)}
                 onToggleFavourite={handleToggleFavourite}
-                onViewAll={() => router.push("/(tabs)/library")}
+                onViewAll={() => router.push("/(tabs)/library?filter=lent" as any)}
                 onChanged={refresh}
                 getPriority={(item) => getPendingActionPriority(item, user?.id)}
               />
