@@ -421,9 +421,6 @@ export default function AddUserFriendScreen() {
                         <Text variant="base" className="font-semibold">
                           {user.name}
                         </Text>
-                        <Text variant="small" className="text-muted-foreground">
-                          {user.email}
-                        </Text>
                       </View>
 
                       <Button
