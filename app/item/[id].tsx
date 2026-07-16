@@ -1450,7 +1450,9 @@ export default function ItemDetailScreen() {
                           {otherAvailable ? "Available" : "Currently lent out"}
                         </Caption>
                       </View>
-                      <ChevronRight size={18} color={theme.mutedForeground} />
+                      <View style={{ width: 18, height: 40, alignItems: "center", justifyContent: "center" }}>
+                        <ChevronRight size={18} color={theme.mutedForeground} />
+                      </View>
                     </Pressable>
                   );
                 })}
