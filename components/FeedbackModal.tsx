@@ -153,7 +153,6 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
           backgroundColor: "rgba(0,0,0,0.5)",
         }}
         keyboardShouldPersistTaps="handled"
-        enableOnAndroid
         extraScrollHeight={24}
       >
         {/* Backdrop tap-to-close — safety net so the sheet is never unreachable */}
