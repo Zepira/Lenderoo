@@ -21,6 +21,10 @@ export interface MatchedContactUser {
   name: string;
   email: string;
   avatarUrl: string | null;
+  /** This person's name as saved in the device's own contact list, if it
+   *  could be resolved locally — helps disambiguate when the Lenderoo
+   *  account name differs (nickname, missing last name, etc.). */
+  contactName?: string;
 }
 
 export interface ContactMatchResult {
@@ -47,69 +51,85 @@ async function sha256Hex(value: string): Promise<string> {
  */
 export async function requestContactsPermission(): Promise<boolean> {
   const { status, canAskAgain } = await Contacts.requestPermissionsAsync();
-  console.error(LOG_TAG, 'permission result', { platform: Platform.OS, status, canAskAgain });
+  console.log(LOG_TAG, 'permission result', { platform: Platform.OS, status, canAskAgain });
   return status === 'granted';
 }
 
 /**
  * Read device contacts and produce the deduplicated set of normalized,
- * hashed phone numbers and emails for matching.
+ * hashed phone numbers and emails for matching, plus a hash -> contact name
+ * lookup kept purely on-device (never sent to the server) so a matched
+ * result can show the name as saved in the user's own phone — the Lenderoo
+ * account's own display name can differ (nickname, no last name, etc.) and
+ * that ambiguity is exactly what this is for.
  */
 export async function getContactHashes(): Promise<{
   hashes: string[];
   contactCount: number;
+  hashToContactName: Map<string, string>;
 }> {
   const { data } = await Contacts.getContactsAsync({
-    fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails],
+    fields: [
+      Contacts.Fields.Name,
+      Contacts.Fields.PhoneNumbers,
+      Contacts.Fields.Emails,
+    ],
   });
 
-  console.error(LOG_TAG, 'device contacts read', {
+  console.log(LOG_TAG, 'device contacts read', {
     platform: Platform.OS,
     contactCount: data.length,
   });
 
   const hashSet = new Set<string>();
-  const rawValues = new Set<string>();
+  // rawValue -> contact display name, so each hash can be traced back to
+  // "whose phone/email is this" without ever transmitting the raw value.
+  const rawValueToName = new Map<string, string>();
   let phoneCount = 0;
   let emailCount = 0;
 
   for (const contact of data) {
+    const contactName = contact.name?.trim();
+    if (!contactName) continue;
     for (const p of contact.phoneNumbers ?? []) {
       const normalized = p.number ? normalizePhone(p.number) : '';
       if (!normalized) continue;
       phoneCount++;
-      rawValues.add(`phone:${normalized}`);
+      rawValueToName.set(`phone:${normalized}`, contactName);
       // Android and iOS don't consistently export a country code for
       // locally-entered contacts, so also hash the last-10-digit national
       // number — matches an account phone regardless of which side has it.
       const last10 = normalized.slice(-10);
-      if (last10 !== normalized) rawValues.add(`phone:${last10}`);
+      if (last10 !== normalized) rawValueToName.set(`phone:${last10}`, contactName);
     }
     for (const e of contact.emails ?? []) {
       const normalized = e.email ? normalizeEmail(e.email) : '';
       if (normalized) {
         emailCount++;
-        rawValues.add(`email:${normalized}`);
+        rawValueToName.set(`email:${normalized}`, contactName);
       }
     }
   }
 
+  const hashToContactName = new Map<string, string>();
   await Promise.all(
-    [...rawValues].map(async (key) => {
+    [...rawValueToName].map(async ([key, name]) => {
       const value = key.slice(key.indexOf(':') + 1);
-      hashSet.add(await sha256Hex(value));
+      const hash = await sha256Hex(value);
+      hashSet.add(hash);
+      hashToContactName.set(hash, name);
     }),
   );
 
-  console.error(LOG_TAG, 'normalized + hashed', {
+  console.log(LOG_TAG, 'normalized + hashed', {
     platform: Platform.OS,
     phoneCount,
     emailCount,
-    rawValueCount: rawValues.size,
+    rawValueCount: rawValueToName.size,
     hashCount: hashSet.size,
   });
 
-  return { hashes: [...hashSet], contactCount: data.length };
+  return { hashes: [...hashSet], contactCount: data.length, hashToContactName };
 }
 
 /**
@@ -117,16 +137,16 @@ export async function getContactHashes(): Promise<{
  * match an existing (and not-already-friended) Lenderoo account.
  */
 export async function findContactsOnLenderoo(): Promise<ContactMatchResult> {
-  const { hashes, contactCount } = await getContactHashes();
+  const { hashes, contactCount, hashToContactName } = await getContactHashes();
   if (hashes.length === 0) {
-    console.error(LOG_TAG, 'no hashes to send, skipping edge function call', {
+    console.log(LOG_TAG, 'no hashes to send, skipping edge function call', {
       platform: Platform.OS,
       contactCount,
     });
     return { matches: [], unmatchedCount: 0 };
   }
 
-  console.error(LOG_TAG, 'invoking match-contacts', {
+  console.log(LOG_TAG, 'invoking match-contacts', {
     platform: Platform.OS,
     hashesSent: hashes.length,
   });
@@ -144,10 +164,20 @@ export async function findContactsOnLenderoo(): Promise<ContactMatchResult> {
     throw new Error(`Failed to match contacts: ${error.message}`);
   }
 
-  const matches: MatchedContactUser[] = data?.matches ?? [];
+  const rawMatches: Array<MatchedContactUser & { matchedHash?: string }> =
+    data?.matches ?? [];
+  const matches: MatchedContactUser[] = rawMatches.map((m) => ({
+    id: m.id,
+    name: m.name,
+    email: m.email,
+    avatarUrl: m.avatarUrl,
+    contactName: m.matchedHash
+      ? hashToContactName.get(m.matchedHash)
+      : undefined,
+  }));
   const unmatchedCount = Math.max(contactCount - matches.length, 0);
 
-  console.error(LOG_TAG, 'match-contacts result', {
+  console.log(LOG_TAG, 'match-contacts result', {
     platform: Platform.OS,
     matchCount: matches.length,
     unmatchedCount,

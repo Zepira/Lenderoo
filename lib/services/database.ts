@@ -115,6 +115,25 @@ export async function getItemById(id: string): Promise<Item | null> {
   return data ? convertItemFromDb(data) : null;
 }
 
+/**
+ * Postgres unique-violation (23505) on the items table means one of the
+ * duplicate-prevention indexes from migration 040 fired — translate that
+ * into the same friendly message the client-side pre-check already shows,
+ * instead of letting a raw Postgres error reach the UI. Any other error is
+ * rethrown unchanged.
+ */
+function translateItemWriteError(error: { code?: string; message?: string }): never {
+  if (error.code === "23505") {
+    if (error.message?.includes("idx_items_unique_isbn_per_user")) {
+      throw new Error("A book with this ISBN is already in your library.");
+    }
+    if (error.message?.includes("idx_items_unique_name_per_user")) {
+      throw new Error("An item with this name is already in your library.");
+    }
+  }
+  throw error;
+}
+
 export async function createItem(
   itemData: Omit<Item, "id" | "createdAt" | "updatedAt">
 ): Promise<Item> {
@@ -144,7 +163,7 @@ export async function createItem(
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) translateItemWriteError(error);
 
   // Update friend's borrow count if item is being lent (non-blocking)
   if (itemData.borrowedBy) {
@@ -217,7 +236,7 @@ export async function updateItem(
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) translateItemWriteError(error);
 
   // If borrowedBy changed, update friend counts and record history
   if (

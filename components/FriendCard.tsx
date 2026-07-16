@@ -5,7 +5,7 @@
  */
 
 import { View, Pressable, TouchableOpacity } from "react-native";
-import { Mail, Phone, Package, Library } from "lucide-react-native";
+import { Package, Library } from "lucide-react-native";
 import type { Friend } from "lib/types";
 import { getInitials, formatCount } from "lib/utils";
 import { resolveAvatarSource } from "@/lib/services/avatar";
@@ -57,35 +57,6 @@ export function FriendCard({
                 {friend.name}
               </Text>
 
-              {/* Contact Info */}
-              {detailed && friend.email && (
-                <View className="gap-1">
-                  {friend.email && (
-                    <View className="flex-row gap-1.5 items-center">
-                      <Mail size={14} />
-                      <Text
-                        variant="small"
-                        className="text-muted-foreground"
-                        numberOfLines={1}
-                      >
-                        {friend.email}
-                      </Text>
-                    </View>
-                  )}
-                  {/* {friend.phone && (
-                    <View className="flex-row gap-1.5 items-center">
-                      <Phone size={14} color="#888" />
-                      <Text
-                        variant="small"
-                        className="text-muted-foreground"
-                        numberOfLines={1}
-                      >
-                        {friend.phone}
-                      </Text>
-                    </View>
-                  )} */}
-                </View>
-              )}
             </View>
 
             {/* Active Items Indicator */}

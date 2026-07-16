@@ -503,9 +503,6 @@ export default function FriendDetailScreen() {
                   )}
                 </View>
                 <SectionHeading>{friend.name}</SectionHeading>
-                {friend.email && (
-                  <Caption style={{ marginTop: 4 }}>{friend.email}</Caption>
-                )}
               </View>
 
               {/* Stats row */}

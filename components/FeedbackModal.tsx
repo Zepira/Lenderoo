@@ -8,18 +8,23 @@ import { useState } from "react";
 import {
   Modal,
   View,
+  ScrollView,
+  Image,
   ActivityIndicator,
   Alert,
   Platform,
   Pressable,
   KeyboardAvoidingView,
 } from "react-native";
-import { X } from "lucide-react-native";
+import * as ImagePickerExpo from "expo-image-picker";
+import { X, ImagePlus } from "lucide-react-native";
 import { Button } from "./ui/button";
 import { Text } from "./ui/text";
 import { Textarea } from "./ui/textarea";
 import { submitFeedback } from "@/lib/services/feedback";
 import * as toast from "@/lib/toast";
+
+const MAX_SCREENSHOTS = 3;
 
 interface FeedbackModalProps {
   visible: boolean;
@@ -28,7 +33,38 @@ interface FeedbackModalProps {
 
 export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
   const [comment, setComment] = useState("");
+  const [screenshots, setScreenshots] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleAddScreenshot = async () => {
+    if (Platform.OS !== "web") {
+      const { status } =
+        await ImagePickerExpo.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Photo library permission is required to attach a screenshot.",
+        );
+        return;
+      }
+    }
+
+    const result = await ImagePickerExpo.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: Platform.OS !== "web",
+      selectionLimit: MAX_SCREENSHOTS - screenshots.length,
+      quality: 0.8,
+    });
+
+    if (result.canceled) return;
+
+    const uris = result.assets.map((a) => a.uri);
+    setScreenshots((prev) => [...prev, ...uris].slice(0, MAX_SCREENSHOTS));
+  };
+
+  const handleRemoveScreenshot = (uri: string) => {
+    setScreenshots((prev) => prev.filter((s) => s !== uri));
+  };
 
   const handleSubmit = async () => {
     if (!comment.trim()) {
@@ -39,9 +75,10 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
     setSubmitting(true);
 
     try {
-      await submitFeedback(comment);
+      await submitFeedback(comment, screenshots);
       toast.success("Thanks for your feedback!");
       setComment("");
+      setScreenshots([]);
       onClose();
     } catch (error) {
       console.error("Failed to submit feedback:", error);
@@ -54,7 +91,7 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
   };
 
   const handleClose = () => {
-    if (comment.trim() && !submitting) {
+    if ((comment.trim() || screenshots.length > 0) && !submitting) {
       Alert.alert(
         "Discard Feedback?",
         "You have unsaved feedback. Are you sure you want to close?",
@@ -65,6 +102,7 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
             style: "destructive",
             onPress: () => {
               setComment("");
+              setScreenshots([]);
               onClose();
             },
           },
@@ -72,6 +110,7 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
       );
     } else {
       setComment("");
+      setScreenshots([]);
       onClose();
     }
   };
@@ -128,6 +167,45 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
             <Text variant="small" className="text-muted-foreground mt-2">
               {comment.length} / 1000 characters
             </Text>
+          </View>
+
+          {/* Screenshots */}
+          <View className="mb-4 gap-2">
+            {screenshots.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View className="flex-row gap-2">
+                  {screenshots.map((uri) => (
+                    <View key={uri} className="relative">
+                      <Image
+                        source={{ uri }}
+                        style={{ width: 72, height: 72, borderRadius: 10 }}
+                      />
+                      <Pressable
+                        onPress={() => handleRemoveScreenshot(uri)}
+                        disabled={submitting}
+                        className="absolute -top-2 -right-2 bg-background rounded-full"
+                      >
+                        <View className="w-6 h-6 rounded-full bg-destructive items-center justify-center">
+                          <X size={14} color="#fff" />
+                        </View>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            )}
+            {screenshots.length < MAX_SCREENSHOTS && (
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={handleAddScreenshot}
+                disabled={submitting}
+                className="self-start"
+              >
+                <ImagePlus size={16} />
+                <Text>Add Screenshot</Text>
+              </Button>
+            )}
           </View>
 
           {/* Action Buttons */}

@@ -471,11 +471,16 @@ export default function AddUserFriendScreen() {
 
               {contactsChecked && !loadingContacts && (
                 <View className="gap-2">
-                  {contactMatches.length > 0 && (
+                  {contactMatches.length > 0 ? (
                     <Text variant="small" className="text-muted-foreground">
                       {contactMatches.length} contact
                       {contactMatches.length !== 1 ? "s" : ""} found on
                       Lenderoo
+                    </Text>
+                  ) : (
+                    <Text variant="small" className="text-muted-foreground">
+                      None of your contacts are on Lenderoo yet. Invite them,
+                      or try adding a friend by code or name instead.
                     </Text>
                   )}
 
@@ -486,14 +491,17 @@ export default function AddUserFriendScreen() {
                     >
                       <View className="flex-1 gap-1">
                         <Text variant="base" className="font-semibold">
-                          {matchedUser.name}
+                          {matchedUser.contactName ?? matchedUser.name}
                         </Text>
-                        <Text
-                          variant="small"
-                          className="text-muted-foreground"
-                        >
-                          {matchedUser.email}
-                        </Text>
+                        {matchedUser.contactName &&
+                          matchedUser.contactName !== matchedUser.name && (
+                            <Text
+                              variant="small"
+                              className="text-muted-foreground"
+                            >
+                              On Lenderoo as {matchedUser.name}
+                            </Text>
+                          )}
                       </View>
 
                       <Button

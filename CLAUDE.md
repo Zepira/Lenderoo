@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Related repository
+
+The marketing/legal website (lenderoo.com) lives in a separate sibling repo
+at `D:\Repos\Personal Repos\lenderoo.com` — a Vite + React SPA with its own
+`CLAUDE.md`. It hosts the public Privacy Policy and Data Deletion pages,
+which describe (in prose) how account deletion behaves in this app. When
+changing anything about what account deletion does here (see
+`supabase/functions/delete-account/`), check whether that website copy needs
+updating to match — it's a separate repo, so it won't show up automatically
+in a diff of this one.
+
 ## Project Overview
 
 This is a React Native app using Expo Router with NativeWind for styling. The project uses Yarn 4.5.0 as the package manager and is configured with React Native's New Architecture enabled for both iOS and Android.

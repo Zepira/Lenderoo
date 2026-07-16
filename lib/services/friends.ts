@@ -189,6 +189,7 @@ export async function searchUsers(query: string): Promise<FriendUser[]> {
     .from("users")
     .select("id, name, email, avatar_url, friend_code")
     .neq("id", user.id) // Exclude current user
+    .is("deleted_at", null) // Exclude deleted accounts
     .or(`name.ilike.${searchTerm},email.ilike.${searchTerm}`)
     .limit(20);
 

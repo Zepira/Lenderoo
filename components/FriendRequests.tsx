@@ -79,9 +79,6 @@ export function FriendRequests({ requests, onUpdate }: FriendRequestsProps) {
               <Text variant="base" className="font-semibold">
                 {request.userName}
               </Text>
-              <Text variant="small" className="text-muted-foreground">
-                {request.userEmail}
-              </Text>
             </View>
           </View>
 

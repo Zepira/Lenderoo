@@ -1129,9 +1129,6 @@ export default function ItemDetailScreen() {
                           Currently Lent To
                         </TinyLabel>
                         <BodyStrong>{borrowerProfile.name}</BodyStrong>
-                        {borrowerIsFriend && borrowerProfile.email && (
-                          <Caption>{borrowerProfile.email}</Caption>
-                        )}
                       </View>
                       {borrowerIsFriend && (
                         <ChevronRight size={18} color={theme.mutedForeground} />
@@ -1782,11 +1779,6 @@ export default function ItemDetailScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <BodyStrong style={{ fontSize: 15 }}>{f.name}</BodyStrong>
-                    {f.email && (
-                      <Caption style={{ color: theme.mutedForeground }}>
-                        {f.email}
-                      </Caption>
-                    )}
                   </View>
                 </Pressable>
               )}

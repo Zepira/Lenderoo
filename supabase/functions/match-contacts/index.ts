@@ -9,6 +9,9 @@ interface MatchedUser {
   name: string;
   email: string;
   avatarUrl: string | null;
+  /** Which of the caller's own hashes this account matched on — lets the
+   *  client look up its local contact name for this person. */
+  matchedHash: string;
 }
 
 // Looks up which of the caller's device contacts (sent as SHA-256 hashes of
@@ -61,12 +64,12 @@ Deno.serve(async (req) => {
   // contact list easily produces enough 64-char hex hashes to blow past URL
   // length limits, so chunk the lookup rather than sending it in one go.
   const HASH_CHUNK_SIZE = 200;
-  const hashRows: { user_id: string }[] = [];
+  const hashRows: { user_id: string; hash: string }[] = [];
   for (let i = 0; i < hashes.length; i += HASH_CHUNK_SIZE) {
     const chunk = hashes.slice(i, i + HASH_CHUNK_SIZE);
     const { data, error: hashError } = await supabase
       .from('user_contact_hashes')
-      .select('user_id')
+      .select('user_id, hash')
       .in('hash', chunk)
       .neq('user_id', user.id);
 
@@ -74,6 +77,17 @@ Deno.serve(async (req) => {
       return new Response(`query error: ${hashError.message}`, { status: 500 });
     }
     hashRows.push(...(data ?? []));
+  }
+
+  // The hash itself is one of the ones the caller sent us — not a secret,
+  // and it's what lets the client trace a match back to which of *their own*
+  // local contacts it came from (to show that contact's saved name) without
+  // us ever learning or storing raw contact data ourselves.
+  const matchedHashByUserId = new Map<string, string>();
+  for (const row of hashRows) {
+    if (!matchedHashByUserId.has(row.user_id)) {
+      matchedHashByUserId.set(row.user_id, row.hash);
+    }
   }
 
   const candidateIds = [...new Set((hashRows ?? []).map((r) => r.user_id as string))];
@@ -108,7 +122,8 @@ Deno.serve(async (req) => {
   const { data: users, error: usersError } = await supabase
     .from('users')
     .select('id, name, email, avatar_url')
-    .in('id', remainingIds);
+    .in('id', remainingIds)
+    .is('deleted_at', null);
 
   if (usersError) {
     return new Response(`query error: ${usersError.message}`, { status: 500 });
@@ -119,6 +134,7 @@ Deno.serve(async (req) => {
     name: u.name as string,
     email: u.email as string,
     avatarUrl: (u.avatar_url as string | null) ?? null,
+    matchedHash: matchedHashByUserId.get(u.id as string) ?? '',
   }));
 
   return new Response(JSON.stringify({ matches }), {

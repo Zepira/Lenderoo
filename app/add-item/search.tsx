@@ -197,6 +197,14 @@ export default function SearchBookScreen() {
             <Text>Scan ISBN Barcode</Text>
           </Button>
 
+          <Button
+            variant="outline"
+            onPress={() => router.push("/add-item/book" as any)}
+          >
+            <BookOpen size={18} color={theme.foreground} />
+            <Text>Can't Find It? Enter Manually</Text>
+          </Button>
+
           {error ? (
             <View
               style={{
@@ -276,20 +284,6 @@ export default function SearchBookScreen() {
             ))}
           </View>
         )}
-
-        {/* Manual entry */}
-        <Pressable
-          onPress={() => router.push("/add-item/book" as any)}
-          style={({ pressed }) => ({
-            alignItems: "center",
-            paddingVertical: 16,
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Caption style={{ textDecorationLine: "underline" }}>
-            Can't find it? Enter manually
-          </Caption>
-        </Pressable>
       </KeyboardAwareScrollView>
 
       <BarcodeScannerModal

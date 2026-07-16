@@ -85,16 +85,15 @@ async function compressImage(uri: string): Promise<string> {
 }
 
 /**
- * Upload a local file to Supabase Storage
+ * Read a local (already-compressed) image file and upload it to the given
+ * storage bucket/path, returning its public URL. Shared by every
+ * bucket-specific uploader below.
  */
-async function uploadLocalImage(uri: string, userId: string): Promise<string> {
-  // Compress image first to improve upload speed
-  const compressedUri = await compressImage(uri);
-
-  // Generate unique filename
-  const fileExt = 'jpg';
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-  const filePath = `${userId}/${fileName}`;
+async function uploadImageBuffer(
+  compressedUri: string,
+  bucket: string,
+  filePath: string
+): Promise<string> {
   const contentType = 'image/jpeg';
 
   let arrayBuffer: ArrayBuffer;
@@ -112,8 +111,8 @@ async function uploadLocalImage(uri: string, userId: string): Promise<string> {
     arrayBuffer = decode(base64);
   }
 
-  const { data, error } = await supabase.storage
-    .from(BUCKET_NAME)
+  const { error } = await supabase.storage
+    .from(bucket)
     .upload(filePath, arrayBuffer, {
       contentType,
       upsert: false,
@@ -124,10 +123,24 @@ async function uploadLocalImage(uri: string, userId: string): Promise<string> {
   }
 
   const { data: { publicUrl } } = supabase.storage
-    .from(BUCKET_NAME)
+    .from(bucket)
     .getPublicUrl(filePath);
 
   return publicUrl;
+}
+
+/**
+ * Upload a local file to Supabase Storage
+ */
+async function uploadLocalImage(uri: string, userId: string): Promise<string> {
+  // Compress image first to improve upload speed
+  const compressedUri = await compressImage(uri);
+
+  // Generate unique filename
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+  const filePath = `${userId}/${fileName}`;
+
+  return uploadImageBuffer(compressedUri, BUCKET_NAME, filePath);
 }
 
 /**
@@ -277,6 +290,32 @@ async function downloadImageMobile(url: string): Promise<{
   await FileSystem.deleteAsync(fileUri, { idempotent: true });
 
   return { data: arrayBuffer, contentType, extension };
+}
+
+const FEEDBACK_SCREENSHOTS_BUCKET = 'feedback-screenshots';
+
+/**
+ * Upload a feedback screenshot. Unlike item/avatar uploads this is not
+ * scoped to a userId folder — feedback is anonymous, and a userId-prefixed
+ * path would itself identify the submitter.
+ *
+ * @param uri - Local file URI from the image picker
+ * @returns Public URL of the uploaded screenshot
+ */
+export async function uploadFeedbackScreenshot(uri: string): Promise<string> {
+  const compressedUri = await compressImage(uri);
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+  return uploadImageBuffer(compressedUri, FEEDBACK_SCREENSHOTS_BUCKET, fileName);
+}
+
+/**
+ * Upload multiple feedback screenshots.
+ *
+ * @param uris - Array of local file URIs
+ * @returns Array of public URLs
+ */
+export async function uploadFeedbackScreenshots(uris: string[]): Promise<string[]> {
+  return Promise.all(uris.map(uploadFeedbackScreenshot));
 }
 
 /**

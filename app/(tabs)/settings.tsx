@@ -7,7 +7,6 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
-  Linking,
 } from "react-native";
 import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -43,6 +42,7 @@ import {
 import * as toast from "@/lib/toast";
 import { AvatarPickerModal } from "@/components/AvatarPickerModal";
 import { resolveAvatarSource, uploadAvatarImage } from "@/lib/services/avatar";
+import { deleteAccount } from "@/lib/services/account";
 import { BorrowRequestsSection } from "@/components/BorrowRequestsSection";
 import { ItemCard } from "@/components/ItemCard";
 import {
@@ -70,6 +70,7 @@ export default function SettingsScreen() {
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
   const [signingOut, setSigningOut] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
@@ -123,6 +124,34 @@ export default function SettingsScreen() {
       toast.error(error?.message || "Failed to sign out");
     } finally {
       setSigningOut(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const message =
+      "This permanently deletes your profile, photo, and library items with no one else currently holding them. Any item you're actively lending or borrowing is automatically marked returned. This cannot be undone.";
+    const confirmed =
+      Platform.OS === "web"
+        ? window.confirm(`Delete Account?\n\n${message}`)
+        : await new Promise<boolean>((resolve) => {
+            Alert.alert("Delete Account?", message, [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              {
+                text: "Delete Account",
+                style: "destructive",
+                onPress: () => resolve(true),
+              },
+            ]);
+          });
+    if (!confirmed) return;
+
+    try {
+      setDeletingAccount(true);
+      await deleteAccount();
+      await signOut();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete account");
+      setDeletingAccount(false);
     }
   };
 
@@ -428,12 +457,8 @@ export default function SettingsScreen() {
             />
             <SettingsItem
               icon={<Trash2 size={20} color={THEME.light.destructive} />}
-              label="Delete Account"
-              onPress={() =>
-                Linking.openURL(
-                  "mailto:support@lenderoo.app?subject=Account%20Deletion%20Request&body=Please%20delete%20my%20account%20and%20all%20associated%20data.",
-                )
-              }
+              label={deletingAccount ? "Deleting…" : "Delete Account"}
+              onPress={deletingAccount ? () => {} : handleDeleteAccount}
             />
             <SettingsItem
               icon={<LogOut size={20} color={THEME.light.destructive} />}

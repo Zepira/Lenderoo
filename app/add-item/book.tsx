@@ -156,7 +156,25 @@ export default function AddBookScreen() {
     };
   }, [seriesName, seriesId, hardcoverId]);
 
-  const findDuplicateItem = (bookTitle: string, bookAuthor: string) => {
+  const findDuplicateItem = (
+    bookTitle: string,
+    bookAuthor: string,
+    bookIsbn?: string,
+  ) => {
+    // ISBN is the more reliable signal — the same edition can come back with
+    // slightly different title text depending on whether it was added via
+    // search, a barcode scan, or typed in manually. Check it first so those
+    // don't slip past a title-only match.
+    const trimmedIsbn = bookIsbn?.trim();
+    if (trimmedIsbn) {
+      const isbnMatch = existingItems.find(
+        (item) =>
+          item.category === "book" &&
+          (item.metadata as BookMetadata)?.isbn?.trim() === trimmedIsbn,
+      );
+      if (isbnMatch) return isbnMatch;
+    }
+
     if (!bookTitle.trim()) return null;
     return (
       existingItems.find((item) => {
@@ -175,7 +193,9 @@ export default function AddBookScreen() {
     );
   };
 
-  const duplicateItem = title.trim() ? findDuplicateItem(title, author) : null;
+  const duplicateItem = title.trim()
+    ? findDuplicateItem(title, author, isbn)
+    : null;
   const duplicateWarning = duplicateItem
     ? `"${duplicateItem.name}"${
         (duplicateItem.metadata as BookMetadata)?.author
@@ -229,7 +249,7 @@ export default function AddBookScreen() {
         condition: condition || undefined,
       };
 
-      const dup = findDuplicateItem(title, author);
+      const dup = findDuplicateItem(title, author, isbn);
 
       if (dup) {
         const dupAuthor = (dup.metadata as BookMetadata)?.author;
@@ -285,12 +305,7 @@ export default function AddBookScreen() {
         selectedSeriesBookIds.has(b.hardcoverId),
       );
       for (const book of booksToAdd) {
-        const alreadyOwned = existingItems.some(
-          (item) =>
-            item.category === "book" &&
-            item.name.toLowerCase().trim() === book.title.toLowerCase().trim(),
-        );
-        if (alreadyOwned) continue;
+        if (findDuplicateItem(book.title, book.author, book.isbn)) continue;
 
         const seriesBookMetadata: BookMetadata = {
           author: book.author || undefined,

@@ -1,5 +1,5 @@
-import { router } from "expo-router";
-import { useState, useEffect } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -50,11 +50,21 @@ export default function FriendsScreen() {
   const [itemCounts, setItemCounts] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    loadFriends();
-    loadFriendRequests();
-    loadSentFriendRequests();
-  }, []);
+  // Tab screens stay mounted once visited (expo-router doesn't unmount on
+  // tab switch), so a mount-only effect only ever fetches once per app
+  // session. Pending requests then depend entirely on the realtime
+  // subscription below to ever appear — and that can silently miss events
+  // (dropped while backgrounded, reconnect races), which is how someone can
+  // get a "new friend request" push, open the app, and see nothing until a
+  // cold restart. Refetch on every focus instead, so returning to this tab
+  // (including via tapping the notification) is always accurate.
+  useFocusEffect(
+    useCallback(() => {
+      loadFriends();
+      loadFriendRequests();
+      loadSentFriendRequests();
+    }, []),
+  );
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
