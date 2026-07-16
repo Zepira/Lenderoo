@@ -54,6 +54,8 @@ function convertItemFromDb(data: any): Item {
     isUnavailable: data.is_unavailable ?? false,
     pendingRecipientId: data.pending_recipient_id ?? undefined,
     pendingSince: data.pending_since ? new Date(data.pending_since) : undefined,
+    maxBorrowDays: data.max_borrow_days ?? undefined,
+    dueSoonRemindedAt: data.due_soon_reminded_at ? new Date(data.due_soon_reminded_at) : undefined,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };
@@ -158,6 +160,7 @@ export async function createItem(
         returned_date: itemData.returnedDate?.toISOString(),
         notes: itemData.notes,
         metadata: itemData.metadata,
+        max_borrow_days: itemData.maxBorrowDays,
       },
     ])
     .select()
@@ -228,6 +231,8 @@ export async function updateItem(
     updateData.pending_recipient_id = updates.pendingRecipientId ?? null;
   if ('pendingSince' in updates)
     updateData.pending_since = updates.pendingSince?.toISOString() ?? null;
+  if ('maxBorrowDays' in updates)
+    updateData.max_borrow_days = updates.maxBorrowDays ?? null;
 
   const { data, error } = await supabase
     .from("items")
@@ -444,11 +449,22 @@ export async function confirmHandoff(itemId: string): Promise<void> {
   const previousBorrower = item.borrowedBy;
   const returningToOwner = recipientId === item.userId;
 
+  // Pickup (not a return) starts a fresh loan — recompute due_date from the
+  // item's own Max Borrow Duration at the moment they actually have it,
+  // rather than trusting whatever due_date approveBorrowRequest set (which
+  // could be stale if this is a hand-off to the next queued borrower, not
+  // the original approval). Items without a configured max duration keep
+  // whatever due_date they already had (e.g. an explicit requested date).
+  const freshDueDate = item.maxBorrowDays
+    ? new Date(Date.now() + item.maxBorrowDays * 24 * 60 * 60 * 1000).toISOString()
+    : undefined;
+
   const updateData = returningToOwner
     ? {
         borrowed_by: null,
         borrowed_date: null,
         due_date: null,
+        due_soon_reminded_at: null,
         returned_date: null,
         pending_recipient_id: null,
         pending_since: null,
@@ -457,6 +473,7 @@ export async function confirmHandoff(itemId: string): Promise<void> {
     : {
         borrowed_by: recipientId,
         borrowed_date: new Date().toISOString(),
+        ...(freshDueDate ? { due_date: freshDueDate, due_soon_reminded_at: null } : {}),
         returned_date: null,
         pending_recipient_id: null,
         pending_since: null,

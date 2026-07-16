@@ -23,6 +23,7 @@ import { useCreateItem, useItems } from "hooks";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
+import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
 import { uploadItemImage, validateImage } from "@/lib/services/storage";
 import { supabase } from "@/lib/supabase";
 import * as toast from "@/lib/toast";
@@ -70,7 +71,7 @@ export default function AddGenericItemScreen() {
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [notes, setNotes] = useState("");
-  const [maxBorrowDuration, setMaxBorrowDuration] = useState("");
+  const [maxBorrowDays, setMaxBorrowDays] = useState<number | null>(null);
   const [condition, setCondition] = useState<"fair" | "good" | "perfect" | "">("");
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -136,9 +137,8 @@ export default function AddGenericItemScreen() {
         category,
         images: uploadedImageUrl ? [uploadedImageUrl] : undefined,
         notes: notes.trim() || undefined,
-        metadata: (maxBorrowDuration.trim() || condition)
-          ? { maxBorrowDuration: maxBorrowDuration.trim() || undefined, condition: condition || undefined }
-          : undefined,
+        metadata: condition ? { condition } : undefined,
+        maxBorrowDays: maxBorrowDays ?? undefined,
       };
 
       createItemSchema.parse(itemData);
@@ -325,16 +325,7 @@ export default function AddGenericItemScreen() {
           </View>
 
           {/* Max borrow duration */}
-          <View style={{ gap: 8 }}>
-            <TinyLabel>Max Borrow Duration (Optional)</TinyLabel>
-            <TextInput
-              value={maxBorrowDuration}
-              onChangeText={setMaxBorrowDuration}
-              placeholder="e.g. 1 week, 2 weeks, 1 month…"
-              placeholderTextColor={theme.mutedForeground}
-              style={inputStyle}
-            />
-          </View>
+          <MaxBorrowDurationInput days={maxBorrowDays} onChange={setMaxBorrowDays} />
         </View>
 
         {/* Notes card */}

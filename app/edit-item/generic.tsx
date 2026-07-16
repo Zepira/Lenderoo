@@ -13,6 +13,7 @@ import { CATEGORY_CONFIG as CATEGORY_CONFIG_CONSTANTS, type ItemCategory } from 
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
+import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
 import { cn } from "lib/utils";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -31,7 +32,7 @@ export default function EditGenericItemScreen() {
     imageUrl?: string;
     notes?: string;
     borrowedBy?: string;
-    maxBorrowDuration?: string;
+    maxBorrowDays?: string;
     condition?: string;
   }>();
   const category = (params.category || "other") as ItemCategory;
@@ -46,7 +47,9 @@ export default function EditGenericItemScreen() {
   const [imageUrl, setImageUrl] = useState(params.imageUrl || "");
   const [borrowedBy, setBorrowedBy] = useState(params.borrowedBy || "");
   const [notes, setNotes] = useState(params.notes || "");
-  const [maxBorrowDuration, setMaxBorrowDuration] = useState(params.maxBorrowDuration || "");
+  const [maxBorrowDays, setMaxBorrowDays] = useState<number | null>(
+    params.maxBorrowDays ? parseInt(params.maxBorrowDays, 10) : null
+  );
   const [condition, setCondition] = useState<"fair" | "good" | "perfect" | "">(
     (params.condition as "fair" | "good" | "perfect" | undefined) || ""
   );
@@ -89,9 +92,8 @@ export default function EditGenericItemScreen() {
         imageUrl: imageUrl.trim() || undefined,
         borrowedBy: borrowedBy || undefined,
         notes: notes.trim() || undefined,
-        metadata: (maxBorrowDuration.trim() || condition)
-          ? { maxBorrowDuration: maxBorrowDuration.trim() || undefined, condition: condition || undefined }
-          : undefined,
+        metadata: condition ? { condition } : undefined,
+        maxBorrowDays: maxBorrowDays ?? undefined,
       };
 
       createItemSchema.parse({
@@ -371,17 +373,7 @@ export default function EditGenericItemScreen() {
           </View>
 
           {/* Max Borrow Duration */}
-          <View className="gap-2">
-            <Label nativeID="maxBorrowDuration" className="font-semibold">
-              Max Borrow Duration (Optional)
-            </Label>
-            <Input
-              value={maxBorrowDuration}
-              onChangeText={setMaxBorrowDuration}
-              placeholder="e.g. 1 week, 2 weeks, 1 month…"
-              editable={!loading}
-            />
-          </View>
+          <MaxBorrowDurationInput days={maxBorrowDays} onChange={setMaxBorrowDays} />
         </View>
       </KeyboardAwareScrollView>
 

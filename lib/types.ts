@@ -131,6 +131,13 @@ export interface Item {
   notes?: string;
   /** Estimated value of the item (optional) */
   value?: number;
+  /** Owner-set max borrow window in days (structured — see
+   *  components/MaxBorrowDurationInput.tsx). Drives due_date on pickup and
+   *  the due-soon reminder push; see docs/NOTIFICATIONS.md. */
+  maxBorrowDays?: number;
+  /** When the due-soon reminder push was last sent for the CURRENT loan.
+   *  Reset to undefined whenever the item is picked up or returned. */
+  dueSoonRemindedAt?: Date;
   /** Owner has temporarily disabled borrowing for this item (independent of borrowedBy) */
   isUnavailable?: boolean;
   /** ID of the user who must confirm a pending pickup or return before it takes
@@ -186,8 +193,6 @@ export interface BookMetadata {
   averageRating?: number;
   /** Hardcover book ID */
   hardcoverId?: string;
-  /** How long borrowers may keep this book (e.g. "2 weeks", "1 month") */
-  maxBorrowDuration?: string;
   /** Physical condition of the book */
   condition?: "fair" | "good" | "perfect";
 }

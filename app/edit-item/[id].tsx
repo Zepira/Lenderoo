@@ -23,6 +23,7 @@ export default function EditItemRouter() {
           ...(item.description && { description: item.description }),
           ...(item.notes && { notes: item.notes }),
           ...(item.borrowedBy && { borrowedBy: item.borrowedBy }),
+          ...(item.maxBorrowDays && { maxBorrowDays: item.maxBorrowDays.toString() }),
         });
 
         // Add book-specific metadata
@@ -45,8 +46,6 @@ export default function EditItemRouter() {
             params.set("averageRating", metadata.averageRating.toString());
           if (metadata.hardcoverId)
             params.set("hardcoverId", metadata.hardcoverId);
-          if (metadata.maxBorrowDuration)
-            params.set("maxBorrowDuration", metadata.maxBorrowDuration);
           if (metadata.condition)
             params.set("condition", metadata.condition);
         }
@@ -65,9 +64,7 @@ export default function EditItemRouter() {
           }),
           ...(item.notes && { notes: item.notes }),
           ...(item.borrowedBy && { borrowedBy: item.borrowedBy }),
-          ...(genericMeta?.maxBorrowDuration && {
-            maxBorrowDuration: genericMeta.maxBorrowDuration,
-          }),
+          ...(item.maxBorrowDays && { maxBorrowDays: item.maxBorrowDays.toString() }),
           ...(genericMeta?.condition && { condition: genericMeta.condition }),
         });
 

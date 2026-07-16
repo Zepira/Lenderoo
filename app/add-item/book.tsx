@@ -22,6 +22,7 @@ import { useCreateItem, useItems } from "hooks";
 import { createItemSchema } from "lib/validation";
 import { supabase } from "@/lib/supabase";
 import { ImagePicker } from "components/ImagePicker";
+import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
 import type { BookMetadata } from "lib/types";
 import { searchSeriesBooks, findSeriesId } from "@/lib/services/hardcover";
 
@@ -84,7 +85,7 @@ export default function AddBookScreen() {
   const [publicationYear, setPublicationYear] = useState("");
   const [averageRating, setAverageRating] = useState("");
   const [hardcoverId, setHardcoverId] = useState("");
-  const [maxBorrowDuration, setMaxBorrowDuration] = useState("");
+  const [maxBorrowDays, setMaxBorrowDays] = useState<number | null>(null);
   const [condition, setCondition] = useState<"fair" | "good" | "perfect" | "">("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -245,7 +246,6 @@ export default function AddBookScreen() {
           : undefined,
         averageRating: averageRating ? parseFloat(averageRating) : undefined,
         hardcoverId: hardcoverId || undefined,
-        maxBorrowDuration: maxBorrowDuration.trim() || undefined,
         condition: condition || undefined,
       };
 
@@ -295,6 +295,7 @@ export default function AddBookScreen() {
         images: imageUrl ? [imageUrl] : undefined,
         notes: notes.trim() || undefined,
         metadata,
+        maxBorrowDays: maxBorrowDays ?? undefined,
       };
 
       createItemSchema.parse(itemData);
@@ -327,6 +328,7 @@ export default function AddBookScreen() {
             category: "book",
             images: book.coverUrl ? [book.coverUrl] : undefined,
             metadata: seriesBookMetadata,
+            maxBorrowDays: maxBorrowDays ?? undefined,
             userId: user.id,
           });
         } catch {
@@ -784,16 +786,7 @@ export default function AddBookScreen() {
             </View>
           </View>
 
-          <View style={{ gap: 8 }}>
-            <TinyLabel>Max Borrow Duration (Optional)</TinyLabel>
-            <TextInput
-              value={maxBorrowDuration}
-              onChangeText={setMaxBorrowDuration}
-              placeholder="e.g. 1 week, 2 weeks, 1 month…"
-              placeholderTextColor={theme.mutedForeground}
-              style={inputStyle}
-            />
-          </View>
+          <MaxBorrowDurationInput days={maxBorrowDays} onChange={setMaxBorrowDays} />
         </View>
 
         {/* Submit */}

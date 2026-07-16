@@ -57,6 +57,25 @@ export function isDueSoon(dueDate: Date | undefined): boolean {
 }
 
 /**
+ * Format a max-borrow-duration day count as a human label, picking the
+ * coarsest unit that divides evenly (e.g. 21 -> "3 weeks", 10 -> "10 days").
+ * Mirrors the day math in supabase/migrations/046_max_borrow_duration.sql
+ * and the due-soon-reminders edge function — keep in sync if either changes.
+ */
+export function formatMaxBorrowDuration(days: number | undefined): string | null {
+  if (!days || days <= 0) return null;
+  if (days % 30 === 0) {
+    const months = days / 30;
+    return `${months} month${months !== 1 ? "s" : ""}`;
+  }
+  if (days % 7 === 0) {
+    const weeks = days / 7;
+    return `${weeks} week${weeks !== 1 ? "s" : ""}`;
+  }
+  return `${days} day${days !== 1 ? "s" : ""}`;
+}
+
+/**
  * Format date to relative time (e.g., "2 days ago", "in 3 days")
  */
 export function formatRelativeTime(date: Date): string {

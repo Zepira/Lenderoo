@@ -20,6 +20,7 @@ import { Book } from "lucide-react-native";
 import { useFriends, useUpdateItem, useItems } from "hooks";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
+import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
 import type { BookMetadata } from "lib/types";
 import { cn } from "lib/utils";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -50,7 +51,7 @@ export default function EditBookScreen() {
     hardcoverId?: string;
     notes?: string;
     borrowedBy?: string;
-    maxBorrowDuration?: string;
+    maxBorrowDays?: string;
     condition?: string;
   }>();
   const { friends } = useFriends();
@@ -75,7 +76,7 @@ export default function EditBookScreen() {
   const [publicationYear, setPublicationYear] = useState("");
   const [averageRating, setAverageRating] = useState("");
   const [hardcoverId, setHardcoverId] = useState("");
-  const [maxBorrowDuration, setMaxBorrowDuration] = useState("");
+  const [maxBorrowDays, setMaxBorrowDays] = useState<number | null>(null);
   const [condition, setCondition] = useState<"fair" | "good" | "perfect" | "">("");
 
   // Validation errors
@@ -99,7 +100,7 @@ export default function EditBookScreen() {
     if (params.hardcoverId) setHardcoverId(params.hardcoverId);
     if (params.notes) setNotes(params.notes);
     if (params.borrowedBy) setBorrowedBy(params.borrowedBy);
-    if (params.maxBorrowDuration) setMaxBorrowDuration(params.maxBorrowDuration);
+    if (params.maxBorrowDays) setMaxBorrowDays(parseInt(params.maxBorrowDays, 10));
     if (params.condition) setCondition(params.condition as "fair" | "good" | "perfect");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
@@ -188,7 +189,6 @@ export default function EditBookScreen() {
           : undefined,
         averageRating: averageRating ? parseFloat(averageRating) : undefined,
         hardcoverId: hardcoverId || undefined,
-        maxBorrowDuration: maxBorrowDuration.trim() || undefined,
         condition: condition || undefined,
       };
 
@@ -200,6 +200,7 @@ export default function EditBookScreen() {
         borrowedBy: borrowedBy || undefined,
         notes: notes.trim() || undefined,
         metadata,
+        maxBorrowDays: maxBorrowDays ?? undefined,
       };
 
       console.log("✅ Validating with schema...");
@@ -478,16 +479,7 @@ export default function EditBookScreen() {
             </View>
 
             {/* Max Borrow Duration */}
-            <View className="gap-2">
-              <Label nativeID="maxBorrowDuration" className="font-semibold">
-                Max Borrow Duration (Optional)
-              </Label>
-              <Input
-                value={maxBorrowDuration}
-                onChangeText={setMaxBorrowDuration}
-                placeholder="e.g. 1 week, 2 weeks, 1 month…"
-              />
-            </View>
+            <MaxBorrowDurationInput days={maxBorrowDays} onChange={setMaxBorrowDays} />
           </View>
         </View>
       </KeyboardAwareScrollView>

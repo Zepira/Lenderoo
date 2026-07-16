@@ -31,6 +31,7 @@ export type NotificationData =
   | { type: 'friend_request_new' }
   | { type: 'friend_request_accepted' }
   | { type: 'return_reminder'; itemId: string }
+  | { type: 'item_due_soon'; itemId: string }
   | { type: 'item_available'; itemId: string };
 
 /**
@@ -139,6 +140,7 @@ export function handleNotificationTap(data: NotificationData): void {
       router.push('/(tabs)/friends' as any);
       break;
     case 'return_reminder':
+    case 'item_due_soon':
     case 'item_available':
       router.push(`/item/${data.itemId}` as any);
       break;

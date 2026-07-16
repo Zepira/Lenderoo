@@ -63,6 +63,7 @@ import {
   getInitials,
   calculateItemStatus,
   toProperCase,
+  formatMaxBorrowDuration,
 } from "lib/utils";
 import { getItemAction } from "lib/item-actions";
 import {
@@ -435,9 +436,7 @@ export default function ItemDetailScreen() {
     item.images?.[0] ?? (item as any).imageUrls?.[0] ?? (item as any).imageUrl;
   const bookMeta =
     item.category === "book" ? (item.metadata as BookMetadata) : null;
-  const maxBorrowDuration =
-    bookMeta?.maxBorrowDuration ??
-    ((item.metadata as any)?.maxBorrowDuration as string | undefined);
+  const maxBorrowDurationLabel = formatMaxBorrowDuration(item.maxBorrowDays);
   const condition = (bookMeta?.condition ??
     (item.metadata as any)?.condition) as
     | "fair"
@@ -848,8 +847,8 @@ export default function ItemDetailScreen() {
             <View style={{ alignItems: "center", flex: 1 }}>
               <TinyLabel style={{ marginBottom: 4 }}>Duration</TinyLabel>
               <LabelStrong numberOfLines={1} style={{ maxWidth: 90 }}>
-                {maxBorrowDuration
-                  ? maxBorrowDuration
+                {maxBorrowDurationLabel
+                  ? maxBorrowDurationLabel
                   : daysSinceBorrowed > 0
                     ? `${daysSinceBorrowed}d`
                     : "—"}

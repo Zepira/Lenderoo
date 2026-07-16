@@ -9,11 +9,12 @@ Navigation routes, database calls, and table relationships for every screen.
 | Table | Purpose |
 |---|---|
 | `users` | User profiles — id, email, name, avatar_url, friend_code |
-| `items` | Library items — id, user_id, name, category, images, borrowed_by, borrowed_date, due_date, returned_date, metadata |
+| `items` | Library items — id, user_id, name, category, images, borrowed_by, borrowed_date, due_date, returned_date, metadata, max_borrow_days, due_soon_reminded_at, last_reminder_sent_at |
 | `friend_connections` | User-to-user friendships — user_id, friend_user_id, status (pending / active) |
 | `borrow_requests` | Borrow and queue requests — item_id, requester_id, owner_id, status (pending / approved / denied / cancelled) |
 | `borrow_history` | Completed borrow records — item_id, friend_id, borrowed_date, returned_date |
 | `feedback` | In-app feedback submissions |
+| `notification_settings` | Singleton config for scheduled reminder copy/timing — see `docs/NOTIFICATIONS.md` |
 
 **Views**
 

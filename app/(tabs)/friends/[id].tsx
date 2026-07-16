@@ -90,6 +90,8 @@ function convertItemFromDb(data: any): Item {
     isUnavailable: data.is_unavailable ?? false,
     pendingRecipientId: data.pending_recipient_id ?? undefined,
     pendingSince: data.pending_since ? new Date(data.pending_since) : undefined,
+    maxBorrowDays: data.max_borrow_days ?? undefined,
+    dueSoonRemindedAt: data.due_soon_reminded_at ? new Date(data.due_soon_reminded_at) : undefined,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };

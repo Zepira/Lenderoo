@@ -13,6 +13,18 @@ changing anything about what account deletion does here (see
 updating to match — it's a separate repo, so it won't show up automatically
 in a diff of this one.
 
+## Notifications
+
+`docs/NOTIFICATIONS.md` is the single source of truth for every situation
+that sends a push notification — trigger-based (DB webhook → edge function)
+and scheduled (pg_cron jobs). **Any change that adds, removes, or alters a
+notification trigger, its copy/timing, or the conditions under which it
+fires must update that file in the same change** — new DB trigger, new
+cron job, new case in `push-notifications`' `buildMessages()`, a new
+`NotificationData` type in `lib/notifications.ts`, or a change to
+`notification_settings` columns all count. Treat an out-of-date
+`docs/NOTIFICATIONS.md` as a bug, not a nice-to-have.
+
 ## Project Overview
 
 This is a React Native app using Expo Router with NativeWind for styling. The project uses Yarn 4.5.0 as the package manager and is configured with React Native's New Architecture enabled for both iOS and Android.

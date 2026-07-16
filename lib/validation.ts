@@ -142,6 +142,7 @@ export const createItemSchema = z
     notes: z.string().max(1000).optional(),
     value: z.number().positive().optional(),
     metadata: z.record(z.unknown()).optional(),
+    maxBorrowDays: z.number().int().min(1).max(365).optional(),
   })
   .refine(
     (data) => {
