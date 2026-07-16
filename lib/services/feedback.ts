@@ -95,6 +95,19 @@ export async function submitFeedback(
     ? await uploadFeedbackScreenshots(screenshotUris)
     : [];
 
+  // Diagnostic: prove/disprove whether a valid session is actually attached
+  // to this request. If accessTokenPresent is false or expiresAt is in the
+  // past, the insert below goes out as anon (no Authorization header) and
+  // gets rejected by RLS, which reads as this exact error even though the
+  // UI believes the user is signed in.
+  const { data: { session } } = await supabase.auth.getSession();
+  console.log('submitFeedback session check', {
+    sessionPresent: !!session,
+    accessTokenPresent: !!session?.access_token,
+    expiresAt: session?.expires_at,
+    nowUnix: Math.floor(Date.now() / 1000),
+  });
+
   const { data, error } = await supabase
     .from('feedback')
     .insert({
@@ -109,6 +122,17 @@ export async function submitFeedback(
     .single();
 
   if (error) {
+    // Metro's console collapses Error objects to just .message — the
+    // PostgrestError's code/details/hint (which usually explain *why* an
+    // RLS policy rejected the row) get silently discarded once wrapped
+    // below. Log them explicitly so they're actually visible when
+    // diagnosing a submit failure.
+    console.error('submitFeedback insert error', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     throw new Error(`Failed to submit feedback: ${error.message}`);
   }
 
