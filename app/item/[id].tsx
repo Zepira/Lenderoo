@@ -50,8 +50,8 @@ import {
   useDeleteItem,
   useInitiateReturn,
   useConfirmHandoff,
-  useItems,
   useUpdateItem,
+  useFriendsItems,
 } from "hooks/useItems";
 import { useUserProfile, useFriends } from "hooks/useFriends";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
@@ -64,6 +64,7 @@ import {
   calculateItemStatus,
   toProperCase,
   formatMaxBorrowDuration,
+  itemGroupKey,
 } from "lib/utils";
 import { getItemAction } from "lib/item-actions";
 import {
@@ -146,7 +147,7 @@ export default function ItemDetailScreen() {
   const { initiateReturn, loading: returning } = useInitiateReturn();
   const { confirmHandoff, loading: confirming } = useConfirmHandoff();
   const { updateItem, loading: lending } = useUpdateItem();
-  const { items: allItems } = useItems();
+  const { items: friendsItems } = useFriendsItems();
   const { friends } = useFriends();
 
   // Owner name: "Me" if current user owns it, otherwise look up in friends list
@@ -268,27 +269,20 @@ export default function ItemDetailScreen() {
     };
   }, [item?.id, isOwner, loadBorrowRequest, loadBorrowQueue, refresh]);
 
-  const communityOwners = useMemo(() => {
-    if (!item || item.category !== "book" || !item.metadata) return [];
-    const bookMetadata = item.metadata as BookMetadata;
-    if (!bookMetadata.author) return [];
-    return allItems
-      .filter((otherItem) => {
-        if (otherItem.id === item.id) return false;
-        if (otherItem.category !== "book") return false;
-        if (!otherItem.metadata) return false;
-        const otherMeta = otherItem.metadata as BookMetadata;
-        return (
-          otherItem.name.toLowerCase() === item.name.toLowerCase() &&
-          otherMeta.author?.toLowerCase() === bookMetadata.author?.toLowerCase()
-        );
-      })
-      .map((otherItem) => {
-        const owner = friends.find((f) => otherItem.userId === "demo-user");
-        return { item: otherItem, owner: owner || null };
-      })
+  // Other friends who own a matching item (same book, same-name generic
+  // item, etc. — see itemGroupKey), so the viewer can pick who to borrow
+  // from instead of only ever seeing the one copy they navigated in on.
+  const otherCopies = useMemo(() => {
+    if (!item) return [];
+    const key = itemGroupKey(item);
+    return friendsItems
+      .filter((otherItem) => otherItem.id !== item.id && itemGroupKey(otherItem) === key)
+      .map((otherItem) => ({
+        item: otherItem,
+        owner: friends.find((f) => f.id === otherItem.userId) ?? null,
+      }))
       .filter((o) => o.owner !== null);
-  }, [item, allItems, friends]);
+  }, [item, friendsItems, friends]);
 
   const goBack = () =>
     navigation.canGoBack() ? router.back() : router.push("/(tabs)" as any);
@@ -1386,77 +1380,80 @@ export default function ItemDetailScreen() {
             </>
           )}
 
-          {/* ── Community Ownership ── */}
-          {!isBorrower && communityOwners.length > 0 && (
+          {/* ── Other owners of this item ── */}
+          {!isBorrower && !isOwner && otherCopies.length > 0 && (
             <>
               <Separator style={{ marginBottom: 20 }} />
               <SectionHeading style={{ marginBottom: 4 }}>
-                Also in the Community
+                Also Owned By
               </SectionHeading>
               <Caption style={{ marginBottom: 16 }}>
-                {communityOwners.length}{" "}
-                {communityOwners.length === 1 ? "person" : "people"} in your
-                network {communityOwners.length === 1 ? "owns" : "own"} this
-                book
+                {otherCopies.length}{" "}
+                {otherCopies.length === 1 ? "other friend" : "other friends"}{" "}
+                {otherCopies.length === 1 ? "has" : "have"} this too — tap to
+                borrow from them instead
               </Caption>
               <View style={{ gap: 10, marginBottom: 24 }}>
-                {communityOwners.map(({ item: otherItem, owner }) => (
-                  <View
-                    key={otherItem.id}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: 14,
-                      backgroundColor: theme.muted,
-                      borderRadius: 16,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
-                        overflow: "hidden",
-                        backgroundColor: theme.primary + "22",
-                      }}
+                {otherCopies.map(({ item: otherItem, owner }) => {
+                  const otherAvailable =
+                    !otherItem.borrowedBy && !otherItem.returnedDate && !otherItem.isUnavailable;
+                  return (
+                    <Pressable
+                      key={otherItem.id}
+                      onPress={() => router.push(`/item/${otherItem.id}` as any)}
+                      style={({ pressed }) => ({
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: 14,
+                        backgroundColor: theme.muted,
+                        borderRadius: 16,
+                        opacity: pressed ? 0.7 : 1,
+                      })}
                     >
-                      {resolveAvatarSource(owner?.avatarUrl) ? (
-                        <Image
-                          source={resolveAvatarSource(owner!.avatarUrl)!}
-                          style={{ width: "100%", height: "100%" }}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View
-                          style={{
-                            flex: 1,
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
+                      <View
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 12,
+                          overflow: "hidden",
+                          backgroundColor: theme.primary + "22",
+                        }}
+                      >
+                        {resolveAvatarSource(owner?.avatarUrl) ? (
+                          <Image
+                            source={resolveAvatarSource(owner!.avatarUrl)!}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View
+                            style={{
+                              flex: 1,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Caption style={{ color: theme.primary }}>
+                              {owner ? getInitials(owner.name) : "?"}
+                            </Caption>
+                          </View>
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <BodyStrong style={{ fontSize: 13 }}>
+                          {owner?.name ?? "Unknown"}
+                        </BodyStrong>
+                        <Caption
+                          style={{ color: otherAvailable ? theme.primary : theme.secondary }}
                         >
-                          <Caption style={{ color: theme.primary }}>
-                            {owner ? getInitials(owner.name) : "?"}
-                          </Caption>
-                        </View>
-                      )}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <BodyStrong style={{ fontSize: 13 }}>
-                        {owner?.name ?? "Unknown"}
-                      </BodyStrong>
-                      {!otherItem.borrowedBy && !otherItem.returnedDate ? (
-                        <Caption style={{ color: theme.primary }}>
-                          Available
+                          {otherAvailable ? "Available" : "Currently lent out"}
                         </Caption>
-                      ) : otherItem.borrowedBy && !otherItem.returnedDate ? (
-                        <Caption style={{ color: theme.secondary }}>
-                          Currently lent out
-                        </Caption>
-                      ) : null}
-                    </View>
-                  </View>
-                ))}
+                      </View>
+                      <ChevronRight size={18} color={theme.mutedForeground} />
+                    </Pressable>
+                  );
+                })}
               </View>
             </>
           )}

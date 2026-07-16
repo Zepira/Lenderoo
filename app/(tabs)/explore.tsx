@@ -17,7 +17,7 @@ import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { useFriendsItems } from "hooks/useItems";
 import { useOutgoingBorrowRequests } from "hooks/useBorrowRequests";
 import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
-import { sortFavouritesFirst } from "@/lib/utils";
+import { sortFavouritesFirst, itemGroupKey, calculateItemStatus } from "@/lib/utils";
 import {
   subscribeToItemAvailability,
   unsubscribeFromItemAvailability,
@@ -230,6 +230,29 @@ export default function ExploreScreen() {
     return sortFavouritesFirst(withFavourites);
   }, [items, selectedCategory, search, favouriteIds]);
 
+  // Two friends can own "the same item" (e.g. the same book) — collapse
+  // those into one card instead of showing duplicates side by side. The
+  // representative shown is an available copy when one exists, so the
+  // card's own status/action reflect something the viewer can actually act
+  // on; the full owner list (including unavailable copies) is picked from
+  // on the item detail screen.
+  const groupedItems = useMemo(() => {
+    const groups = new Map<string, typeof filteredItems>();
+    for (const item of filteredItems) {
+      const key = itemGroupKey(item);
+      const existing = groups.get(key);
+      if (existing) existing.push(item);
+      else groups.set(key, [item]);
+    }
+    return Array.from(groups.values()).map((group) => {
+      const available = group.find(
+        (i) => calculateItemStatus(i) === "available" && !i.isUnavailable,
+      );
+      const representative = available ?? group[0];
+      return { ...representative, copyCount: group.length };
+    });
+  }, [filteredItems]);
+
   const router = useRouter();
   const showGrid = selectedCategory === null && search.trim() === "";
 
@@ -338,7 +361,7 @@ export default function ExploreScreen() {
       ) : (
         <FlatList
           key={numColumns}
-          data={favouritesReady || items.length === 0 ? filteredItems : []}
+          data={favouritesReady || items.length === 0 ? groupedItems : []}
           keyExtractor={(item) => item.id}
           numColumns={numColumns}
           columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
@@ -370,6 +393,8 @@ export default function ExploreScreen() {
           renderItem={({ item }) => (
             <ItemCard
               item={item}
+              copyCount={item.copyCount}
+              disableQuickAction={item.copyCount > 1}
               request={requestMap.get(item.id)}
               isSubscribed={subscriptionMap.has(item.id)}
               onNotify={() => handleNotify(item)}

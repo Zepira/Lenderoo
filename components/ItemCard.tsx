@@ -62,6 +62,13 @@ interface ItemCardProps {
   notifyBusy?: boolean;
   /** Called when the user taps the heart icon to toggle favourite status. */
   onToggleFavourite?: () => void;
+  /** Number of other friends who also own a matching item (see
+   *  lib/utils.ts itemGroupKey). >1 renders a "×N copies" badge. */
+  copyCount?: number;
+  /** When true, the action button navigates (via onPress) instead of
+   *  running its mutation directly — used for grouped cards where tapping
+   *  "Borrow" should first let the viewer pick which owner's copy. */
+  disableQuickAction?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -90,6 +97,8 @@ export const ItemCard = memo(function ItemCard({
   onNotify,
   notifyBusy = false,
   onToggleFavourite,
+  copyCount = 1,
+  disableQuickAction = false,
   style,
 }: ItemCardProps) {
   const { width: screenWidth } = useWindowDimensions();
@@ -124,6 +133,9 @@ export const ItemCard = memo(function ItemCard({
   );
 
   const width = calcCardLayout(screenWidth).cardWidth;
+
+  const handlePress =
+    onPress ?? (() => router.push(`/item/${item.id}` as any));
 
   const runAction = async () => {
     setSubmitting(true);
@@ -169,7 +181,7 @@ export const ItemCard = memo(function ItemCard({
       <Button
         variant={variant}
         size="xs"
-        onPress={runAction}
+        onPress={disableQuickAction ? handlePress : runAction}
         disabled={submitting}
       >
         {submitting ? (
@@ -219,9 +231,6 @@ export const ItemCard = memo(function ItemCard({
       />
     </Button>
   );
-
-  const handlePress =
-    onPress ?? (() => router.push(`/item/${item.id}` as any));
 
   return (
     <Animated.View entering={FadeInDown.duration(220).damping(18)} style={style}>
@@ -294,6 +303,28 @@ export const ItemCard = memo(function ItemCard({
               {statusLabel}
             </TinyLabel>
           </View>
+
+          {/* Copy count — other friends who also own a matching item */}
+          {copyCount > 1 && (
+            <View
+              style={{
+                position: "absolute",
+                top: 8,
+                left: 8,
+                backgroundColor: "rgba(0,0,0,0.6)",
+                borderRadius: 8,
+                paddingHorizontal: 7,
+                paddingVertical: 3,
+              }}
+            >
+              <TinyLabel
+                style={{ color: "white", fontSize: 8 }}
+                className="normal-case tracking-normal"
+              >
+                ×{copyCount}
+              </TinyLabel>
+            </View>
+          )}
         </View>
 
         {/* Name — grows to push button to bottom */}

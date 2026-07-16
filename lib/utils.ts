@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { Item, Friend, ItemStatus, ItemWithDetails } from "./types";
+import type { Item, Friend, ItemStatus, ItemWithDetails, BookMetadata } from "./types";
 import type { BorrowRequest } from "./types";
 import { DUE_SOON_THRESHOLD_DAYS } from "./constants";
 import { THEME } from "./theme";
@@ -188,6 +188,28 @@ export function calculateItemStatus(item: Item): ItemStatus {
   }
 
   return "available";
+}
+
+/**
+ * Key identifying "the same item" across different owners, so duplicate
+ * listings (e.g. two friends who both own the same book) can be grouped
+ * into one card on Explore. Mirrors the matching rules already used for
+ * same-owner duplicate prevention in the add-item flows: ISBN first for
+ * books (most reliable — title text can vary by how it was added), falling
+ * back to name (+ author for books).
+ */
+export function itemGroupKey(
+  item: Pick<Item, "category" | "name" | "metadata">,
+): string {
+  const name = item.name.trim().toLowerCase();
+  if (item.category === "book") {
+    const meta = item.metadata as BookMetadata | undefined;
+    const isbn = meta?.isbn?.trim().toLowerCase();
+    if (isbn) return `book:isbn:${isbn}`;
+    const author = meta?.author?.trim().toLowerCase() ?? "";
+    return `book:${name}:${author}`;
+  }
+  return `${item.category}:${name}`;
 }
 
 /**
