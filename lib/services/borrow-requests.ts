@@ -344,15 +344,16 @@ export async function approveBorrowRequest(
     return convertBorrowRequestFromDb(updatedRequest);
   }
 
-  // Item is available — approve immediately and mark it as borrowed.
-  const borrowedDate = new Date();
+  // Item is available — approve and mark it as a pending pickup. The item
+  // only becomes "borrowed" once the requester confirms they actually have
+  // it (see confirmHandoff in lib/services/database.ts).
   const finalDueDate = dueDate || (request.requested_due_date ? new Date(request.requested_due_date) : undefined);
 
   const { data: updatedItem, error: itemError } = await supabase
     .from('items')
     .update({
-      borrowed_by: request.requester_id,
-      borrowed_date: borrowedDate.toISOString(),
+      pending_recipient_id: request.requester_id,
+      pending_since: new Date().toISOString(),
       due_date: finalDueDate?.toISOString(),
       returned_date: null,
     })
@@ -455,7 +456,7 @@ export async function cancelBorrowRequest(requestId: string): Promise<BorrowRequ
   // Get the request to verify ownership
   const { data: request, error: fetchError } = await supabase
     .from('borrow_requests')
-    .select('requester_id, status')
+    .select('requester_id, status, item_id')
     .eq('id', requestId)
     .single();
 
@@ -483,6 +484,16 @@ export async function cancelBorrowRequest(requestId: string): Promise<BorrowRequ
   if (error) {
     throw new Error(`Failed to cancel request: ${error.message}`);
   }
+
+  // If this cancellation was declining a live pending pickup assigned to
+  // this user, clear it so the item goes back to available instead of
+  // being stuck waiting on someone who just declined.
+  await supabase
+    .from('items')
+    .update({ pending_recipient_id: null, pending_since: null })
+    .eq('id', request.item_id)
+    .eq('pending_recipient_id', user.id)
+    .is('borrowed_by', null);
 
   return convertBorrowRequestFromDb(data);
 }

@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   View,
@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
+import { router } from "expo-router";
 
 // ── Layout calculator (exported so FlatList screens can use matching numColumns) ─
 const H_PADDING = 32; // 16px left + 16px right
@@ -25,52 +26,68 @@ export function calcCardLayout(screenWidth: number) {
     (screenWidth - H_PADDING - COL_GAP * (numColumns - 1)) / numColumns;
   return { numColumns, cardWidth };
 }
-import { X, RotateCcw, Bell, BellOff, Heart } from "lucide-react-native";
+import { X, RotateCcw, Check, Send, Bell, BellOff, Heart } from "lucide-react-native";
 import type { Item, BorrowRequest } from "lib/types";
 import { calculateItemStatus, getItemStatusDisplay } from "lib/utils";
+import { getItemAction, type ItemActionKind } from "lib/item-actions";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCreateBorrowRequest, useCancelBorrowRequest } from "hooks/useBorrowRequests";
+import { useConfirmHandoff, useInitiateReturn } from "hooks/useItems";
 import { BodyStrong, TinyLabel } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import * as toast from "@/lib/toast";
 
 interface ItemCardProps {
   item: Item;
-  /** The current user's active borrow request for this item, if any. */
+  /** The current user's active (pending/approved) borrow request for this
+   *  item, if any — the only handoff state not derivable from `item` alone. */
   request?: BorrowRequest;
-  /** True while a borrow/cancel network call is in flight for this item. */
-  isRequesting?: boolean;
-  /** Called when the user taps Borrow. */
-  onBorrow?: () => void;
-  /** Called when the user taps Cancel Request. */
-  onCancel?: () => void;
-  /** True when the current user is the one borrowing this item. */
-  isBorrowedByMe?: boolean;
-  /** Called when the user taps Return (only shown when isBorrowedByMe). */
-  onReturn?: () => void;
-  /** Called when the card itself is tapped (library screen navigation). */
+  /** Called when the card itself is tapped. Defaults to navigating to the
+   *  item detail screen. */
   onPress?: () => void;
+  /** Called after this card's own action mutates the item/request, for
+   *  screens whose item list isn't react-query-backed and won't otherwise
+   *  pick up the change. */
+  onChanged?: () => void;
   /** True when the current user has an active "notify when available" subscription. */
   isSubscribed?: boolean;
   /** Called when the user taps Notify/Cancel Notification (owner marked item unavailable). */
   onNotify?: () => void;
+  /** True while a notify subscribe/unsubscribe call is in flight. */
+  notifyBusy?: boolean;
   /** Called when the user taps the heart icon to toggle favourite status. */
   onToggleFavourite?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
+const ACTION_ICONS: Partial<Record<ItemActionKind, typeof Send>> = {
+  borrow: Send,
+  requestNext: Send,
+  cancelRequest: X,
+  leaveQueue: X,
+  confirmPickup: Check,
+  confirmReturn: Check,
+  markReturned: RotateCcw,
+};
+
+const ACTION_VARIANTS: Partial<Record<ItemActionKind, "default" | "destructive" | "secondary">> = {
+  cancelRequest: "destructive",
+  leaveQueue: "destructive",
+  markReturned: "secondary",
+};
+
 export const ItemCard = memo(function ItemCard({
   item,
   request,
-  isRequesting = false,
-  onBorrow,
-  onCancel,
-  isBorrowedByMe = false,
-  onReturn,
   onPress,
+  onChanged,
   isSubscribed = false,
   onNotify,
+  notifyBusy = false,
   onToggleFavourite,
   style,
 }: ItemCardProps) {
@@ -78,92 +95,89 @@ export const ItemCard = memo(function ItemCard({
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
+  const { user } = useAuth();
+
+  const [submitting, setSubmitting] = useState(false);
+  const { createRequest } = useCreateBorrowRequest();
+  const { cancel } = useCancelBorrowRequest();
+  const { confirmHandoff } = useConfirmHandoff();
+  const { initiateReturn } = useInitiateReturn();
 
   const cfg = CATEGORY_CONFIG[item.category] ?? CATEGORY_CONFIG.other;
   const imageUrl = item.images?.[0] ?? (item as any).imageUrl;
 
-  const hasPending = request?.status === "pending";
-  const hasApproved = request?.status === "approved";
+  const isBorrowedByMe = item.borrowedBy === user?.id;
   const itemStatus = calculateItemStatus(item);
   const isLentOut = itemStatus === "borrowed" || itemStatus === "overdue";
   const isMarkedUnavailable = itemStatus === "available" && !!item.isUnavailable;
-  const isUnavailable = isLentOut || isMarkedUnavailable;
+
+  const action = getItemAction(item, user?.id, request);
 
   const { label: statusLabel, color: statusColor } = getItemStatusDisplay(
     itemStatus,
     isBorrowedByMe,
     request,
     isMarkedUnavailable,
+    isLentOut && !!item.pendingRecipientId,
+    action.kind === "confirmPickup",
   );
 
   const width = calcCardLayout(screenWidth).cardWidth;
 
-  const canBeBorrowed =
-    !isUnavailable && !hasPending && !hasApproved && onBorrow;
+  const runAction = async () => {
+    setSubmitting(true);
+    try {
+      switch (action.kind) {
+        case "borrow":
+        case "requestNext":
+          await createRequest({ itemId: item.id, ownerId: item.userId });
+          toast.success("Request sent!");
+          break;
+        case "cancelRequest":
+        case "leaveQueue":
+          if (request) await cancel(request.id);
+          toast.success("Request cancelled");
+          break;
+        case "confirmPickup":
+          await confirmHandoff(item.id);
+          toast.success("Pickup confirmed");
+          break;
+        case "confirmReturn":
+          await confirmHandoff(item.id);
+          toast.success("Return confirmed");
+          break;
+        case "markReturned":
+          await initiateReturn(item.id);
+          toast.success("Waiting for confirmation…");
+          break;
+      }
+      onChanged?.();
+    } catch (e: any) {
+      toast.error(e?.message || "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-  // Mutually-exclusive per-status action button (Borrow / Cancel / Return /
-  // Request Next / Notify) — computed once so it can share a row with the
-  // favourite heart below instead of each being a separate full-width block.
   let actionButton: ReactNode = null;
-  if (canBeBorrowed) {
-    actionButton = (
-      <Button size="xs" onPress={onBorrow} disabled={isRequesting}>
-        {isRequesting ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text>Borrow</Text>
-        )}
-      </Button>
-    );
-  } else if ((hasPending || hasApproved) && onCancel) {
+  if (action.kind !== "none") {
+    const Icon = ACTION_ICONS[action.kind];
+    const variant = ACTION_VARIANTS[action.kind] ?? "default";
+    const iconColor = variant === "secondary" ? theme.secondaryForeground : "#fff";
     actionButton = (
       <Button
-        variant="destructive"
+        variant={variant}
         size="xs"
-        onPress={onCancel}
-        disabled={isRequesting}
+        onPress={runAction}
+        disabled={submitting}
       >
-        {isRequesting ? (
-          <ActivityIndicator size="small" color="#fff" />
+        {submitting ? (
+          <ActivityIndicator size="small" color={iconColor} />
         ) : (
           <>
-            <X size={12} color="#fff" />
-            <Text>{hasApproved ? "Leave Queue" : "Cancel Request"}</Text>
+            {Icon && <Icon size={12} color={iconColor} />}
+            <Text>{action.label}</Text>
           </>
-        )}
-      </Button>
-    );
-  } else if (isUnavailable && isBorrowedByMe && onReturn) {
-    actionButton = (
-      <Button
-        variant="secondary"
-        size="xs"
-        onPress={onReturn}
-        disabled={isRequesting}
-      >
-        {isRequesting ? (
-          <ActivityIndicator size="small" color={theme.secondaryForeground} />
-        ) : (
-          <>
-            <RotateCcw size={12} color={theme.secondaryForeground} />
-            <Text>Return</Text>
-          </>
-        )}
-      </Button>
-    );
-  } else if (
-    isLentOut &&
-    !isBorrowedByMe &&
-    !hasPending &&
-    !hasApproved &&
-    onBorrow !== undefined
-  ) {
-    actionButton = (
-      <Button size="xs" onPress={onBorrow} disabled={isRequesting}>
-        {isRequesting ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text>Request Next</Text>
         )}
       </Button>
     );
@@ -173,11 +187,9 @@ export const ItemCard = memo(function ItemCard({
         variant={isSubscribed ? "outline" : "default"}
         size="xs"
         onPress={onNotify}
-        disabled={isRequesting}
+        disabled={notifyBusy}
       >
-        {isRequesting ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : isSubscribed ? (
+        {isSubscribed ? (
           <>
             <BellOff size={12} color={theme.foreground} />
             <Text>Cancel Notify</Text>
@@ -207,13 +219,13 @@ export const ItemCard = memo(function ItemCard({
     </Button>
   );
 
+  const handlePress =
+    onPress ?? (() => router.push(`/item/${item.id}` as any));
+
   return (
     <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        { opacity: pressed && onPress ? 0.75 : 1 },
-        style,
-      ]}
+      onPress={handlePress}
+      style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }, style]}
     >
       <View
         style={{

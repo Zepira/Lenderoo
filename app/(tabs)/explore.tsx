@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   View,
   FlatList,
@@ -14,14 +14,10 @@ import { CardSearchInput } from "@/components/CardSearchInput";
 import { ItemCard, calcCardLayout } from "@/components/ItemCard";
 import { ErrorState } from "@/components/ErrorState";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
-import { getAllFriendsItems } from "@/lib/services/friends";
+import { useFriendsItems } from "hooks/useItems";
+import { useOutgoingBorrowRequests } from "hooks/useBorrowRequests";
 import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
 import { sortFavouritesFirst } from "@/lib/utils";
-import {
-  getOutgoingBorrowRequests,
-  createBorrowRequest,
-  cancelBorrowRequest,
-} from "@/lib/services/borrow-requests";
 import {
   subscribeToItemAvailability,
   unsubscribeFromItemAvailability,
@@ -100,11 +96,6 @@ function CategoryCard({
 export default function ExploreScreen() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory | null>(null);
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [requestMap, setRequestMap] = useState<Map<string, BorrowRequest>>(new Map());
-  const [requestingId, setRequestingId] = useState<string | null>(null);
   const [subscriptionMap, setSubscriptionMap] = useState<
     Map<string, ItemAvailabilitySubscription>
   >(new Map());
@@ -117,34 +108,45 @@ export default function ExploreScreen() {
   const { width } = useWindowDimensions();
   const { numColumns } = calcCardLayout(width);
 
-  const loadItems = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [data, outgoing] = await Promise.all([
-        getAllFriendsItems(),
-        getOutgoingBorrowRequests(),
-      ]);
-      setItems(data);
-      const map = new Map<string, BorrowRequest>();
-      for (const req of outgoing) {
-        if (req.status === "pending" || req.status === "approved") {
-          map.set(req.itemId, req);
-        }
+  // react-query-backed (both keyed under the `['items', ...]` / borrow
+  // request prefixes the global realtime sync invalidates on any DB change)
+  // so a friend approving your request updates this screen live instead of
+  // only on next focus — matches the fix already applied to Home.
+  const {
+    items,
+    loading: itemsLoading,
+    refreshing: itemsRefreshing,
+    error: itemsError,
+    refresh: refreshItems,
+  } = useFriendsItems();
+  const { requests: outgoingRequests, refresh: refreshOutgoing } =
+    useOutgoingBorrowRequests();
+
+  const requestMap = useMemo(() => {
+    const map = new Map<string, BorrowRequest>();
+    for (const req of outgoingRequests) {
+      if (req.status === "pending" || req.status === "approved") {
+        map.set(req.itemId, req);
       }
-      setRequestMap(map);
-      const subs = await getMyAvailabilitySubscriptionsForItems(
-        data.map((i) => i.id),
-      );
-      setSubscriptionMap(subs);
-      const favIds = await getMyFavouriteItemIds(data.map((i) => i.id));
-      setFavouriteIds(favIds);
-    } catch {
-      setError("Failed to load friends' items");
-    } finally {
-      setLoading(false);
     }
-  }, []);
+    return map;
+  }, [outgoingRequests]);
+
+  const loading = itemsLoading || itemsRefreshing;
+  const error = itemsError ? "Failed to load friends' items" : null;
+
+  const loadItems = useCallback(async () => {
+    await Promise.all([refreshItems(), refreshOutgoing()]);
+  }, [refreshItems, refreshOutgoing]);
+
+  // Subscriptions/favourites aren't covered by the realtime sync (different
+  // tables), so keep refetching them off the item list like before.
+  useEffect(() => {
+    if (items.length === 0) return;
+    const ids = items.map((i) => i.id);
+    getMyAvailabilitySubscriptionsForItems(ids).then(setSubscriptionMap);
+    getMyFavouriteItemIds(ids).then(setFavouriteIds);
+  }, [items]);
 
   const handleNotify = useCallback(
     async (item: Item) => {
@@ -173,26 +175,6 @@ export default function ExploreScreen() {
     [subscriptionMap],
   );
 
-  const handleBorrow = useCallback(async (item: Item) => {
-    setRequestingId(item.id);
-    try {
-      await createBorrowRequest(item.id, item.userId);
-      toast.success("Request sent!");
-      const outgoing = await getOutgoingBorrowRequests();
-      const map = new Map<string, BorrowRequest>();
-      for (const req of outgoing) {
-        if (req.status === "pending" || req.status === "approved") {
-          map.set(req.itemId, req);
-        }
-      }
-      setRequestMap(map);
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to send request");
-    } finally {
-      setRequestingId(null);
-    }
-  }, []);
-
   const handleToggleFavourite = useCallback(
     async (item: Item) => {
       const next = !favouriteIds.has(item.id);
@@ -214,23 +196,6 @@ export default function ExploreScreen() {
     },
     [favouriteIds],
   );
-
-  const handleCancel = useCallback(async (req: BorrowRequest) => {
-    setRequestingId(req.itemId);
-    try {
-      await cancelBorrowRequest(req.id);
-      toast.success("Request cancelled");
-      setRequestMap((prev) => {
-        const next = new Map(prev);
-        next.delete(req.itemId);
-        return next;
-      });
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to cancel request");
-    } finally {
-      setRequestingId(null);
-    }
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -391,23 +356,19 @@ export default function ExploreScreen() {
               </View>
             )
           }
-          renderItem={({ item }) => {
-            const req = requestMap.get(item.id);
-            return (
-              <ItemCard
-                item={item}
-                request={req}
-                isRequesting={requestingId === item.id || notifyingId === item.id}
-                onBorrow={() => handleBorrow(item)}
-                onCancel={req ? () => handleCancel(req) : undefined}
-                isSubscribed={subscriptionMap.has(item.id)}
-                onNotify={() => handleNotify(item)}
-                onToggleFavourite={() => handleToggleFavourite(item)}
-                style={{ flex: 1 }}
-                onPress={() => router.push(`/item/${item.id}` as any)}
-              />
-            );
-          }}
+          renderItem={({ item }) => (
+            <ItemCard
+              item={item}
+              request={requestMap.get(item.id)}
+              isSubscribed={subscriptionMap.has(item.id)}
+              onNotify={() => handleNotify(item)}
+              notifyBusy={notifyingId === item.id}
+              onToggleFavourite={() => handleToggleFavourite(item)}
+              onChanged={loadItems}
+              style={{ flex: 1 }}
+              onPress={() => router.push(`/item/${item.id}` as any)}
+            />
+          )}
         />
       )}
     </View>

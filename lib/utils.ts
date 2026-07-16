@@ -155,6 +155,12 @@ export function addDays(date: Date, days: number): Date {
  * Calculate the status of an item
  */
 export function calculateItemStatus(item: Item): ItemStatus {
+  // Pending pickup: approved/lent but the recipient hasn't confirmed they
+  // have it yet — off the shelf, not yet "borrowed".
+  if (item.pendingRecipientId && !item.borrowedBy) {
+    return "requested";
+  }
+
   if ((item.borrowedBy || item.borrowedDate) && !item.returnedDate) {
     if (item.dueDate && isOverdue(item.dueDate)) {
       return "overdue";
@@ -172,6 +178,32 @@ export function sortFavouritesFirst<T extends { isFavourite?: boolean }>(
   items: T[],
 ): T[] {
   return [...items].sort((a, b) => Number(!!b.isFavourite) - Number(!!a.isFavourite));
+}
+
+/**
+ * Priority for "needs action" sorting — lower sorts first. 0 = the viewer
+ * needs to confirm a pending pickup/return themselves; 1 = someone else's
+ * confirmation is pending; 2 = nothing pending on this item.
+ */
+export function getPendingActionPriority(
+  item: Pick<Item, "pendingRecipientId">,
+  viewerId?: string,
+): number {
+  if (!item.pendingRecipientId) return 2;
+  return item.pendingRecipientId === viewerId ? 0 : 1;
+}
+
+/**
+ * Stable sort combining favourite-first with getPendingActionPriority —
+ * priority wins, favourites break ties within the same priority tier.
+ */
+export function sortByPendingActionThenFavourite<
+  T extends { isFavourite?: boolean; pendingRecipientId?: string },
+>(items: T[], viewerId?: string): T[] {
+  return sortFavouritesFirst(items).sort(
+    (a, b) =>
+      getPendingActionPriority(a, viewerId) - getPendingActionPriority(b, viewerId),
+  );
 }
 
 /**
@@ -532,10 +564,29 @@ export function getItemStatusDisplay(
   isBorrowedByMe: boolean,
   request?: Pick<BorrowRequest, "status">,
   isMarkedUnavailable?: boolean,
+  /** Item is currently lent out and has a pending handoff (return or
+   *  hand-off to next) in progress — regardless of viewer. */
+  hasPendingHandoff?: boolean,
+  /** True when the current viewer is the one who needs to confirm pickup
+   *  (they're becoming the new borrower — fresh approval, direct lend, or
+   *  hand-off — and it hasn't happened to them yet). */
+  isPendingPickupForViewer?: boolean,
 ): { label: string; color: string } {
   const isLentOut = itemStatus === "borrowed" || itemStatus === "overdue";
+  if (isLentOut && isPendingPickupForViewer) {
+    return { label: "Pending Pickup", color: THEME.light.mutedForeground };
+  }
+  if (isLentOut && isBorrowedByMe && hasPendingHandoff) {
+    return { label: "Return Pending", color: THEME.light.mutedForeground };
+  }
   if (isLentOut && isBorrowedByMe) {
     return { label: "Borrowed by you", color: THEME.light.secondary };
+  }
+  if (itemStatus === "requested") {
+    return { label: "Pending Pickup", color: THEME.light.mutedForeground };
+  }
+  if (isLentOut && hasPendingHandoff) {
+    return { label: "Return Pending", color: THEME.light.mutedForeground };
   }
   if (request?.status === "approved") {
     return { label: "Borrowing Next", color: THEME.light.mutedForeground };

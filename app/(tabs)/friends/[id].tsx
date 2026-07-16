@@ -25,8 +25,14 @@ import {
 import { ItemCard } from "@/components/ItemCard";
 import { Text } from "@/components/ui/text";
 import { resolveAvatarSource } from "@/lib/services/avatar";
-import { getInitials, calculateItemStatus, sortFavouritesFirst } from "lib/utils";
+import {
+  getInitials,
+  calculateItemStatus,
+  sortFavouritesFirst,
+  sortByPendingActionThenFavourite,
+} from "lib/utils";
 import type { Item } from "lib/types";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   getFriendUserById,
   getItemsBorrowedByFriend,
@@ -34,10 +40,7 @@ import {
   removeFriend,
   type FriendUser,
 } from "@/lib/services/friends";
-import {
-  createBorrowRequest,
-  getMyBorrowRequestForItem,
-} from "@/lib/services/borrow-requests";
+import { getMyBorrowRequestForItem } from "@/lib/services/borrow-requests";
 import {
   subscribeToItemAvailability,
   unsubscribeFromItemAvailability,
@@ -45,8 +48,6 @@ import {
 } from "@/lib/services/availability";
 import { getHistoryByFriend } from "@/lib/services/database";
 import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
-import { useMarkItemReturned } from "hooks/useItems";
-import { useAuth } from "@/contexts/AuthContext";
 
 import type {
   BorrowRequest,
@@ -86,6 +87,8 @@ function convertItemFromDb(data: any): Item {
     notes: data.notes,
     metadata: data.metadata,
     isUnavailable: data.is_unavailable ?? false,
+    pendingRecipientId: data.pending_recipient_id ?? undefined,
+    pendingSince: data.pending_since ? new Date(data.pending_since) : undefined,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };
@@ -99,9 +102,7 @@ export default function FriendDetailScreen() {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
-
   const { user } = useAuth();
-  const { markReturned, loading: returning } = useMarkItemReturned();
 
   const [activeTab, setActiveTab] = useState<Tab>("library");
   const [friend, setFriend] = useState<FriendUser | null>(null);
@@ -143,30 +144,31 @@ export default function FriendDetailScreen() {
   }, [id, router, navigation]);
 
   // Load items borrowed by friend (from me)
+  const loadBorrowedItems = useCallback(async () => {
+    if (!id) return;
+    try {
+      const data = await getItemsBorrowedByFriend(id);
+      setItems(data.map(convertItemFromDb));
+    } catch {}
+  }, [id]);
+
   useEffect(() => {
-    async function loadItems() {
-      if (!id) return;
-      try {
-        const data = await getItemsBorrowedByFriend(id);
-        setItems(data.map(convertItemFromDb));
-      } catch {}
-    }
-    loadItems();
+    loadBorrowedItems();
     if (!id) return;
     const ch = supabase
       .channel(`friend-${id}-borrowed-items`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "items" },
-        loadItems,
+        loadBorrowedItems,
       )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [id]);
+  }, [id, loadBorrowedItems]);
 
-  // Load items owned by friend (extracted to component scope so handleReturn can call it)
+  // Load items owned by friend (extracted to component scope so ItemCard's onChanged can call it)
   const loadOwnedItems = useCallback(async () => {
     if (!id) return;
     try {
@@ -277,10 +279,18 @@ export default function FriendDetailScreen() {
   const withFavourite = (list: Item[]) =>
     list.map((i) => ({ ...i, isFavourite: favouriteIds.has(i.id) }));
 
-  const activeItems = sortFavouritesFirst(
+  // "Borrowing" tab — items I own that this friend holds. I'm the owner
+  // here, so waiting-on-me (confirm return) sorts ahead of waiting-on-them.
+  const activeItems = sortByPendingActionThenFavourite(
     withFavourite(items.filter((i) => !i.returnedDate)),
+    user?.id,
   );
-  const sortedOwnedItems = sortFavouritesFirst(withFavourite(ownedItems));
+  // "Library" tab — this friend's items. I'm a prospective/queued borrower,
+  // so a ready-to-confirm pickup sorts ahead of everything else.
+  const sortedOwnedItems = sortByPendingActionThenFavourite(
+    withFavourite(ownedItems),
+    user?.id,
+  );
   const sortedHistoryItems = sortFavouritesFirst(withFavourite(historyItems));
 
   const handleToggleFavourite = async (item: Item) => {
@@ -333,46 +343,6 @@ export default function FriendDetailScreen() {
     }
   };
 
-  const handleRequestBorrow = async (item: Item) => {
-    if (!friend) return;
-    try {
-      setRequestingItemId(item.id);
-      await createBorrowRequest(item.id, friend.id);
-      toast.success(`Request sent to ${friend.name}`);
-      const req = await getMyBorrowRequestForItem(item.id);
-      setBorrowRequests((prev) => {
-        const m = new Map(prev);
-        if (req) m.set(item.id, req);
-        return m;
-      });
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to send request");
-    } finally {
-      setRequestingItemId(null);
-    }
-  };
-
-  const handleCancelRequest = async (item: Item) => {
-    const request = borrowRequests.get(item.id);
-    if (!request) return;
-    try {
-      setRequestingItemId(item.id);
-      const { cancelBorrowRequest } =
-        await import("@/lib/services/borrow-requests");
-      await cancelBorrowRequest(request.id);
-      toast.success("Request cancelled");
-      setBorrowRequests((prev) => {
-        const m = new Map(prev);
-        m.delete(item.id);
-        return m;
-      });
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to cancel request");
-    } finally {
-      setRequestingItemId(null);
-    }
-  };
-
   const handleNotify = async (item: Item) => {
     const existing = subscriptions.get(item.id);
     try {
@@ -392,19 +362,6 @@ export default function FriendDetailScreen() {
       }
     } catch (e: any) {
       toast.error(e?.message || "Failed to update notification");
-    } finally {
-      setRequestingItemId(null);
-    }
-  };
-
-  const handleReturn = async (item: Item) => {
-    try {
-      setRequestingItemId(item.id);
-      await markReturned(item.id);
-      toast.success(`"${item.name}" marked as returned`);
-      await loadOwnedItems();
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to mark as returned");
     } finally {
       setRequestingItemId(null);
     }
@@ -676,41 +633,19 @@ export default function FriendDetailScreen() {
                   <View
                     style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}
                   >
-                    {sortedOwnedItems.map((item) => {
-                      const borrowedByMe =
-                        !!user &&
-                        item.borrowedBy === user.id &&
-                        !!item.borrowedDate &&
-                        !item.returnedDate;
-                      return (
-                        <ItemCard
-                          key={item.id}
-                          item={item}
-                          request={borrowRequests.get(item.id)}
-                          isRequesting={requestingItemId === item.id}
-                          isBorrowedByMe={borrowedByMe}
-                          onPress={() => router.push(`/item/${item.id}` as any)}
-                          onBorrow={
-                            borrowedByMe
-                              ? undefined
-                              : () => handleRequestBorrow(item)
-                          }
-                          onCancel={
-                            borrowedByMe
-                              ? undefined
-                              : () => handleCancelRequest(item)
-                          }
-                          onReturn={
-                            borrowedByMe ? () => handleReturn(item) : undefined
-                          }
-                          isSubscribed={subscriptions.has(item.id)}
-                          onNotify={
-                            borrowedByMe ? undefined : () => handleNotify(item)
-                          }
-                          onToggleFavourite={() => handleToggleFavourite(item)}
-                        />
-                      );
-                    })}
+                    {sortedOwnedItems.map((item) => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        request={borrowRequests.get(item.id)}
+                        onPress={() => router.push(`/item/${item.id}` as any)}
+                        isSubscribed={subscriptions.has(item.id)}
+                        onNotify={() => handleNotify(item)}
+                        notifyBusy={requestingItemId === item.id}
+                        onToggleFavourite={() => handleToggleFavourite(item)}
+                        onChanged={loadOwnedItems}
+                      />
+                    ))}
                   </View>
                 </View>
               )}
@@ -751,6 +686,7 @@ export default function FriendDetailScreen() {
                         item={item}
                         onPress={() => router.push(`/item/${item.id}` as any)}
                         onToggleFavourite={() => handleToggleFavourite(item)}
+                        onChanged={loadBorrowedItems}
                       />
                     ))}
                   </View>

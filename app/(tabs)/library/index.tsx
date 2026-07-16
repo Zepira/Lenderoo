@@ -257,6 +257,7 @@ export default function ItemsScreen() {
             item={item}
             onPress={() => router.push(`/item/${item.id}` as any)}
             onToggleFavourite={() => handleToggleFavourite(item)}
+            onChanged={refresh}
             style={{ flex: 1 }}
           />
         )}

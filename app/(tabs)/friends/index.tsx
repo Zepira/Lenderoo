@@ -15,11 +15,13 @@ import {
 import {
   getMyFriends,
   getPendingFriendRequests,
+  getSentPendingFriendRequests,
   getFriendItemCounts,
   type FriendRequest,
   type FriendUser,
 } from "@/lib/services/friends";
 import { FriendRequests } from "components/FriendRequests";
+import { SentFriendRequests } from "components/SentFriendRequests";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,12 +44,16 @@ export default function FriendsScreen() {
   const [friends, setFriends] = useState<FriendUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [sentFriendRequests, setSentFriendRequests] = useState<FriendRequest[]>(
+    [],
+  );
   const [itemCounts, setItemCounts] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     loadFriends();
     loadFriendRequests();
+    loadSentFriendRequests();
   }, []);
 
   useEffect(() => {
@@ -82,7 +88,10 @@ export default function FriendsScreen() {
             table: "friend_connections",
             filter: `user_id=eq.${user.id}`,
           },
-          () => loadFriends(),
+          () => {
+            loadFriends();
+            loadSentFriendRequests();
+          },
         )
         .subscribe();
     }
@@ -128,6 +137,15 @@ export default function FriendsScreen() {
     }
   }
 
+  async function loadSentFriendRequests() {
+    try {
+      const requests = await getSentPendingFriendRequests();
+      setSentFriendRequests(requests);
+    } catch (error) {
+      console.error("Error loading sent requests:", error);
+    }
+  }
+
   const filtered = friends.filter((f) =>
     f.name.toLowerCase().includes(search.toLowerCase()),
   );
@@ -152,6 +170,14 @@ export default function FriendsScreen() {
                 loadFriends();
                 loadFriendRequests();
               }}
+            />
+          )}
+
+          {/* Requests I've sent that are still awaiting a response */}
+          {sentFriendRequests.length > 0 && (
+            <SentFriendRequests
+              requests={sentFriendRequests}
+              onUpdate={loadSentFriendRequests}
             />
           )}
 

@@ -43,6 +43,14 @@ import {
 import * as toast from "@/lib/toast";
 import { AvatarPickerModal } from "@/components/AvatarPickerModal";
 import { resolveAvatarSource, uploadAvatarImage } from "@/lib/services/avatar";
+import { BorrowRequestsSection } from "@/components/BorrowRequestsSection";
+import { ItemCard } from "@/components/ItemCard";
+import {
+  useIncomingBorrowRequests,
+  useApproveBorrowRequest,
+  useDenyBorrowRequest,
+  usePendingHandoffs,
+} from "@/hooks";
 
 const confirmAsync = (title: string, message: string): Promise<boolean> => {
   if (Platform.OS === "web") {
@@ -64,6 +72,37 @@ export default function SettingsScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+
+  const { requests: incomingRequests } = useIncomingBorrowRequests();
+  const { approve } = useApproveBorrowRequest();
+  const { deny } = useDenyBorrowRequest();
+  const { items: pendingHandoffs, refresh: refreshPendingHandoffs } =
+    usePendingHandoffs();
+
+  const handleApproveRequest = async (requestId: string) => {
+    try {
+      setProcessingRequestId(requestId);
+      await approve(requestId);
+      toast.success("Request approved");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to approve request");
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleDenyRequest = async (requestId: string) => {
+    try {
+      setProcessingRequestId(requestId);
+      await deny(requestId);
+      toast.success("Request denied");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to deny request");
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
 
   const firstName = appUser?.name?.split(" ")[0] ?? "";
   const lastName = appUser?.name?.split(" ").slice(1).join(" ") ?? "";
@@ -236,6 +275,38 @@ export default function SettingsScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 24, gap: 8 }}>
+          {/* Awaiting your confirmation — pickup/return handoffs where you're
+              the one who needs to tap Confirm before anything changes. */}
+          {pendingHandoffs.length > 0 && (
+            <View style={{ gap: 12, paddingTop: 4 }}>
+              <SectionHeading>
+                Awaiting Your Confirmation ({pendingHandoffs.length})
+              </SectionHeading>
+              <View
+                style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}
+              >
+                {pendingHandoffs.map((item) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    onChanged={refreshPendingHandoffs}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Pending notifications — surfaced here since the top banner is
+              easy to miss or dismiss, especially with multiple requests. */}
+          {incomingRequests.length > 0 && (
+            <BorrowRequestsSection
+              requests={incomingRequests}
+              onApprove={handleApproveRequest}
+              onDeny={handleDenyRequest}
+              processingId={processingRequestId || undefined}
+            />
+          )}
+
           {/* Account */}
           <SectionHeader title="Account" />
           <View

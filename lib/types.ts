@@ -133,6 +133,12 @@ export interface Item {
   value?: number;
   /** Owner has temporarily disabled borrowing for this item (independent of borrowedBy) */
   isUnavailable?: boolean;
+  /** ID of the user who must confirm a pending pickup or return before it takes
+   *  effect. Set alongside borrowedBy=null (pending pickup) or borrowedBy=<current
+   *  holder> (pending return/hand-off); null when there's no outstanding handoff. */
+  pendingRecipientId?: string;
+  /** When the pending handoff was initiated */
+  pendingSince?: Date;
   /** Whether the CURRENT VIEWER has favourited this item (heart icon). Not a DB
    *  column on items — computed client-side per user from item_favourites and
    *  merged onto the item before rendering. See lib/services/favourites.ts. */

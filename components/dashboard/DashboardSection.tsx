@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { THEME } from '@/lib/theme';
 import { ItemCard } from '@/components/ItemCard';
 import { sortFavouritesFirst } from '@/lib/utils';
-import type { Item } from 'lib/types';
+import type { BorrowRequest, Item } from 'lib/types';
 
 interface DashboardSectionProps {
   title: string;
@@ -13,6 +13,16 @@ interface DashboardSectionProps {
   onItemPress?: (item: Item) => void;
   onToggleFavourite?: (item: Item) => void;
   onViewAll?: () => void;
+  /** The viewer's active borrow request for a given item, if any — only
+   *  needed for sections that can contain not-yet-approved requests. */
+  getRequest?: (item: Item) => BorrowRequest | undefined;
+  /** Called after a card's own action (borrow/cancel/confirm/return) succeeds. */
+  onChanged?: () => void;
+  /** Lower sorts first. Takes priority over favourite-first ordering — used
+   *  to surface items that need someone's action (e.g. a pending pickup or
+   *  return) ahead of ones that don't. Favourites still break ties within
+   *  the same priority. */
+  getPriority?: (item: Item) => number;
 }
 
 export function DashboardSection({
@@ -21,9 +31,17 @@ export function DashboardSection({
   onItemPress,
   onToggleFavourite,
   onViewAll,
+  getRequest,
+  onChanged,
+  getPriority,
 }: DashboardSectionProps) {
   if (items.length === 0) return null;
-  const sortedItems = sortFavouritesFirst(items);
+  const favouritesFirst = sortFavouritesFirst(items);
+  // Array.prototype.sort is stable, so sorting the already favourite-ordered
+  // list by priority keeps favourites grouped first within each tier.
+  const sortedItems = getPriority
+    ? [...favouritesFirst].sort((a, b) => getPriority(a) - getPriority(b))
+    : favouritesFirst;
 
   return (
     <View>
@@ -45,10 +63,12 @@ export function DashboardSection({
           <ItemCard
             key={item.id}
             item={item}
-            onPress={() => onItemPress?.(item)}
+            request={getRequest?.(item)}
+            onPress={onItemPress ? () => onItemPress(item) : undefined}
             onToggleFavourite={
               onToggleFavourite ? () => onToggleFavourite(item) : undefined
             }
+            onChanged={onChanged}
           />
         ))}
       </ScrollView>

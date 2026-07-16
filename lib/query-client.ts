@@ -38,6 +38,8 @@ export const queryKeys = {
     active: ['items', 'active'] as const,
     overdue: ['items', 'overdue'] as const,
     borrowedByMe: ['items', 'borrowed-by-me'] as const,
+    pendingHandoffs: ['items', 'pending-handoffs'] as const,
+    friends: ['items', 'friends'] as const,
   },
   friends: {
     all: ['friends'] as const,

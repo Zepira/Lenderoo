@@ -14,9 +14,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 import { useThemeContext } from "../../contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import { BorrowRequestBanner } from "@/components/BorrowRequestBannerNative";
 import { FeedbackModal } from "@/components/FeedbackModal";
-import { useRealtimeSync, useIncomingRequestCount } from "@/hooks";
+import { useRealtimeSync, useIncomingRequestCount, usePendingHandoffs } from "@/hooks";
 
 const BTN_SIZE = 60;
 const NAV_HEIGHT = 74;
@@ -24,7 +25,12 @@ const NAV_HEIGHT = 74;
 // the touchable area while visually sitting above the navbar.
 const CONTAINER_HEIGHT = 120;
 
-function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+function FloatingTabBar({
+  state,
+  descriptors,
+  navigation,
+  notificationCount,
+}: BottomTabBarProps & { notificationCount: number }) {
   const insets = useSafeAreaInsets();
   // Only render routes that have a tabBarIcon — hides any auto-registered
   // routes (e.g. friends/) that shouldn't appear in the floating nav.
@@ -38,6 +44,7 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const renderTab = (route: (typeof routes)[0], index: number) => {
     const { options } = descriptors[route.key];
     const isFocused = state.index === index;
+    const showBadge = route.name === "settings" && notificationCount > 0;
     const onPress = () => {
       const event = navigation.emit({
         type: "tabPress",
@@ -63,11 +70,42 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         accessibilityState={isFocused ? { selected: true } : {}}
         accessibilityLabel={options.tabBarAccessibilityLabel}
       >
-        {options.tabBarIcon?.({
-          focused: isFocused,
-          color: isFocused ? "#00BFA6" : "#6B7280",
-          size: 24,
-        })}
+        <View>
+          {options.tabBarIcon?.({
+            focused: isFocused,
+            color: isFocused ? "#00BFA6" : "#6B7280",
+            size: 24,
+          })}
+          {showBadge && (
+            <View
+              style={{
+                position: "absolute",
+                top: -3,
+                right: -6,
+                minWidth: 16,
+                height: 16,
+                borderRadius: 8,
+                paddingHorizontal: 3,
+                backgroundColor: "#EF4444",
+                borderWidth: 1.5,
+                borderColor: "#101828",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: "white",
+                  fontSize: 10,
+                  lineHeight: 12,
+                  fontWeight: "700",
+                }}
+              >
+                {notificationCount > 9 ? "9+" : notificationCount}
+              </Text>
+            </View>
+          )}
+        </View>
       </Pressable>
     );
   };
@@ -161,6 +199,10 @@ export default function TabLayout() {
 
   // Request count from cache — updates automatically via useRealtimeSync
   const requestCount = useIncomingRequestCount();
+  // Items awaiting this user's pickup/return confirmation — a second
+  // "needs your action" source alongside incoming borrow requests.
+  const { items: pendingHandoffs } = usePendingHandoffs();
+  const notificationCount = requestCount + pendingHandoffs.length;
 
   // Re-show banner when new requests arrive
   React.useEffect(() => {
@@ -197,7 +239,9 @@ export default function TabLayout() {
 
       <Tabs
         screenOptions={screenOptions}
-        tabBar={(props) => <FloatingTabBar {...props} />}
+        tabBar={(props) => (
+          <FloatingTabBar {...props} notificationCount={notificationCount} />
+        )}
       >
         <Tabs.Screen
           name="index"

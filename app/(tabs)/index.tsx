@@ -9,7 +9,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHero, LabelStrong } from "@/components/ui/typography";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useActiveItems, useBorrowedByMeItems, useItems } from "hooks/useItems";
+import {
+  useActiveItems,
+  useBorrowedByMeItems,
+  useItems,
+  useItemsByIds,
+} from "hooks/useItems";
+import { useOutgoingBorrowRequests } from "hooks/useBorrowRequests";
+import { getPendingActionPriority } from "@/lib/utils";
 import * as toast from "@/lib/toast";
 import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
 import type { Item } from "lib/types";
@@ -21,7 +28,7 @@ import { DashboardSection } from "@/components/dashboard/DashboardSection";
 import { ErrorState } from "@/components/ErrorState";
 
 export default function HomeScreen() {
-  const { appUser } = useAuth();
+  const { appUser, user } = useAuth();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
@@ -39,16 +46,43 @@ export default function HomeScreen() {
     refresh: refreshBorrowed,
   } = useBorrowedByMeItems();
   const { items: allItems, error: allError, refresh: refreshAll } = useItems();
+  const {
+    requests: outgoingRequests,
+    loading: outgoingLoading,
+    refresh: refreshOutgoing,
+  } = useOutgoingBorrowRequests();
   const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set());
+
+  const activeOutgoingRequests = outgoingRequests.filter(
+    (r) => r.status === "pending" || r.status === "approved",
+  );
+  const outgoingRequestsByItemId = new Map(
+    activeOutgoingRequests.map((r) => [r.itemId, r]),
+  );
+
+  // react-query-backed per-id lookups (not just a one-off fetch) so these
+  // items stay live — the global realtime sync invalidates the whole
+  // `['items']` prefix on any items table change, which includes these.
+  const { items: requestedItemsRaw } = useItemsByIds(
+    activeOutgoingRequests.map((r) => r.itemId),
+  );
+  // Once pickup is confirmed the request row stays "approved" (it now
+  // represents the active borrow) — exclude items already in hand so they
+  // only show in "Borrowed", not "Requested" too.
+  const requestedItems = requestedItemsRaw.filter(
+    (i) => i.borrowedBy !== user?.id,
+  );
 
   const loading = lentLoading || borrowedLoading;
   const error = lentError || borrowedError || allError;
 
   useEffect(() => {
-    const ids = [...lentOutItems, ...borrowedItems].map((i) => i.id);
+    const ids = [...lentOutItems, ...borrowedItems, ...requestedItems].map(
+      (i) => i.id,
+    );
     if (ids.length === 0) return;
     getMyFavouriteItemIds(ids).then(setFavouriteIds);
-  }, [lentOutItems, borrowedItems]);
+  }, [lentOutItems, borrowedItems, requestedItems]);
 
   const withFavourite = (list: Item[]) =>
     list.map((i) => ({ ...i, isFavourite: favouriteIds.has(i.id) }));
@@ -76,7 +110,12 @@ export default function HomeScreen() {
   const firstName = appUser?.name?.split(" ")[0] ?? "there";
 
   const refresh = async () => {
-    await Promise.all([refreshLent(), refreshBorrowed(), refreshAll()]);
+    await Promise.all([
+      refreshLent(),
+      refreshBorrowed(),
+      refreshAll(),
+      refreshOutgoing(),
+    ]);
   };
 
   useFocusEffect(
@@ -202,18 +241,31 @@ export default function HomeScreen() {
           ) : (
             <>
               <DashboardSection
+                title="Requested"
+                items={withFavourite(requestedItems)}
+                onItemPress={(item) => router.push(`/item/${item.id}` as any)}
+                onToggleFavourite={handleToggleFavourite}
+                getRequest={(item) => outgoingRequestsByItemId.get(item.id)}
+                onChanged={refresh}
+                getPriority={(item) => getPendingActionPriority(item, user?.id)}
+              />
+              <DashboardSection
                 title="Borrowed"
                 items={withFavourite(borrowedItems)}
                 onItemPress={(item) => router.push(`/item/${item.id}` as any)}
                 onToggleFavourite={handleToggleFavourite}
                 onViewAll={() => router.push("/(tabs)/library")}
+                onChanged={refresh}
+                getPriority={(item) => getPendingActionPriority(item, user?.id)}
               />
               <DashboardSection
-                title="Lent Out"
+                title="Lending"
                 items={withFavourite(lentOutItems)}
                 onItemPress={(item) => router.push(`/item/${item.id}` as any)}
                 onToggleFavourite={handleToggleFavourite}
                 onViewAll={() => router.push("/(tabs)/library")}
+                onChanged={refresh}
+                getPriority={(item) => getPendingActionPriority(item, user?.id)}
               />
             </>
           )}

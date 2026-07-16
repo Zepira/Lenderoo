@@ -48,7 +48,8 @@ import { ErrorState } from "@/components/ErrorState";
 import {
   useItem,
   useDeleteItem,
-  useMarkItemReturned,
+  useInitiateReturn,
+  useConfirmHandoff,
   useItems,
   useUpdateItem,
 } from "hooks/useItems";
@@ -63,16 +64,14 @@ import {
   calculateItemStatus,
   toProperCase,
 } from "lib/utils";
+import { getItemAction } from "lib/item-actions";
 import {
   createBorrowRequest,
   getMyBorrowRequestForItem,
   cancelBorrowRequest,
   getApprovedQueueForItem,
 } from "@/lib/services/borrow-requests";
-import {
-  getHistoryForItemWithUsers,
-  markItemReturnedToNext,
-} from "@/lib/services/database";
+import { getHistoryForItemWithUsers } from "@/lib/services/database";
 import { isItemFavourited, setItemFavourite } from "@/lib/services/favourites";
 import {
   subscribeToItemAvailability,
@@ -131,8 +130,20 @@ export default function ItemDetailScreen() {
       : null;
   const { profile: borrowerProfile } = useUserProfile(borrowerUserId);
 
+  // Pending handoff (pickup or return) — who must confirm before it's real.
+  const isPendingRecipient = !!item && !!user && item.pendingRecipientId === user.id;
+  const isPendingElsewhere =
+    !!item && !!item.pendingRecipientId && !isPendingRecipient;
+  const pendingIsReturn = !!item && item.pendingRecipientId === item.userId;
+  const pendingRecipientUserId =
+    isPendingElsewhere && item?.pendingRecipientId ? item.pendingRecipientId : null;
+  const { profile: pendingRecipientProfile } = useUserProfile(
+    pendingRecipientUserId,
+  );
+
   const { deleteItem, loading: deleting } = useDeleteItem();
-  const { markReturned, loading: returning } = useMarkItemReturned();
+  const { initiateReturn, loading: returning } = useInitiateReturn();
+  const { confirmHandoff, loading: confirming } = useConfirmHandoff();
   const { updateItem, loading: lending } = useUpdateItem();
   const { items: allItems } = useItems();
   const { friends } = useFriends();
@@ -409,6 +420,9 @@ export default function ItemDetailScreen() {
   }
 
   const status: ItemStatus = calculateItemStatus(item);
+  // Same decision function ItemCard uses — guarantees the two surfaces
+  // never disagree on what the primary action should be.
+  const action = getItemAction(item, user?.id, borrowRequest);
   const isAvailable = status === "available";
   const isOverdue = status === "overdue";
   const daysUntil = item.dueDate ? daysUntilDue(item.dueDate) : undefined;
@@ -453,12 +467,23 @@ export default function ItemDetailScreen() {
         ? theme.destructive
         : theme.secondary;
 
+  // Borrower-only: initiates a return. If someone's queued up next, the
+  // borrower can hand off directly to them instead of routing through the
+  // owner — either way, the recipient must confirm before it's final.
   const handleMarkReturned = async () => {
     if (!item) return;
 
-    // Only the owner can hand off to the next borrower — the borrower updating
-    // borrowed_by to a third party fails the items RLS WITH CHECK clause.
-    if (isOwner && borrowQueue.length > 0) {
+    const finish = async (recipientId?: string) => {
+      try {
+        await initiateReturn(item.id, recipientId);
+        toast.success("Waiting for confirmation…");
+        router.back();
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to initiate return");
+      }
+    };
+
+    if (borrowQueue.length > 0) {
       const next = borrowQueue[0];
       Alert.alert(
         "Return Item",
@@ -466,41 +491,26 @@ export default function ItemDetailScreen() {
         [
           {
             text: `Hand off to ${next.requesterName}`,
-            onPress: async () => {
-              try {
-                await markItemReturnedToNext(item.id, next.requesterId);
-                toast.success(`Handed off to ${next.requesterName}`);
-                router.back();
-              } catch {
-                toast.error("Failed to hand off item");
-              }
-            },
+            onPress: () => finish(next.requesterId),
           },
-          {
-            text: "Return to Library",
-            onPress: async () => {
-              try {
-                await markReturned(item.id);
-                toast.success(`"${item.name}" has been returned`);
-                router.back();
-              } catch {
-                toast.error("Failed to return item");
-              }
-            },
-          },
+          { text: "Return to Owner", onPress: () => finish(item.userId) },
           { text: "Cancel", style: "cancel" },
         ],
       );
       return;
     }
 
-    const actionText = isBorrower ? "returned to owner" : "marked as returned";
+    await finish();
+  };
+
+  // Owner or next-in-queue confirming a pending pickup/return.
+  const handleConfirmHandoff = async () => {
+    if (!item) return;
     try {
-      await markReturned(item.id);
-      toast.success(`"${item.name}" has been ${actionText}`);
-      router.back();
-    } catch {
-      toast.error("Failed to return item");
+      await confirmHandoff(item.id);
+      toast.success(pendingIsReturn ? "Return confirmed" : "Pickup confirmed");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to confirm");
     }
   };
 
@@ -512,12 +522,12 @@ export default function ItemDetailScreen() {
     setLendPickerOpen(false);
     try {
       await updateItem(item.id, {
-        borrowedBy: friendId,
-        borrowedDate: new Date(),
+        pendingRecipientId: friendId,
+        pendingSince: new Date(),
       });
       const friendName =
         friends.find((f) => f.id === friendId)?.name ?? "friend";
-      toast.success(`Lent to ${friendName}`);
+      toast.success(`Waiting for ${friendName} to confirm pickup`);
       refresh();
     } catch {
       toast.error("Failed to lend item");
@@ -961,10 +971,69 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
+          {/* ── Pending pickup banner ── item approved/lent but not yet confirmed ── */}
+          {status === "requested" && isPendingElsewhere && (
+            <>
+              <Separator style={{ marginBottom: 20 }} />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 14,
+                  padding: 16,
+                  backgroundColor: theme.primary + "18",
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: theme.primary + "33",
+                  marginBottom: 24,
+                }}
+              >
+                <Clock size={22} color={theme.primary} />
+                <View style={{ flex: 1 }}>
+                  <TinyLabel style={{ marginBottom: 2 }}>
+                    Pending Pickup
+                  </TinyLabel>
+                  <BodyStrong>
+                    Waiting for {pendingRecipientProfile?.name ?? "them"} to
+                    confirm
+                  </BodyStrong>
+                </View>
+              </View>
+            </>
+          )}
+
           {/* ── Lent-out info panel ── always shown when item is lent out ── */}
           {!isAvailable && item.borrowedBy && (
             <>
               <Separator style={{ marginBottom: 20 }} />
+              {/* Pending return banner — current holder already initiated the
+                  return/hand-off, shown to everyone except the recipient. */}
+              {isPendingElsewhere && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: 16,
+                    backgroundColor: theme.primary + "18",
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: theme.primary + "33",
+                    marginBottom: 16,
+                  }}
+                >
+                  <Clock size={22} color={theme.primary} />
+                  <View style={{ flex: 1 }}>
+                    <TinyLabel style={{ marginBottom: 2 }}>
+                      Return Pending
+                    </TinyLabel>
+                    <BodyStrong>
+                      Waiting for {pendingRecipientProfile?.name ?? "them"} to
+                      confirm
+                    </BodyStrong>
+                  </View>
+                </View>
+              )}
               {isBorrower ? (
                 // Viewer is the borrower — show "You" panel
                 <View
@@ -1060,7 +1129,7 @@ export default function ItemDetailScreen() {
                           Currently Lent To
                         </TinyLabel>
                         <BodyStrong>{borrowerProfile.name}</BodyStrong>
-                        {borrowerProfile.email && (
+                        {borrowerIsFriend && borrowerProfile.email && (
                           <Caption>{borrowerProfile.email}</Caption>
                         )}
                       </View>
@@ -1408,22 +1477,63 @@ export default function ItemDetailScreen() {
           {/* ── Action Buttons ── */}
           <View style={{ gap: 12, marginTop: 28 }}>
             {isBorrower ? (
-              /* Viewer is the borrower — secondary yellow, matches ItemCard "Return" */
-              <Button variant="secondary" onPress={handleMarkReturned} disabled={returning}>
-                <RotateCcw size={18} color={theme.secondaryForeground} />
-                <Text>{returning ? "Returning…" : "Return to Owner"}</Text>
-              </Button>
+              action.kind === "markReturned" ? (
+                /* Viewer is the borrower — secondary yellow, matches ItemCard "Return" */
+                <Button
+                  variant="secondary"
+                  onPress={handleMarkReturned}
+                  disabled={returning}
+                >
+                  <RotateCcw size={18} color={theme.secondaryForeground} />
+                  <Text>{returning ? "Returning…" : action.label}</Text>
+                </Button>
+              ) : (
+                /* Already initiated a return/hand-off — waiting on the
+                   recipient to confirm. Nothing left for the borrower to do. */
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    paddingVertical: 14,
+                  }}
+                >
+                  <Clock size={16} color={theme.mutedForeground} />
+                  <Caption>
+                    Waiting for {pendingRecipientProfile?.name ?? "them"} to
+                    confirm
+                  </Caption>
+                </View>
+              )
             ) : isOwner ? (
-              /* Viewer is the owner — owner management actions */
+              /* Viewer is the owner — owner management actions. The owner can
+                 never unilaterally mark an item returned; they can only
+                 confirm a return the borrower already initiated. */
               <>
-                {!isAvailable && item.borrowedBy && (
-                  <Button
-                    onPress={handleMarkReturned}
-                    disabled={returning || deleting}
-                  >
+                {action.kind === "confirmReturn" && (
+                  <Button onPress={handleConfirmHandoff} disabled={confirming}>
                     <Check size={18} color="#fff" />
-                    <Text>{returning ? "Marking…" : "Mark as Returned"}</Text>
+                    <Text>{confirming ? "Confirming…" : action.label}</Text>
                   </Button>
+                )}
+
+                {isPendingElsewhere && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      paddingVertical: 14,
+                    }}
+                  >
+                    <Clock size={16} color={theme.mutedForeground} />
+                    <Caption>
+                      Waiting for {pendingRecipientProfile?.name ?? "them"} to
+                      confirm pickup
+                    </Caption>
+                  </View>
                 )}
 
                 {/* Lend to — only when available and not marked unavailable */}
@@ -1485,13 +1595,22 @@ export default function ItemDetailScreen() {
                 </Button>
               </>
             ) : (
-              /* Viewer is a friend — matches ItemCard button logic */
+              /* Viewer is a friend — driven by the same getItemAction() the
+                 card uses, so labels/visibility can't drift from it. */
               <>
-                {/* Borrow: item available, no active request — default green */}
-                {isAvailable && !isMarkedUnavailable && !borrowRequest && (
+                {/* Approved (or lent to directly) and awaiting this viewer's
+                    pickup confirmation — takes priority over everything else. */}
+                {action.kind === "confirmPickup" && (
+                  <Button onPress={handleConfirmHandoff} disabled={confirming}>
+                    <Check size={16} color="#fff" />
+                    <Text>{confirming ? "Confirming…" : action.label}</Text>
+                  </Button>
+                )}
+                {/* Borrow / Request Next — same call, label differs by status */}
+                {(action.kind === "borrow" || action.kind === "requestNext") && (
                   <Button onPress={handleBorrow} disabled={requesting}>
                     <Send size={16} color="#fff" />
-                    <Text>{requesting ? "Sending…" : "Borrow"}</Text>
+                    <Text>{requesting ? "Sending…" : action.label}</Text>
                   </Button>
                 )}
                 {/* Owner marked it unavailable — offer to notify when it's back */}
@@ -1515,33 +1634,15 @@ export default function ItemDetailScreen() {
                     </Text>
                   </Button>
                 )}
-                {/* Request Next: item unavailable, no active request — default green */}
-                {!isAvailable && !borrowRequest && (
-                  <Button onPress={handleBorrow} disabled={requesting}>
-                    <Send size={16} color="#fff" />
-                    <Text>{requesting ? "Sending…" : "Request Next"}</Text>
-                  </Button>
-                )}
-                {/* Cancel pending request — destructive red */}
-                {borrowRequest?.status === "pending" && (
+                {/* Cancel pending request / leave queue — destructive red */}
+                {(action.kind === "cancelRequest" || action.kind === "leaveQueue") && (
                   <Button
                     variant="destructive"
                     onPress={handleCancelRequest}
                     disabled={requesting}
                   >
                     <X size={16} color="#fff" />
-                    <Text>{requesting ? "Cancelling…" : "Cancel Request"}</Text>
-                  </Button>
-                )}
-                {/* Leave queue: approved but still waiting — destructive red */}
-                {borrowRequest?.status === "approved" && (
-                  <Button
-                    variant="destructive"
-                    onPress={handleCancelRequest}
-                    disabled={requesting}
-                  >
-                    <X size={16} color="#fff" />
-                    <Text>{requesting ? "Cancelling…" : "Leave Queue"}</Text>
+                    <Text>{requesting ? "Cancelling…" : action.label}</Text>
                   </Button>
                 )}
               </>

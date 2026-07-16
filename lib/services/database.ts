@@ -52,6 +52,8 @@ function convertItemFromDb(data: any): Item {
     notes: data.notes,
     metadata: data.metadata,
     isUnavailable: data.is_unavailable ?? false,
+    pendingRecipientId: data.pending_recipient_id ?? undefined,
+    pendingSince: data.pending_since ? new Date(data.pending_since) : undefined,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };
@@ -203,6 +205,10 @@ export async function updateItem(
   if ('metadata' in updates) updateData.metadata = updates.metadata ?? null;
   if ('isUnavailable' in updates)
     updateData.is_unavailable = updates.isUnavailable ?? false;
+  if ('pendingRecipientId' in updates)
+    updateData.pending_recipient_id = updates.pendingRecipientId ?? null;
+  if ('pendingSince' in updates)
+    updateData.pending_since = updates.pendingSince?.toISOString() ?? null;
 
   const { data, error } = await supabase
     .from("items")
@@ -272,6 +278,11 @@ export async function getItemsByFriend(friendId: string): Promise<Item[]> {
   return (data || []).map(convertItemFromDb);
 }
 
+/**
+ * Items the current user owns that aren't sitting available on the shelf —
+ * out with a borrower, or mid-handoff (a pending pickup/return awaiting
+ * confirmation). Powers the Home screen's "Lending" section.
+ */
 export async function getActiveItems(): Promise<Item[]> {
   const userId = await getCurrentUserId();
 
@@ -279,8 +290,8 @@ export async function getActiveItems(): Promise<Item[]> {
     .from("items")
     .select("*")
     .eq("user_id", userId)
-    .not("borrowed_by", "is", null)
-    .is("returned_date", null);
+    .is("returned_date", null)
+    .or("borrowed_by.not.is.null,pending_recipient_id.not.is.null");
 
   if (error) throw error;
   return (data || []).map(convertItemFromDb);
@@ -330,96 +341,132 @@ export async function getBorrowedByMeItems(): Promise<Item[]> {
   return (data || []).map(convertItemFromDb);
 }
 
-export async function markItemReturned(id: string): Promise<void> {
-  // Fetch the item before clearing so we can record history (non-critical)
-  const itemSnapshot = await getItemById(id).catch(() => null);
+/**
+ * Get items awaiting the current user's confirmation — either a pickup
+ * (they're becoming the new borrower) or a return (they're the owner, or
+ * next in the queue, reclaiming it). This is the "needs your action" list
+ * surfaced as a notification badge/section, distinct from incoming borrow
+ * requests (which are a request for approval, not a handoff to confirm).
+ */
+export async function getMyPendingHandoffs(): Promise<Item[]> {
+  const userId = await getCurrentUserId();
 
-  // Bypass updateItem (which pre-fetches via getItemById and silently returns
-  // null if RLS blocks the borrower from reading it). Do a direct update
-  // instead so RLS errors surface as thrown exceptions.
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("items")
-    .update({
-      borrowed_by: null,
-      borrowed_date: null,
-      due_date: null,
-      returned_date: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
+    .select("*")
+    .eq("pending_recipient_id", userId);
+
   if (error) throw error;
-
-  // Insert a completed history record now that we have all the data.
-  // We only write at return time (not at lend time) to avoid needing an
-  // UPDATE RLS policy. The "Active" state is derived from item.borrowedBy
-  // in the UI instead.
-  if (itemSnapshot?.borrowedBy) {
-    addHistoryEntry({
-      itemId: id,
-      friendId: itemSnapshot.borrowedBy,
-      borrowedDate: itemSnapshot.borrowedDate ?? new Date(),
-      returnedDate: new Date(),
-      dueDate: itemSnapshot.dueDate,
-      notes: undefined,
-    }).catch(() => {});
-  }
-
-  // Mark the approved borrow request as cancelled so it no longer shows as
-  // active. 'cancelled' is a valid status in the DB CHECK constraint and
-  // getMyBorrowRequestForItem only queries for ['pending', 'approved'].
-  // Both requester and owner have UPDATE permission via existing RLS policies.
-  // Ignore errors — the item fields are already cleared, so a failure here
-  // is non-critical.
-  await supabase
-    .from("borrow_requests")
-    .update({ status: "cancelled" })
-    .eq("item_id", id)
-    .in("status", ["pending", "approved"]);
+  return (data || []).map(convertItemFromDb);
 }
 
 /**
- * Return an item by handing it off directly to the next approved requester.
- * Writes a history entry for the current borrower, updates the item to the
- * next person, and cancels all other pending/approved requests.
+ * Initiate a return of a currently-borrowed item. Callable by the current
+ * borrower only (RLS: auth.uid() = borrowed_by). Does NOT clear borrowed_by
+ * — the item stays "borrowed" until the recipient confirms via
+ * confirmHandoff.
+ *
+ * @param recipientId - Explicit recipient (e.g. the borrower chose to hand
+ *   off to a specific queued person, or explicitly chose to return to the
+ *   owner instead). Defaults to the next approved requester if one exists,
+ *   otherwise the item's owner — same resolution the UI's queue panel uses.
  */
-export async function markItemReturnedToNext(
+export async function initiateReturn(
   itemId: string,
-  nextRequesterId: string
+  recipientId?: string,
 ): Promise<void> {
-  const itemSnapshot = await getItemById(itemId).catch(() => null);
+  const item = await getItemById(itemId);
+  if (!item) throw new Error("Item not found");
+  if (!item.borrowedBy) throw new Error("Item is not currently borrowed");
 
-  const now = new Date().toISOString();
+  let resolvedRecipientId = recipientId;
+  if (!resolvedRecipientId) {
+    const { data: nextInQueue } = await supabase
+      .from("borrow_requests")
+      .select("requester_id")
+      .eq("item_id", itemId)
+      .eq("status", "approved")
+      .neq("requester_id", item.borrowedBy)
+      .order("updated_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    resolvedRecipientId = nextInQueue?.requester_id ?? item.userId;
+  }
+
   const { error } = await supabase
-    .from('items')
+    .from("items")
     .update({
-      borrowed_by: nextRequesterId,
-      borrowed_date: now,
-      due_date: null,
-      returned_date: null,
-      updated_at: now,
+      pending_recipient_id: resolvedRecipientId,
+      pending_since: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
-    .eq('id', itemId);
+    .eq("id", itemId);
+  if (error) throw error;
+}
+
+/**
+ * Confirm a pending handoff (pickup or return) as the pending recipient.
+ * Callable only by pending_recipient_id (RLS).
+ *
+ * - If the recipient is the item's owner, this completes a return: clears
+ *   borrowed_by, writes a history entry for the outgoing borrower, and
+ *   cancels any other outstanding requests.
+ * - Otherwise this completes a pickup (fresh borrow, direct lend, or
+ *   peer-to-peer hand-off): the recipient becomes the new borrowed_by; if
+ *   there was a previous borrower, their history entry is written too.
+ */
+export async function confirmHandoff(itemId: string): Promise<void> {
+  const item = await getItemById(itemId);
+  if (!item) throw new Error("Item not found");
+  if (!item.pendingRecipientId) throw new Error("No pending handoff for this item");
+
+  const recipientId = item.pendingRecipientId;
+  const previousBorrower = item.borrowedBy;
+  const returningToOwner = recipientId === item.userId;
+
+  const updateData = returningToOwner
+    ? {
+        borrowed_by: null,
+        borrowed_date: null,
+        due_date: null,
+        returned_date: null,
+        pending_recipient_id: null,
+        pending_since: null,
+        updated_at: new Date().toISOString(),
+      }
+    : {
+        borrowed_by: recipientId,
+        borrowed_date: new Date().toISOString(),
+        returned_date: null,
+        pending_recipient_id: null,
+        pending_since: null,
+        updated_at: new Date().toISOString(),
+      };
+
+  const { error } = await supabase.from("items").update(updateData).eq("id", itemId);
   if (error) throw error;
 
-  if (itemSnapshot?.borrowedBy) {
+  if (previousBorrower) {
     addHistoryEntry({
       itemId,
-      friendId: itemSnapshot.borrowedBy,
-      borrowedDate: itemSnapshot.borrowedDate ?? new Date(),
+      friendId: previousBorrower,
+      borrowedDate: item.borrowedDate ?? new Date(),
       returnedDate: new Date(),
-      dueDate: itemSnapshot.dueDate,
+      dueDate: item.dueDate,
       notes: undefined,
     }).catch(() => {});
   }
 
-  // Cancel all other pending/approved requests; the next person's approved
-  // request stays as-is — it now represents the active borrow.
+  // Clear out other pending/approved requests — the confirming recipient's
+  // own request (if any) is left as 'approved', now representing the
+  // active borrow.
   await supabase
-    .from('borrow_requests')
-    .update({ status: 'cancelled' })
-    .eq('item_id', itemId)
-    .in('status', ['pending', 'approved'])
-    .neq('requester_id', nextRequesterId);
+    .from("borrow_requests")
+    .update({ status: "cancelled" })
+    .eq("item_id", itemId)
+    .in("status", ["pending", "approved"])
+    .neq("requester_id", recipientId);
 }
 
 export async function queryItems(filters?: ItemFilters): Promise<Item[]> {

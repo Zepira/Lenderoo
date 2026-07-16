@@ -223,11 +223,31 @@ async function buildMessages(
     return [];
   }
 
-  // ── items (availability) ───────────────────────────────────────────────────
+  // ── items (availability, pending handoff) ────────────────────────────────
   if (table === 'items') {
     const itemId = record.id as string;
     const wasUnavailable = old_record?.is_unavailable === true;
     const isNowAvailable = record.is_unavailable === false;
+
+    // Pending handoff just assigned to someone — they need to confirm
+    // pickup (new borrower) or confirm return (owner reclaiming the item).
+    const newRecipientId = record.pending_recipient_id as string | null;
+    const oldRecipientId = old_record?.pending_recipient_id as string | null | undefined;
+    if (type === 'UPDATE' && newRecipientId && newRecipientId !== oldRecipientId) {
+      const token = await getPushToken(supabase, newRecipientId);
+      if (token) {
+        const ownerId = record.user_id as string;
+        const isReturn = newRecipientId === ownerId;
+        const itemName = await getItemName(supabase, itemId);
+        return [{
+          to: token,
+          title: isReturn ? 'Confirm Return' : 'Confirm Pickup',
+          body: `"${itemName}" is waiting for you to confirm`,
+          data: { type: isReturn ? 'confirm_return' : 'confirm_pickup', itemId },
+          sound: 'default',
+        }];
+      }
+    }
 
     if (type === 'UPDATE' && wasUnavailable && isNowAvailable) {
       // Owner flipped the item back to available → notify everyone waiting

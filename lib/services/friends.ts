@@ -476,6 +476,8 @@ export async function getAllFriendsItems(): Promise<Item[]> {
     notes: row.notes,
     metadata: row.metadata,
     isUnavailable: row.is_unavailable ?? false,
+    pendingRecipientId: row.pending_recipient_id ?? undefined,
+    pendingSince: row.pending_since ? new Date(row.pending_since) : undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   }));
@@ -560,6 +562,79 @@ export async function getPendingFriendRequests(): Promise<FriendRequest[]> {
   });
 
   return requestsWithUsers;
+}
+
+/**
+ * Get outgoing friend requests (requests I've sent that haven't been
+ * accepted or rejected yet)
+ */
+export async function getSentPendingFriendRequests(): Promise<FriendRequest[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: connections, error: connectionsError } = await supabase
+    .from("friend_connections")
+    .select("id, user_id, friend_user_id, status, created_at")
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  if (connectionsError) {
+    throw connectionsError;
+  }
+
+  if (!connections || connections.length === 0) {
+    return [];
+  }
+
+  // Get user details for each recipient
+  const recipientIds = connections.map((c) => c.friend_user_id);
+  const { data: recipients, error: usersError } = await supabase
+    .from("users")
+    .select("id, name, email, avatar_url, friend_code")
+    .in("id", recipientIds);
+
+  if (usersError) {
+    throw usersError;
+  }
+
+  return connections.map((conn) => {
+    const recipient = recipients?.find((r) => r.id === conn.friend_user_id);
+    return {
+      id: conn.id,
+      userId: conn.user_id,
+      friendUserId: conn.friend_user_id,
+      status: conn.status as "pending",
+      createdAt: new Date(conn.created_at),
+      userName: recipient?.name || "Unknown",
+      userEmail: recipient?.email || "",
+      userAvatarUrl: recipient?.avatar_url || undefined,
+      userFriendCode: recipient?.friend_code || "",
+    };
+  });
+}
+
+/**
+ * Cancel a friend request I sent (before the recipient responds)
+ */
+export async function cancelSentFriendRequest(requestId: string): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("friend_connections")
+    .delete()
+    .eq("id", requestId)
+    .eq("user_id", user.id)
+    .eq("status", "pending");
+
+  if (error) throw error;
 }
 
 /**
