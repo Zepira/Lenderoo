@@ -8,7 +8,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import Constants from "expo-constants";
+import * as Application from "expo-application";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import {
@@ -471,8 +471,8 @@ export default function SettingsScreen() {
           <Caption
             style={{ textAlign: "center", marginTop: 8, color: theme.mutedForeground }}
           >
-            Lenderoo v{Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? "—"}
-            {Constants.nativeBuildVersion ? ` (${Constants.nativeBuildVersion})` : ""}
+            Lenderoo v{Application.nativeApplicationVersion ?? "—"}
+            {Application.nativeBuildVersion ? ` (${Application.nativeBuildVersion})` : ""}
           </Caption>
         </View>
       </ScrollView>
