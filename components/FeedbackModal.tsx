@@ -4,7 +4,7 @@
  * Modal for users to submit feedback
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Modal,
   View,
@@ -14,6 +14,7 @@ import {
   Alert,
   Platform,
   Pressable,
+  TextInput,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,6 +35,7 @@ interface FeedbackModalProps {
 
 export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
   const insets = useSafeAreaInsets();
+  const textareaRef = useRef<TextInput>(null);
   const [comment, setComment] = useState("");
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -123,6 +125,15 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
       transparent
       animationType="slide"
       onRequestClose={handleClose}
+      onShow={() => {
+        // Focusing here (once the modal has actually finished presenting)
+        // instead of via Textarea's autoFocus avoids a race where the
+        // keyboard opens before the slide-in animation and
+        // KeyboardAwareScrollView's layout have settled, which was making
+        // it measure stale positions and fail to scroll the input clear of
+        // the keyboard on Android.
+        setTimeout(() => textareaRef.current?.focus(), 50);
+      }}
     >
       {/*
         RN's Modal renders as a separate native Android Dialog window that
@@ -175,12 +186,12 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
           {/* Feedback Input */}
           <View className="mb-4">
             <Textarea
+              ref={textareaRef}
               value={comment}
               onChangeText={setComment}
               placeholder="What's on your mind?"
               numberOfLines={6}
               editable={!submitting}
-              autoFocus
               className="min-h-[120px]"
             />
             <Text variant="small" className="text-muted-foreground mt-2">
