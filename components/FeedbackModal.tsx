@@ -14,8 +14,9 @@ import {
   Alert,
   Platform,
   Pressable,
-  KeyboardAvoidingView,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePickerExpo from "expo-image-picker";
 import { X, ImagePlus } from "lucide-react-native";
 import { Button } from "./ui/button";
@@ -32,6 +33,7 @@ interface FeedbackModalProps {
 }
 
 export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
+  const insets = useSafeAreaInsets();
   const [comment, setComment] = useState("");
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -122,16 +124,33 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
       animationType="slide"
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}
+      {/*
+        RN's Modal renders as a separate native Android Dialog window that
+        doesn't reliably inherit windowSoftInputMode, so plain
+        KeyboardAvoidingView silently fails to shift content above the
+        keyboard on Android inside a Modal (it works fine on iOS, which is
+        why this can slip by in testing). KeyboardAwareScrollView sidesteps
+        that entirely — it measures and scrolls to the focused input itself
+        instead of relying on OS resize behavior. Use this pattern for any
+        Modal-based sheet with a TextInput, not KeyboardAvoidingView.
+      */}
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: "flex-end",
+          backgroundColor: "rgba(0,0,0,0.5)",
+        }}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid
+        extraScrollHeight={24}
       >
         {/* Backdrop tap-to-close — safety net so the sheet is never unreachable */}
-        <Pressable
-          onPress={handleClose}
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-        />
-        <View className="bg-background rounded-t-3xl p-6 pb-8">
+        <Pressable onPress={handleClose} style={{ flex: 1 }} />
+        <View
+          className="bg-background rounded-t-3xl p-6"
+          style={{ paddingBottom: insets.bottom + 24 }}
+        >
           {/* Header */}
           <View className="flex-row items-center justify-between mb-4">
             <Text variant="h3" className="font-bold">
@@ -230,7 +249,7 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
             </Button>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </Modal>
   );
 }

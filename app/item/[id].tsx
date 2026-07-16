@@ -15,7 +15,7 @@ import {
   Platform,
   Modal,
   TextInput,
-  KeyboardAvoidingView,
+  Keyboard,
   FlatList,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -157,6 +157,26 @@ export default function ItemDetailScreen() {
   // Lend-to modal state (owner)
   const [lendPickerOpen, setLendPickerOpen] = useState(false);
   const [lendSearch, setLendSearch] = useState("");
+  // Manual keyboard tracking instead of KeyboardAvoidingView — RN's Modal
+  // renders as a separate native Android Dialog window that doesn't
+  // reliably inherit windowSoftInputMode, so KeyboardAvoidingView silently
+  // fails to shift this sheet above the keyboard on Android (works fine on
+  // iOS, easy to miss in testing). This sheet also can't switch to
+  // KeyboardAwareScrollView like other forms do, since its content is a
+  // FlatList — nesting a VirtualizedList inside a ScrollView isn't safe.
+  const [lendPickerKeyboardHeight, setLendPickerKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, (e) =>
+      setLendPickerKeyboardHeight(e.endCoordinates.height),
+    );
+    const hideSub = Keyboard.addListener(hideEvent, () => setLendPickerKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Borrow request state (for friend-viewer actions)
   const [borrowRequest, setBorrowRequest] = useState<BorrowRequest | null>(
@@ -1665,9 +1685,13 @@ export default function ItemDetailScreen() {
           style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }}
           onPress={() => setLendPickerOpen(false)}
         />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
+        <View
+          style={{
+            position: "absolute",
+            bottom: lendPickerKeyboardHeight,
+            left: 0,
+            right: 0,
+          }}
         >
           <View
             style={{
@@ -1676,7 +1700,7 @@ export default function ItemDetailScreen() {
               borderTopRightRadius: 28,
               paddingTop: 12,
               paddingHorizontal: 20,
-              paddingBottom: 40,
+              paddingBottom: insets.bottom + 24,
               maxHeight: "80%",
               gap: 16,
             }}
@@ -1793,7 +1817,7 @@ export default function ItemDetailScreen() {
               }
             />
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
