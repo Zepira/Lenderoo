@@ -5,7 +5,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { User } from '../lib/types';
@@ -90,6 +90,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // supabase-js's autoRefreshToken only ticks while something is actively
+  // calling startAutoRefresh() — on native it does NOT resume on its own
+  // when the app comes back from the background, since RN timers freeze
+  // while backgrounded. Without this, a session can sit expired after any
+  // real-world background/foreground cycle, and the next write (e.g.
+  // feedback submission) hits the DB as an unauthenticated request and
+  // gets rejected by RLS instead of transparently refreshing first. This
+  // is Supabase's own documented fix for React Native.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        supabase.auth.startAutoRefresh();
+      } else {
+        supabase.auth.stopAutoRefresh();
+      }
+    });
+    return () => subscription.remove();
   }, []);
 
   // Load app user profile from users table
