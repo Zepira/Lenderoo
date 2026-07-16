@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 import { router } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 // ── Layout calculator (exported so FlatList screens can use matching numColumns) ─
 const H_PADDING = 32; // 16px left + 16px right
@@ -223,10 +224,11 @@ export const ItemCard = memo(function ItemCard({
     onPress ?? (() => router.push(`/item/${item.id}` as any));
 
   return (
-    <Pressable
-      onPress={handlePress}
-      style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }, style]}
-    >
+    <Animated.View entering={FadeInDown.duration(220).damping(18)} style={style}>
+      <Pressable
+        onPress={handlePress}
+        style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+      >
       <View
         style={{
           backgroundColor: theme.card,
@@ -312,6 +314,7 @@ export const ItemCard = memo(function ItemCard({
           </View>
         )}
       </View>
-    </Pressable>
+      </Pressable>
+    </Animated.View>
   );
 });

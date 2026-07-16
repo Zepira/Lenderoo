@@ -101,6 +101,9 @@ export default function ExploreScreen() {
   >(new Map());
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
   const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set());
+  // Gates list data so favourite-sorted order is applied before paint —
+  // avoids a visible reorder once favourites resolve after items.
+  const [favouritesReady, setFavouritesReady] = useState(false);
 
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
@@ -145,7 +148,15 @@ export default function ExploreScreen() {
     if (items.length === 0) return;
     const ids = items.map((i) => i.id);
     getMyAvailabilitySubscriptionsForItems(ids).then(setSubscriptionMap);
-    getMyFavouriteItemIds(ids).then(setFavouriteIds);
+    let cancelled = false;
+    getMyFavouriteItemIds(ids).then((favIds) => {
+      if (cancelled) return;
+      setFavouriteIds(favIds);
+      setFavouritesReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [items]);
 
   const handleNotify = useCallback(
@@ -327,7 +338,7 @@ export default function ExploreScreen() {
       ) : (
         <FlatList
           key={numColumns}
-          data={filteredItems}
+          data={favouritesReady || items.length === 0 ? filteredItems : []}
           keyExtractor={(item) => item.id}
           numColumns={numColumns}
           columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
@@ -342,7 +353,7 @@ export default function ExploreScreen() {
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={categoryChip}
           ListEmptyComponent={
-            loading ? (
+            loading || (!favouritesReady && items.length > 0) ? (
               <View style={{ alignItems: "center", paddingTop: 48 }}>
                 <ActivityIndicator color={theme.primary} size="large" />
               </View>

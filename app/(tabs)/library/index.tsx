@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Alert, View, FlatList, useWindowDimensions, Pressable } from "react-native";
+import {
+  Alert,
+  View,
+  FlatList,
+  useWindowDimensions,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Plus } from "lucide-react-native";
 import { BorrowRequestsSection } from "components/BorrowRequestsSection";
@@ -42,10 +49,22 @@ export default function ItemsScreen() {
   const { items, loading, error, refresh } = useItems(filter);
   const { items: allItems } = useItems();
   const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set());
+  // Gates the FlatList's data so favourite-sorted order is applied before
+  // the list is ever painted, instead of showing unsorted items and then
+  // visibly re-sorting once favourites arrive a beat later.
+  const [favouritesReady, setFavouritesReady] = useState(false);
 
   useEffect(() => {
     if (items.length === 0) return;
-    getMyFavouriteItemIds(items.map((i) => i.id)).then(setFavouriteIds);
+    let cancelled = false;
+    getMyFavouriteItemIds(items.map((i) => i.id)).then((ids) => {
+      if (cancelled) return;
+      setFavouriteIds(ids);
+      setFavouritesReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [items]);
 
   const filteredItems = useMemo(() => {
@@ -223,7 +242,7 @@ export default function ItemsScreen() {
 
       <FlatList
         key={numColumns}
-        data={filteredItems}
+        data={favouritesReady || items.length === 0 ? filteredItems : []}
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
@@ -232,6 +251,13 @@ export default function ItemsScreen() {
         onRefresh={refresh}
         refreshing={loading}
         keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          !favouritesReady && items.length > 0 ? (
+            <View style={{ alignItems: "center", paddingTop: 48 }}>
+              <ActivityIndicator color={theme.primary} size="large" />
+            </View>
+          ) : null
+        }
         ListHeaderComponent={
           <View style={{ gap: 12, marginBottom: 4 }}>
             <BorrowRequestsSection

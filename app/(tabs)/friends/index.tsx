@@ -6,6 +6,7 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import {
   ChevronRight,
@@ -160,6 +161,12 @@ export default function FriendsScreen() {
     f.name.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const handleRefresh = useCallback(() => {
+    loadFriends();
+    loadFriendRequests();
+    loadSentFriendRequests();
+  }, []);
+
   return (
     <View
       style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}
@@ -170,6 +177,9 @@ export default function FriendsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 160 }}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={handleRefresh} />
+        }
       >
         <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 16 }}>
           {/* Pending friend requests */}

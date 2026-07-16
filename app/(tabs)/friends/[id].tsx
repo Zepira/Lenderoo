@@ -13,6 +13,7 @@ import {
   Pressable,
   Platform,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -343,6 +344,12 @@ export default function FriendDetailScreen() {
     }
   };
 
+  const handleRefresh = useCallback(() => {
+    loadBorrowedItems();
+    loadOwnedItems();
+    loadHistory();
+  }, [loadBorrowedItems, loadOwnedItems, loadHistory]);
+
   const handleNotify = async (item: Item) => {
     const existing = subscriptions.get(item.id);
     try {
@@ -399,6 +406,12 @@ export default function FriendDetailScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 160 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={ownedItemsLoading || historyLoading}
+            onRefresh={handleRefresh}
+          />
+        }
       >
         {/* ── Header card ── */}
         <View
