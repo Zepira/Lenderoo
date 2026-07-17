@@ -54,33 +54,16 @@ async function getDeviceInfo() {
   }
 }
 
-function convertFeedbackFromDb(data: any): Feedback {
-  return {
-    id: data.id,
-    comment: data.comment,
-    status: data.status,
-    response: data.response ?? undefined,
-    display: data.display,
-    screenshotUrls: data.screenshot_urls ?? [],
-    devicePlatform: data.device_platform,
-    deviceOsVersion: data.device_os_version,
-    deviceModel: data.device_model,
-    appVersion: data.app_version,
-    createdAt: new Date(data.created_at),
-  };
-}
-
 /**
  * Submit anonymous user feedback
  *
  * @param comment - The feedback comment
  * @param screenshotUris - Local file URIs of screenshots to attach, if any
- * @returns The created feedback record
  */
 export async function submitFeedback(
   comment: string,
   screenshotUris: string[] = [],
-): Promise<Feedback> {
+): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -95,55 +78,26 @@ export async function submitFeedback(
     ? await uploadFeedbackScreenshots(screenshotUris)
     : [];
 
-  // Diagnostic: prove/disprove whether a valid session is actually attached
-  // to this request. If accessTokenPresent is false or expiresAt is in the
-  // past, the insert below goes out as anon (no Authorization header) and
-  // gets rejected by RLS, which reads as this exact error even though the
-  // UI believes the user is signed in.
-  const { data: { session } } = await supabase.auth.getSession();
-  let claims: Record<string, unknown> | null = null;
-  try {
-    const payload = session?.access_token.split('.')[1];
-    claims = payload ? JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) : null;
-  } catch {}
-  console.log('submitFeedback session check', {
-    sessionPresent: !!session,
-    accessTokenPresent: !!session?.access_token,
-    expiresAt: session?.expires_at,
-    nowUnix: Math.floor(Date.now() / 1000),
-    jwtRole: claims?.role,
-    jwtAud: claims?.aud,
-    jwtIss: claims?.iss,
-    jwtSub: claims?.sub,
+  // Deliberately no .select() here — new rows default to display = false,
+  // and the SELECT policies only allow reading rows where display = true.
+  // Asking PostgREST to return the inserted row (the default `.select()`
+  // does this via `Prefer: return=representation`) makes Postgres re-check
+  // that row against the SELECT policies as part of the same statement,
+  // which always fails for a fresh submission — surfacing as the exact
+  // same "row-level security policy" error as a genuine auth problem, even
+  // though the INSERT itself (governed by a separate, unconditional INSERT
+  // policy) was never the issue. Confirmed by reproducing this directly in
+  // SQL: identical insert with RETURNING fails RLS, without it succeeds.
+  const { error } = await supabase.from('feedback').insert({
+    comment: comment.trim(),
+    screenshot_urls: screenshotUrls.length ? screenshotUrls : null,
+    device_platform: deviceInfo.platform,
+    device_os_version: deviceInfo.osVersion,
+    device_model: deviceInfo.deviceModel,
+    app_version: deviceInfo.appVersion,
   });
 
-  const { data, error } = await supabase
-    .from('feedback')
-    .insert({
-      comment: comment.trim(),
-      screenshot_urls: screenshotUrls.length ? screenshotUrls : null,
-      device_platform: deviceInfo.platform,
-      device_os_version: deviceInfo.osVersion,
-      device_model: deviceInfo.deviceModel,
-      app_version: deviceInfo.appVersion,
-    })
-    .select()
-    .single();
-
   if (error) {
-    // Metro's console collapses Error objects to just .message — the
-    // PostgrestError's code/details/hint (which usually explain *why* an
-    // RLS policy rejected the row) get silently discarded once wrapped
-    // below. Log them explicitly so they're actually visible when
-    // diagnosing a submit failure.
-    console.error('submitFeedback insert error', {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-    });
     throw new Error(`Failed to submit feedback: ${error.message}`);
   }
-
-  return convertFeedbackFromDb(data);
 }
