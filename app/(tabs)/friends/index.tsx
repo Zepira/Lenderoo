@@ -36,6 +36,7 @@ import { THEME } from "@/lib/theme";
 import { resolveAvatarSource } from "@/lib/services/avatar";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
+import { subscribeLogged } from "@/lib/realtime";
 
 export default function FriendsScreen() {
   const { activeTheme } = useThemeContext();
@@ -76,35 +77,37 @@ export default function FriendsScreen() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      channel = supabase
-        .channel("friend-connections-changes")
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "friend_connections",
-            filter: `friend_user_id=eq.${user.id}`,
-          },
-          () => {
-            loadFriendRequests();
-            loadFriends();
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "friend_connections",
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            loadFriends();
-            loadSentFriendRequests();
-          },
-        )
-        .subscribe();
+      channel = subscribeLogged(
+        supabase
+          .channel("friend-connections-changes")
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "friend_connections",
+              filter: `friend_user_id=eq.${user.id}`,
+            },
+            () => {
+              loadFriendRequests();
+              loadFriends();
+            },
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "friend_connections",
+              filter: `user_id=eq.${user.id}`,
+            },
+            () => {
+              loadFriends();
+              loadSentFriendRequests();
+            },
+          ),
+        "friend-connections-changes",
+      );
     }
 
     setup();

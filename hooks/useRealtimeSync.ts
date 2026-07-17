@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from 'lib/supabase'
 import { queryKeys } from 'lib/query-client'
+import { subscribeLogged } from 'lib/realtime'
 
 /**
  * Sets up ONE Supabase realtime subscription per table for the whole app.
@@ -42,31 +43,30 @@ function setup(queryClient: ReturnType<typeof useQueryClient>) {
     ;(channel.socket as any)._remove(channel)
   }
 
-  supabase
-    .channel('rt-items')
-    .on(
+  subscribeLogged(
+    supabase.channel('rt-items').on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'items' },
       () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
       },
-    )
-    .subscribe()
+    ),
+    'rt-items',
+  )
 
-  supabase
-    .channel('rt-friends')
-    .on(
+  subscribeLogged(
+    supabase.channel('rt-friends').on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'friend_connections' },
       () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.friends.all })
       },
-    )
-    .subscribe()
+    ),
+    'rt-friends',
+  )
 
-  supabase
-    .channel('rt-borrow-requests')
-    .on(
+  subscribeLogged(
+    supabase.channel('rt-borrow-requests').on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'borrow_requests' },
       () => {
@@ -82,8 +82,9 @@ function setup(queryClient: ReturnType<typeof useQueryClient>) {
         // Approving a request also changes item status
         queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
       },
-    )
-    .subscribe()
+    ),
+    'rt-borrow-requests',
+  )
 }
 
 export function useRealtimeSync() {

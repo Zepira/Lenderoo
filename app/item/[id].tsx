@@ -88,6 +88,7 @@ import type {
 } from "lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
+import { subscribeLogged } from "@/lib/realtime";
 import { resolveAvatarSource } from "@/lib/services/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -267,23 +268,25 @@ export default function ItemDetailScreen() {
   // Live-update borrow request status (e.g. owner approves while this screen is open)
   useEffect(() => {
     if (!item?.id || isOwner) return;
-    const channel = supabase
-      .channel(`item-${item.id}-requests`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "borrow_requests",
-          filter: `item_id=eq.${item.id}`,
-        },
-        () => {
-          loadBorrowRequest();
-          loadBorrowQueue();
-          refresh();
-        },
-      )
-      .subscribe();
+    const channel = subscribeLogged(
+      supabase
+        .channel(`item-${item.id}-requests`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "borrow_requests",
+            filter: `item_id=eq.${item.id}`,
+          },
+          () => {
+            loadBorrowRequest();
+            loadBorrowQueue();
+            refresh();
+          },
+        ),
+      `item-${item.id}-requests`,
+    );
     return () => {
       supabase.removeChannel(channel);
     };
