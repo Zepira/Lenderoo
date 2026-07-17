@@ -101,11 +101,20 @@ export async function submitFeedback(
   // gets rejected by RLS, which reads as this exact error even though the
   // UI believes the user is signed in.
   const { data: { session } } = await supabase.auth.getSession();
+  let claims: Record<string, unknown> | null = null;
+  try {
+    const payload = session?.access_token.split('.')[1];
+    claims = payload ? JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) : null;
+  } catch {}
   console.log('submitFeedback session check', {
     sessionPresent: !!session,
     accessTokenPresent: !!session?.access_token,
     expiresAt: session?.expires_at,
     nowUnix: Math.floor(Date.now() / 1000),
+    jwtRole: claims?.role,
+    jwtAud: claims?.aud,
+    jwtIss: claims?.iss,
+    jwtSub: claims?.sub,
   });
 
   const { data, error } = await supabase
