@@ -91,10 +91,26 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Publish OTA update
+        env:
+          # Passed via env instead of interpolated directly into the script
+          # below — ${{ github.event.head_commit.message }} substituted
+          # literally into `run:` text means any quote, paren, backtick, or
+          # newline in the commit message (multi-paragraph messages have
+          # all of these) corrupts the surrounding shell string and gets
+          # parsed as stray extra arguments to `eas update` ("Unexpected
+          # arguments"). Env vars are passed as real values, not spliced
+          # into the script text, so this is immune to message content.
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          # Only the commit subject (first line) — the update message
+          # shouldn't be a multi-paragraph body, and eas update's --message
+          # doesn't handle embedded newlines well either.
+          SUBJECT="${COMMIT_MESSAGE%%$'\n'*}"
           eas update \
             --branch production \
-            --message "OTA $(echo ${{ github.sha }} | cut -c1-7): ${{ github.event.head_commit.message }}" \
+            --message "OTA ${SHORT_SHA}: ${SUBJECT}" \
             --non-interactive
 
   # ── Native changes → full EAS build (queued async, no CI wait) ─────────────
