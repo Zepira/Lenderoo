@@ -113,7 +113,7 @@ jobs:
             --message "OTA ${SHORT_SHA}: ${SUBJECT}" \
             --non-interactive
 
-  # ── Native changes → full EAS build (queued async, no CI wait) ─────────────
+  # ── Native changes → full EAS build, then submit once it's finished ────────
   native-build:
     needs: detect
     if: needs.detect.outputs.native_changed == 'true'
@@ -146,11 +146,21 @@ jobs:
           mkdir -p android
           echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_JSON }}' > android/zepira-390c2fd69214.json
 
-      - name: Trigger EAS builds + submit (Android + iOS production)
+      # Blocks until both platform builds finish (no --no-wait) so the
+      # submit step below only ever runs against builds CI has directly
+      # confirmed succeeded, and a failed build fails this job instead of
+      # silently never submitting anything. If either platform fails,
+      # `eas build` exits non-zero and the submit step is skipped
+      # entirely — deliberate: submitting only one platform while the
+      # other silently failed would leave the two stores out of sync.
+      - name: Build (waits for both platforms to finish)
         run: |
           eas build \
             --platform all \
             --profile production \
-            --non-interactive \
-            --auto-submit \
-            --no-wait
+            --non-interactive
+
+      - name: Submit finished builds to their app stores
+        run: |
+          eas submit --platform android --profile production --latest --non-interactive --no-wait
+          eas submit --platform ios --profile production --latest --non-interactive --no-wait
