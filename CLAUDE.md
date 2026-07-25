@@ -211,29 +211,26 @@ import { Text } from '@/components/ui/text';
 
 ## Important Notes
 
-### Keyboard handling inside Modals
+### Keyboard handling on Android
 
-RN's `Modal` renders as a separate native Android Dialog window that does
-not reliably inherit `windowSoftInputMode`, so plain `KeyboardAvoidingView`
-can silently fail to shift content above the keyboard **on Android inside a
-`Modal`** specifically (it works fine on iOS, and works fine in a regular
-full-screen route that isn't a `Modal` — easy to miss in testing if you only
-check iOS or a non-modal screen). Full-screen forms already use
-`KeyboardAwareScrollView` (`react-native-keyboard-aware-scroll-view`,
-`enableOnAndroid`, `extraScrollHeight={24}`) and that's fine as-is. For a
-**Modal-based sheet with a `TextInput`**:
-- If its content is plain (no `FlatList`/`SectionList`), wrap it in
-  `KeyboardAwareScrollView` instead of `KeyboardAvoidingView` — see
-  `components/FeedbackModal.tsx`.
-- If its content includes a `FlatList` (can't nest a VirtualizedList inside
-  a ScrollView), track `Keyboard.addListener('keyboardDidShow'/'keyboardDidHide')`
-  yourself and offset the sheet's `bottom`/`marginBottom` by the reported
-  keyboard height instead of relying on `KeyboardAvoidingView` at all — see
-  the "Lend to a Friend" picker in `app/item/[id].tsx`.
+See `docs/KEYBOARD_HANDLING.md` for the full write-up.
 
-Either way, pad the sheet's bottom with `useSafeAreaInsets().bottom` (not a
-fixed number) so it also clears the gesture nav bar on devices without a
-physical home button — see `components/AvatarPickerModal.tsx`.
+**TL;DR**: `android.softwareKeyboardLayoutMode` is `"pan"` in `app.json`
+(not the RN default `"resize"`). This lets `KeyboardAwareScrollView`
+measure the keyboard accurately. Every form screen uses:
+
+```tsx
+<KeyboardAwareScrollView
+  keyboardShouldPersistTaps="handled"
+  enableOnAndroid
+  extraScrollHeight={24}
+>
+```
+
+For **Modal-based sheets** that don't inherit `windowSoftInputMode`:
+- Plain content → `KeyboardAwareScrollView` (see `components/FeedbackModal.tsx`)
+- With `FlatList` → manual `Keyboard.addListener` (see friend picker in `app/item/[id].tsx`)
+- Pad bottom with `useSafeAreaInsets().bottom` (see `components/AvatarPickerModal.tsx`).
 
 ### Authentication
 
