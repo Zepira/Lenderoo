@@ -196,7 +196,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         enableOnAndroid
-        extraScrollHeight={24}
+        extraScrollHeight={100}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
       >
         {/* ── Personal info card ── */}

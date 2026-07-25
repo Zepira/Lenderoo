@@ -79,7 +79,7 @@ export default function AddFriendScreen() {
         className="flex-1 bg-background"
         keyboardShouldPersistTaps="handled"
         enableOnAndroid
-        extraScrollHeight={24}
+        extraScrollHeight={100}
       >
         <View className="p-4 gap-4">
           {errors.general && (
