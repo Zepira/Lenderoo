@@ -110,7 +110,7 @@ export default function SignUpScreen() {
       contentContainerClassName="grow px-6 py-8 pb-24"
       keyboardShouldPersistTaps="handled"
       enableOnAndroid
-      extraScrollHeight={100}
+      extraScrollHeight={24}
     >
         <View className="w-full max-w-md mx-auto">
           {/* Header */}

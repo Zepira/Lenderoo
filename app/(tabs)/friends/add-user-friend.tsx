@@ -248,7 +248,7 @@ export default function AddUserFriendScreen() {
         className="flex-1 bg-background"
         keyboardShouldPersistTaps="handled"
         enableOnAndroid
-        extraScrollHeight={100}
+        extraScrollHeight={24}
         contentContainerStyle={{ paddingBottom: 160 }}
       >
         <SafeAreaWrapper>

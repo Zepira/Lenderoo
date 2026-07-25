@@ -392,7 +392,7 @@ export default function AddBookScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         enableOnAndroid
-        extraScrollHeight={100}
+        extraScrollHeight={24}
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingTop: 24,

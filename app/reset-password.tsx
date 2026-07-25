@@ -138,7 +138,7 @@ export default function ResetPasswordScreen() {
       contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }}
       keyboardShouldPersistTaps="handled"
       enableOnAndroid
-      extraScrollHeight={100}
+      extraScrollHeight={24}
     >
           <View style={{ gap: 32 }}>
             <View style={{ gap: 8 }}>

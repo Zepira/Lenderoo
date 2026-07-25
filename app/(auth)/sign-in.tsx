@@ -76,7 +76,7 @@ export default function SignInScreen() {
       contentContainerClassName="flex-1 justify-center px-6 py-8"
       keyboardShouldPersistTaps="handled"
       enableOnAndroid
-      extraScrollHeight={100}
+      extraScrollHeight={24}
     >
         <View className="w-full max-w-md mx-auto">
           {/* Header */}
