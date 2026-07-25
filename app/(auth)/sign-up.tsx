@@ -5,14 +5,8 @@
  */
 
 import { useState } from "react";
-import {
-  View,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Pressable,
-} from "react-native";
+import { View, ActivityIndicator, Pressable } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Link, router } from "expo-router";
 import { Text } from "@/components/ui/text";
 import { PageHero } from "@/components/ui/typography";
@@ -111,14 +105,13 @@ export default function SignUpScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <KeyboardAwareScrollView
       className="flex-1 bg-background"
+      contentContainerClassName="grow px-6 py-8 pb-24"
+      keyboardShouldPersistTaps="handled"
+      enableOnAndroid
+      extraScrollHeight={100}
     >
-      <ScrollView
-        contentContainerClassName="flex-1 justify-center px-6 py-8"
-        keyboardShouldPersistTaps="handled"
-      >
         <View className="w-full max-w-md mx-auto">
           {/* Header */}
           <View className="mb-8">
@@ -312,7 +305,6 @@ export default function SignUpScreen() {
             </Link>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }

@@ -1,11 +1,6 @@
 import { useState, useEffect } from "react";
-import {
-  View,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  ScrollView,
-} from "react-native";
+import { View, ActivityIndicator, Platform } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { Text } from "@/components/ui/text";
@@ -14,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import * as toast from "@/lib/toast";
 import { Lock } from "lucide-react-native";
-import { SafeAreaWrapper } from "@/components/SafeAreaWrapper";
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
@@ -138,16 +132,14 @@ export default function ResetPasswordScreen() {
   );
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <KeyboardAwareScrollView
       style={{ flex: 1 }}
       className="bg-background"
+      contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }}
+      keyboardShouldPersistTaps="handled"
+      enableOnAndroid
+      extraScrollHeight={100}
     >
-      <SafeAreaWrapper>
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
-          keyboardShouldPersistTaps="handled"
-        >
           <View style={{ gap: 32 }}>
             <View style={{ gap: 8 }}>
               <Text className="text-3xl font-bold">New password</Text>
@@ -179,8 +171,6 @@ export default function ResetPasswordScreen() {
               )
             )}
           </View>
-        </ScrollView>
-      </SafeAreaWrapper>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }
