@@ -512,9 +512,8 @@ export async function confirmHandoff(itemId: string): Promise<void> {
  *
  * This bypasses the two-sided handoff flow entirely — no pending recipient
  * is required. It clears all borrow state, writes a history entry for the
- * outgoing borrower, decrements their borrow count, and cancels any
- * outstanding pending/approved requests so the item lands back on the shelf
- * cleanly.
+ * outgoing borrower, and cancels any outstanding pending/approved requests
+ * so the item lands back on the shelf cleanly.
  */
 export async function forceReturnItem(itemId: string): Promise<void> {
   const item = await getItemById(itemId);
@@ -550,11 +549,7 @@ export async function forceReturnItem(itemId: string): Promise<void> {
     notes: undefined,
   });
 
-  // 3. Decrement friend's borrow count (non-blocking — no-op if the borrower
-  //    isn't tracked in the local friends table)
-  await decrementFriendBorrowCount(previousBorrower).catch(() => {});
-
-  // 4. Cancel all pending/approved borrow requests so the item lands cleanly
+  // 3. Cancel all pending/approved borrow requests so the item lands cleanly
   await supabase
     .from("borrow_requests")
     .update({ status: "cancelled" })
