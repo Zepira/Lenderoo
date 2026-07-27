@@ -50,13 +50,10 @@ import {
   useDeleteItem,
   useInitiateReturn,
   useConfirmHandoff,
+  useForceReturn,
   useUpdateItem,
   useFriendsItems,
-  useItem,
-  useDeleteItem,
-  useInitiateReturn,
-  useConfirmHandoff,
-  useForceReturn,
+} from "hooks/useItems";
 import { useUserProfile, useFriends } from "hooks/useFriends";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import {
