@@ -5,3 +5,4 @@ export * from './storage';
 export * from './avatar';
 export * from './feedback';
 export * from './hardcover';
+export * from './image';
