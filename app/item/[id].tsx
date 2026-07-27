@@ -50,6 +50,7 @@ import {
   useDeleteItem,
   useInitiateReturn,
   useConfirmHandoff,
+  useForceReturn,
   useUpdateItem,
   useFriendsItems,
 } from "hooks/useItems";
@@ -147,6 +148,7 @@ export default function ItemDetailScreen() {
   const { initiateReturn, loading: returning } = useInitiateReturn();
   const { confirmHandoff, loading: confirming } = useConfirmHandoff();
   const { updateItem, loading: lending } = useUpdateItem();
+  const { forceReturn, loading: forcing } = useForceReturn();
   const { items: friendsItems } = useFriendsItems();
   const { friends } = useFriends();
 
@@ -524,6 +526,28 @@ export default function ItemDetailScreen() {
       toast.success(pendingIsReturn ? "Return confirmed" : "Pickup confirmed");
     } catch (e: any) {
       toast.error(e?.message || "Failed to confirm");
+    }
+  };
+
+  const handleForceReturn = async () => {
+    if (!item) return;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        "Force Return",
+        `Are you sure you want to force-return "${item.name}"? This will mark it as returned even though the borrower hasn't confirmed. The borrower's borrow history will still be recorded.`,
+        [
+          { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+          { text: "Force Return", style: "destructive", onPress: () => resolve(true) },
+        ],
+      );
+    });
+    if (!confirmed) return;
+    try {
+      await forceReturn(item.id);
+      toast.success("Item forcefully returned");
+      router.back();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to force return");
     }
   };
 
@@ -1522,9 +1546,10 @@ export default function ItemDetailScreen() {
                 </View>
               )
             ) : isOwner ? (
-              /* Viewer is the owner — owner management actions. The owner can
-                 never unilaterally mark an item returned; they can only
-                 confirm a return the borrower already initiated. */
+              /* Viewer is the owner — owner management actions. Normally the
+                 owner confirms a return the borrower already initiated, but
+                 they can also force-return an item when the borrower has
+                 returned it physically but can't confirm in the app. */
               <>
                 {action.kind === "confirmReturn" && (
                   <Button onPress={handleConfirmHandoff} disabled={confirming}>
@@ -1549,6 +1574,24 @@ export default function ItemDetailScreen() {
                       confirm pickup
                     </Caption>
                   </View>
+                )}
+
+                {/* Force Return — owner can close a borrow unilaterally when
+                    the borrower has returned the item physically but can't
+                    confirm in the app. Shown whenever the item is out with a
+                    borrower and the owner isn't already the pending recipient
+                    (that case is handled by Confirm Return above). */}
+                {!isAvailable && item.borrowedBy && !isPendingRecipient && (
+                  <Button
+                    variant="outline"
+                    onPress={handleForceReturn}
+                    disabled={forcing}
+                  >
+                    <RotateCcw size={18} color={theme.foreground} />
+                    <Text>
+                      {forcing ? "Force Returning…" : "Force Return"}
+                    </Text>
+                  </Button>
                 )}
 
                 {/* Lend to — only when available and not marked unavailable */}

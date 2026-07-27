@@ -309,7 +309,7 @@ export default function EditBookScreen() {
         className="flex-1"
         keyboardShouldPersistTaps="handled"
         enableOnAndroid
-        extraScrollHeight={100}
+        extraScrollHeight={24}
       >
         <View className="px-4 pt-6 pb-4 gap-4">
           {errors.general && (

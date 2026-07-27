@@ -9,6 +9,7 @@ import { supabase } from '../supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { decode } from 'base64-arraybuffer';
+import { stripImageMetadata } from './image';
 
 const BUCKET_NAME = 'item-images';
 const MAX_IMAGE_WIDTH = 1200; // Max width in pixels
@@ -147,56 +148,44 @@ async function uploadLocalImage(uri: string, userId: string): Promise<string> {
  * Download an image from URL and upload to Supabase Storage
  */
 async function downloadAndUploadImage(url: string, userId: string): Promise<string> {
-  try {
-    // Try CORS proxy for web, direct download for mobile
-    const imageData = await downloadImageData(url);
+  const isWeb = typeof document !== "undefined";
 
-    // Generate unique filename
-    const fileExt = imageData.extension;
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `${userId}/${fileName}`;
-
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(filePath, imageData.data, {
-        contentType: imageData.contentType,
-        upsert: false,
-      });
-
-    if (error) {
-      throw new Error(`Failed to upload image: ${error.message}`);
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(filePath);
-
-    return publicUrl;
-  } catch (error) {
-    throw error;
-  }
-}
-
-/**
- * Download image data from URL (handles both mobile and web)
- */
-async function downloadImageData(url: string): Promise<{
-  data: ArrayBuffer;
-  contentType: string;
-  extension: string;
-}> {
-  // Check if we're on web or mobile
-  const isWeb = typeof document !== 'undefined';
+  let sourceUri: string;
+  let tempFileToClean: string | null = null;
 
   if (isWeb) {
-    // Web: Use CORS proxy + fetch
-    return await downloadImageWeb(url);
+    // Web: fetch via CORS proxy → base64 data URI
+    // (data URIs are the documented format for expo-image-manipulator on web)
+    const imageData = await downloadImageWeb(url);
+    const blob = new Blob([imageData.data], { type: imageData.contentType });
+    sourceUri = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
   } else {
-    // Mobile: Use expo-file-system
-    return await downloadImageMobile(url);
+    // Mobile: download to a temporary file
+    const filename = `${Date.now()}-download.jpg`;
+    sourceUri = `${FileSystem.cacheDirectory}${filename}`;
+    const downloadResult = await FileSystem.downloadAsync(url, sourceUri);
+    if (downloadResult.status !== 200) {
+      throw new Error(`Download failed with status ${downloadResult.status}`);
+    }
+    tempFileToClean = sourceUri;
   }
+
+  // Strip EXIF metadata by re-encoding as JPEG (no resize)
+  const processedUri = await stripImageMetadata(sourceUri);
+
+  // Clean up the original downloaded file (mobile only)
+  if (tempFileToClean) {
+    FileSystem.deleteAsync(tempFileToClean, { idempotent: true }).catch(() => {});
+  }
+
+  // Generate unique filename and upload (stripImageMetadata always outputs JPEG)
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+  const filePath = `${userId}/${fileName}`;
+  return uploadImageBuffer(processedUri, BUCKET_NAME, filePath);
 }
 
 /**
@@ -252,45 +241,6 @@ async function downloadImageWeb(url: string): Promise<{
   throw lastError || new Error('Failed to download image');
 }
 
-/**
- * Download image on mobile using expo-file-system
- */
-async function downloadImageMobile(url: string): Promise<{
-  data: ArrayBuffer;
-  contentType: string;
-  extension: string;
-}> {
-  // Download to temporary location
-  const filename = `${Date.now()}-temp.jpg`;
-  const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-
-  const downloadResult = await FileSystem.downloadAsync(url, fileUri);
-
-  if (downloadResult.status !== 200) {
-    throw new Error(`Download failed with status ${downloadResult.status}`);
-  }
-
-  // Determine content type from headers or URL
-  const contentType = downloadResult.headers['content-type'] ||
-                       downloadResult.headers['Content-Type'] ||
-                       'image/jpeg';
-  const extension = contentType.split('/')[1]?.split(';')[0] ||
-                    url.split('.').pop()?.toLowerCase() ||
-                    'jpg';
-
-  // Read file as base64
-  const base64 = await FileSystem.readAsStringAsync(fileUri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-
-  // Convert to ArrayBuffer
-  const arrayBuffer = decode(base64);
-
-  // Clean up temp file
-  await FileSystem.deleteAsync(fileUri, { idempotent: true });
-
-  return { data: arrayBuffer, contentType, extension };
-}
 
 const FEEDBACK_SCREENSHOTS_BUCKET = 'feedback-screenshots';
 
