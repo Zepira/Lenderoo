@@ -7,12 +7,10 @@
 import { useState } from "react";
 import {
   View,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   Pressable,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Eye, EyeOff, LogIn } from "lucide-react-native";
 import { AuthIconBox } from "@/components/AuthIconBox";
 import { Link, router } from "expo-router";
@@ -73,14 +71,13 @@ export default function SignInScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <KeyboardAwareScrollView
       className="flex-1 bg-background"
+      contentContainerClassName="flex-1 justify-center px-6 py-8"
+      keyboardShouldPersistTaps="handled"
+      enableOnAndroid
+      extraScrollHeight={24}
     >
-      <ScrollView
-        contentContainerClassName="flex-1 justify-center px-6 py-8"
-        keyboardShouldPersistTaps="handled"
-      >
         <View className="w-full max-w-md mx-auto">
           {/* Header */}
           <View className="mb-8">
@@ -195,7 +192,6 @@ export default function SignInScreen() {
             </Link>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }
