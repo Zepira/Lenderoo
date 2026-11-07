@@ -57,6 +57,7 @@ import type {
 } from "@/lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
+import { subscribeLogged } from "@/lib/realtime";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import {
@@ -158,14 +159,16 @@ export default function FriendDetailScreen() {
   useEffect(() => {
     loadBorrowedItems();
     if (!id) return;
-    const ch = supabase
-      .channel(`friend-${id}-borrowed-items`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "items" },
-        loadBorrowedItems,
-      )
-      .subscribe();
+    const ch = subscribeLogged(
+      supabase
+        .channel(`friend-${id}-borrowed-items`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "items" },
+          loadBorrowedItems,
+        ),
+      `friend-${id}-borrowed-items`,
+    );
     return () => {
       supabase.removeChannel(ch);
     };
@@ -204,22 +207,26 @@ export default function FriendDetailScreen() {
   useEffect(() => {
     loadOwnedItems();
     if (!id) return;
-    const ich = supabase
-      .channel(`friend-${id}-owned-items`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "items" },
-        loadOwnedItems,
-      )
-      .subscribe();
-    const rch = supabase
-      .channel(`friend-${id}-borrow-requests`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "borrow_requests" },
-        loadOwnedItems,
-      )
-      .subscribe();
+    const ich = subscribeLogged(
+      supabase
+        .channel(`friend-${id}-owned-items`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "items" },
+          loadOwnedItems,
+        ),
+      `friend-${id}-owned-items`,
+    );
+    const rch = subscribeLogged(
+      supabase
+        .channel(`friend-${id}-borrow-requests`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "borrow_requests" },
+          loadOwnedItems,
+        ),
+      `friend-${id}-borrow-requests`,
+    );
     return () => {
       supabase.removeChannel(ich);
       supabase.removeChannel(rch);
@@ -251,14 +258,16 @@ export default function FriendDetailScreen() {
   useEffect(() => {
     loadHistory();
     if (!id) return;
-    const hch = supabase
-      .channel(`friend-${id}-history`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "borrow_history" },
-        loadHistory,
-      )
-      .subscribe();
+    const hch = subscribeLogged(
+      supabase
+        .channel(`friend-${id}-history`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "borrow_history" },
+          loadHistory,
+        ),
+      `friend-${id}-history`,
+    );
     return () => {
       supabase.removeChannel(hch);
     };

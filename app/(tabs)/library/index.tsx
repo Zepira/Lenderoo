@@ -15,6 +15,7 @@ import type { Item, ItemStatus, BorrowRequestWithDetails } from "lib/types";
 import { getIncomingBorrowRequests, approveBorrowRequest, denyBorrowRequest } from "@/lib/services/borrow-requests";
 import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
 import { supabase } from "@/lib/supabase";
+import { subscribeLogged } from "@/lib/realtime";
 import * as toast from "@/lib/toast";
 import { sortFavouritesFirst } from "@/lib/utils";
 import { ItemCard, calcCardLayout } from "@/components/ItemCard";
@@ -139,18 +140,20 @@ export default function ItemsScreen() {
     const setupSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      channel = supabase
-        .channel("borrow-requests-library")
-        .on("postgres_changes", {
-          event: "*",
-          schema: "public",
-          table: "borrow_requests",
-          filter: `owner_id=eq.${user.id}`,
-        }, () => {
-          loadIncomingRequests();
-          refresh();
-        })
-        .subscribe();
+      channel = subscribeLogged(
+        supabase
+          .channel("borrow-requests-library")
+          .on("postgres_changes", {
+            event: "*",
+            schema: "public",
+            table: "borrow_requests",
+            filter: `owner_id=eq.${user.id}`,
+          }, () => {
+            loadIncomingRequests();
+            refresh();
+          }),
+        "borrow-requests-library",
+      );
     };
     setupSubscription();
     return () => { if (channel) supabase.removeChannel(channel); };
