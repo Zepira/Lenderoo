@@ -249,6 +249,33 @@ async function buildMessages(
       }
     }
 
+    // Claim back — the owner closed the loan themselves (Force Return /
+    // "Claim back") rather than confirming a return the borrower started.
+    // A normal confirmed return has the owner as the old pending recipient,
+    // so that case is excluded and the borrower isn't double-notified.
+    const oldBorrowerId = old_record?.borrowed_by as string | null | undefined;
+    const ownerId = record.user_id as string;
+    if (
+      type === 'UPDATE' &&
+      oldBorrowerId &&
+      record.borrowed_by == null &&
+      oldRecipientId !== ownerId
+    ) {
+      const token = await getPushToken(supabase, oldBorrowerId);
+      if (!token) return [];
+      const [itemName, ownerName] = await Promise.all([
+        getItemName(supabase, itemId),
+        getUserName(supabase, ownerId),
+      ]);
+      return [{
+        to: token,
+        title: 'Item returned',
+        body: `${ownerName} marked "${itemName}" as returned.`,
+        data: { type: 'item_claimed_back', itemId },
+        sound: 'default',
+      }];
+    }
+
     if (type === 'UPDATE' && wasUnavailable && isNowAvailable) {
       // Owner flipped the item back to available → notify everyone waiting
       const { data: subs } = await supabase

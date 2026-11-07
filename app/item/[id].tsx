@@ -534,23 +534,26 @@ export default function ItemDetailScreen() {
 
   const handleForceReturn = async () => {
     if (!item) return;
-    const confirmed = await new Promise<boolean>((resolve) => {
-      Alert.alert(
-        "Force Return",
-        `Are you sure you want to force-return "${item.name}"? This will mark it as returned even though the borrower hasn't confirmed. The borrower's borrow history will still be recorded.`,
-        [
-          { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-          { text: "Force Return", style: "destructive", onPress: () => resolve(true) },
-        ],
-      );
-    });
+    const title = "Claim back";
+    const message = `Got "${item.name}" back already? This marks it as returned without waiting for the borrower to confirm. They'll get a notification, and it stays in their borrow history.`;
+    // Alert.alert ignores custom buttons on web, so the promise would never
+    // resolve there — fall back to window.confirm.
+    const confirmed =
+      Platform.OS === "web"
+        ? window.confirm(`${title}\n\n${message}`)
+        : await new Promise<boolean>((resolve) => {
+            Alert.alert(title, message, [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: "Claim back", onPress: () => resolve(true) },
+            ]);
+          });
     if (!confirmed) return;
     try {
       await forceReturn(item.id);
-      toast.success("Item forcefully returned");
+      toast.success("Item claimed back");
       router.back();
     } catch (e: any) {
-      toast.error(e?.message || "Failed to force return");
+      toast.error(e?.message || "Couldn't claim back item");
     }
   };
 
@@ -1551,8 +1554,8 @@ export default function ItemDetailScreen() {
             ) : isOwner ? (
               /* Viewer is the owner — owner management actions. Normally the
                  owner confirms a return the borrower already initiated, but
-                 they can also force-return an item when the borrower has
-                 returned it physically but can't confirm in the app. */
+                 they can also claim it back when the borrower has returned
+                 it physically but can't confirm in the app. */
               <>
                 {action.kind === "confirmReturn" && (
                   <Button onPress={handleConfirmHandoff} disabled={confirming}>
@@ -1579,11 +1582,11 @@ export default function ItemDetailScreen() {
                   </View>
                 )}
 
-                {/* Force Return — owner can close a borrow unilaterally when
-                    the borrower has returned the item physically but can't
-                    confirm in the app. Shown whenever the item is out with a
-                    borrower and the owner isn't already the pending recipient
-                    (that case is handled by Confirm Return above). */}
+                {/* Claim back (forceReturnItem) — owner can close a borrow
+                    unilaterally when they've physically got the item back.
+                    Shown whenever the item is out with a borrower and the
+                    owner isn't already the pending recipient (that case is
+                    handled by Confirm Return above). */}
                 {!isAvailable && item.borrowedBy && !isPendingRecipient && (
                   <Button
                     variant="outline"
@@ -1592,7 +1595,7 @@ export default function ItemDetailScreen() {
                   >
                     <RotateCcw size={18} color={theme.foreground} />
                     <Text>
-                      {forcing ? "Force Returning…" : "Force Return"}
+                      {forcing ? "Claiming back…" : "Claim back"}
                     </Text>
                   </Button>
                 )}

@@ -179,8 +179,8 @@ To change the cron schedule itself (e.g. day/time it runs): Supabase Dashboard â
 
 ```sql
 select cron.alter_job(
-  (select jobid from cron.job where jobname = 'return-reminders-weekly'),
-  schedule := '0 9 * * 1'  -- cron expression, e.g. Mon 9am UTC
+  (select jobid from cron.job where jobname = 'reminder-digest-daily'),
+  schedule := '0 9 * * *'  -- cron expression, e.g. daily 9am UTC
 );
 ```
 
@@ -213,7 +213,7 @@ Invoke-RestMethod -Uri "https://ymboxvasluhlwgofrpya.supabase.co/functions/v1/se
 Both edge functions must be deployed with `--no-verify-jwt` â€” they use their own `CRON_SECRET` check instead of Supabase's JWT gateway auth:
 
 ```bash
-npx supabase functions deploy return-reminders --project-ref ymboxvasluhlwgofrpya --no-verify-jwt
+npx supabase functions deploy reminder-digest --project-ref ymboxvasluhlwgofrpya --no-verify-jwt
 npx supabase functions deploy send-notification --project-ref ymboxvasluhlwgofrpya --no-verify-jwt
 ```
 
