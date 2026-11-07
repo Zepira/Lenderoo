@@ -250,10 +250,10 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
             <Button
               onPress={handleSubmit}
               disabled={submitting || !comment.trim()}
-              className="flex-1 bg-primary"
+              className="flex-1"
             >
               {submitting && <ActivityIndicator size="small" color="#fff" />}
-              <Text className="text-black">
+              <Text>
                 {submitting ? "Sending..." : "Send Feedback"}
               </Text>
             </Button>

@@ -73,7 +73,7 @@ export function ScreenHeader({ title, subtitle, onBack, onDismiss, icon, right }
             <View style={{ flex: 1 }}>
               <PageTitle numberOfLines={1}>{title}</PageTitle>
               {subtitle && (
-                <Caption style={{ color: theme.primary, marginTop: 2 }}>{subtitle}</Caption>
+                <Caption style={{ color: theme.primaryInk, marginTop: 2 }}>{subtitle}</Caption>
               )}
             </View>
             {right ?? (onDismiss && (

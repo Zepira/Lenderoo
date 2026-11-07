@@ -465,7 +465,7 @@ export default function AddBookScreen() {
                 <Caption
                   style={{
                     textDecorationLine: "underline",
-                    color: theme.primary,
+                    color: theme.primaryInk,
                   }}
                 >
                   Change cover

@@ -518,7 +518,7 @@ export default function FriendDetailScreen() {
                       }}
                     >
                       <BodyStrong
-                        className="text-primary"
+                        className="text-primary-ink"
                         style={{ fontSize: 32, lineHeight: 42 }}
                       >
                         {getInitials(friend.name)}
@@ -551,7 +551,7 @@ export default function FriendDetailScreen() {
                     </View>
                     <View style={{ width: 1, backgroundColor: theme.border }} />
                     <View style={{ alignItems: "center" }}>
-                      <StatDisplay className="text-primary">
+                      <StatDisplay className="text-primary-ink">
                         {availableCount}
                       </StatDisplay>
                       <TinyLabel>Available</TinyLabel>
@@ -595,7 +595,7 @@ export default function FriendDetailScreen() {
                     borderRadius: 14,
                     alignItems: "center",
                     backgroundColor: active
-                      ? THEME.light.primary
+                      ? THEME.light.primaryStrong
                       : "transparent",
                   }}
                 >

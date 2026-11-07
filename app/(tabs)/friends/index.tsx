@@ -286,7 +286,7 @@ export default function FriendsScreen() {
                           }}
                         >
                           <BodyStrong
-                            className="text-primary"
+                            className="text-primary-ink"
                             style={{ fontSize: 18, lineHeight: 24 }}
                           >
                             {friend.name[0]?.toUpperCase()}

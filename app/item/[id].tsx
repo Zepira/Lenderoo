@@ -480,7 +480,7 @@ export default function ItemDetailScreen() {
   const statusColor = isMarkedUnavailable
     ? theme.mutedForeground
     : isAvailable
-      ? theme.primary
+      ? theme.primaryStrong
       : isOverdue
         ? theme.destructive
         : theme.secondary;
@@ -849,7 +849,7 @@ export default function ItemDetailScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Caption style={{ color: theme.primary }}>
+                        <Caption style={{ color: theme.primaryInk }}>
                           {getInitials(ownerName)}
                         </Caption>
                       </View>
@@ -957,7 +957,7 @@ export default function ItemDetailScreen() {
                           borderRadius: 8,
                         }}
                       >
-                        <Caption style={{ color: theme.primary }}>
+                        <Caption style={{ color: theme.primaryInk }}>
                           {g.trim()}
                         </Caption>
                       </View>
@@ -1242,7 +1242,7 @@ export default function ItemDetailScreen() {
                               justifyContent: "center",
                             }}
                           >
-                            <BodyStrong style={{ color: theme.primary }}>
+                            <BodyStrong style={{ color: theme.primaryInk }}>
                               {getInitials(req.requesterName)}
                             </BodyStrong>
                           </View>
@@ -1330,7 +1330,7 @@ export default function ItemDetailScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Caption style={{ color: theme.primary }}>
+                        <Caption style={{ color: theme.primaryInk }}>
                           {getInitials(displayName)}
                         </Caption>
                       </View>
@@ -1358,7 +1358,7 @@ export default function ItemDetailScreen() {
                     }}
                   >
                     <TinyLabel
-                      style={{ color: active ? "#fff" : theme.primary }}
+                      style={{ color: active ? "#fff" : theme.primaryInk }}
                       className="normal-case tracking-normal"
                     >
                       {active ? "Active" : "Returned"}
@@ -1481,7 +1481,7 @@ export default function ItemDetailScreen() {
                               justifyContent: "center",
                             }}
                           >
-                            <Caption style={{ color: theme.primary }}>
+                            <Caption style={{ color: theme.primaryInk }}>
                               {owner ? getInitials(owner.name) : "?"}
                             </Caption>
                           </View>
@@ -1492,7 +1492,7 @@ export default function ItemDetailScreen() {
                           {owner?.name ?? "Unknown"}
                         </BodyStrong>
                         <Caption
-                          style={{ color: otherAvailable ? theme.primary : theme.secondary }}
+                          style={{ color: otherAvailable ? theme.primaryInk : theme.secondary }}
                         >
                           {otherAvailable ? "Available" : "Currently lent out"}
                         </Caption>
@@ -1839,7 +1839,7 @@ export default function ItemDetailScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Caption style={{ color: theme.primary }}>
+                        <Caption style={{ color: theme.primaryInk }}>
                           {getInitials(f.name)}
                         </Caption>
                       </View>

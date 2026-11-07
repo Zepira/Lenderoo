@@ -43,7 +43,7 @@ export function SegmentedTabs({ tabs, activeKey, onChange }: SegmentedTabsProps)
               paddingVertical: 10,
               borderRadius: 14,
               alignItems: "center",
-              backgroundColor: active ? THEME.light.primary : "transparent",
+              backgroundColor: active ? THEME.light.primaryStrong : "transparent",
             }}
           >
             <TinyLabel

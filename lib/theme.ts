@@ -2,10 +2,20 @@ import { DarkTheme, DefaultTheme, type Theme } from "@react-navigation/native";
 
 // Lenderoo design tokens as hex for React Native inline styles.
 // The matching CSS custom properties are defined in global.css.
+//
+// Teal roles (WCAG AA):
+// - primary (#00BFA6, brand): icons, highlights, tints, borders. Never put
+//   white text on it (2.3:1) and never use it for text on a light background.
+// - primaryStrong (#0F766E, teal-700): filled buttons and any fill behind
+//   white text (5.5:1). primaryStrongPressed (#115E59, teal-800) when pressed.
+// - primaryInk: teal text. teal-700 on light (5.4:1), brand teal on dark (8.2:1).
 export const THEME = {
   light: {
     primary: "#00BFA6",
     primaryForeground: "#FFFFFF",
+    primaryStrong: "#0F766E",
+    primaryStrongPressed: "#115E59",
+    primaryInk: "#0F766E",
     secondary: "#FFC857",
     secondaryForeground: "#111827",
     destructive: "#FF6B6B",
@@ -25,6 +35,9 @@ export const THEME = {
   dark: {
     primary: "#00BFA6",
     primaryForeground: "#FFFFFF",
+    primaryStrong: "#0F766E",
+    primaryStrongPressed: "#115E59",
+    primaryInk: "#00BFA6",
     secondary: "#FFC857",
     secondaryForeground: "#111827",
     destructive: "#FF6B6B",

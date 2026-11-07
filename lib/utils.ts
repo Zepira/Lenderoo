@@ -641,5 +641,5 @@ export function getItemStatusDisplay(
   if (isMarkedUnavailable) {
     return { label: "Unavailable", color: THEME.light.mutedForeground };
   }
-  return { label: "Available", color: THEME.light.primary };
+  return { label: "Available", color: THEME.light.primaryStrong };
 }

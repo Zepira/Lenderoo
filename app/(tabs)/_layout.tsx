@@ -15,6 +15,7 @@ import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 import { useThemeContext } from "../../contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { THEME } from "@/lib/theme";
 import { BorrowRequestBanner } from "@/components/BorrowRequestBannerNative";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { useRealtimeSync, useIncomingRequestCount, usePendingHandoffs } from "@/hooks";
@@ -165,12 +166,12 @@ function FloatingTabBar({
             width: BTN_SIZE,
             height: BTN_SIZE,
             borderRadius: BTN_SIZE / 2,
-            backgroundColor: "#00BFA6",
+            backgroundColor: THEME.light.primaryStrong,
             borderWidth: 4,
             borderColor: "white",
             alignItems: "center",
             justifyContent: "center",
-            shadowColor: "#00BFA6",
+            shadowColor: THEME.light.primaryStrong,
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.5,
             shadowRadius: 8,

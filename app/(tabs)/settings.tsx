@@ -16,7 +16,6 @@ import {
   Lock,
   Users,
   Bell,
-  CreditCard,
   Heart,
   LogOut,
   Camera,
@@ -256,7 +255,7 @@ export default function SettingsScreen() {
                           }}
                         >
                           <BodyStrong
-                            className="text-primary"
+                            className="text-primary-ink"
                             style={{ fontSize: 32, lineHeight: 42 }}
                           >
                             {(appUser?.name?.[0] ?? "?").toUpperCase()}
@@ -276,13 +275,13 @@ export default function SettingsScreen() {
                       width: 32,
                       height: 32,
                       borderRadius: 10,
-                      backgroundColor: THEME.light.primary,
+                      backgroundColor: THEME.light.primaryStrong,
                       alignItems: "center",
                       justifyContent: "center",
                       borderWidth: 2,
                       borderColor: theme.card,
                       elevation: 4,
-                      shadowColor: THEME.light.primary,
+                      shadowColor: THEME.light.primaryStrong,
                       shadowOffset: { width: 0, height: 2 },
                       shadowOpacity: 0.4,
                       shadowRadius: 4,
@@ -376,12 +375,6 @@ export default function SettingsScreen() {
               label="Notifications"
               badge={{ text: "Coming Soon", color: THEME.light.secondary }}
               onPress={() => {}}
-            />
-            <SettingsItem
-              icon={<CreditCard size={20} color={THEME.light.secondary} />}
-              label="Subscription"
-              badge={{ text: "Coming Soon", color: THEME.light.secondary }}
-              onPress={() => {}}
               isLast
             />
           </View>
@@ -421,7 +414,7 @@ export default function SettingsScreen() {
                       paddingVertical: 10,
                       borderRadius: 14,
                       alignItems: "center",
-                      backgroundColor: active ? THEME.light.primary : theme.muted,
+                      backgroundColor: active ? THEME.light.primaryStrong : theme.muted,
                       gap: 4,
                     }}
                   >
@@ -452,7 +445,7 @@ export default function SettingsScreen() {
             <SettingsItem
               icon={<Heart size={20} color={THEME.light.primary} />}
               label="Help Center"
-              badge={{ text: "Coming Soon", color: THEME.light.primary }}
+              badge={{ text: "Coming Soon", color: theme.primaryInk }}
               onPress={() => {}}
             />
             <SettingsItem

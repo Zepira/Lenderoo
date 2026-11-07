@@ -18,7 +18,7 @@ export default function NotFoundScreen() {
 
           {/* 404 */}
           <Text
-            className="font-display-bold text-primary mb-2"
+            className="font-display-bold text-primary-ink mb-2"
             style={{ fontSize: 80, lineHeight: 88 }}
           >
             Oops!

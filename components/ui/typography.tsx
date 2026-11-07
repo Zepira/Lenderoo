@@ -57,7 +57,7 @@ export function SectionHeading({ className, style, ...props }: TextProps) {
 export function StatDisplay({ className, style, ...props }: TextProps) {
   return (
     <Text
-      className={cn("font-display-bold text-primary", className)}
+      className={cn("font-display-bold text-primary-ink", className)}
       style={[{ fontSize: 24, lineHeight: 32 }, style] as StyleProp<TextStyle>}
       {...props}
     />
