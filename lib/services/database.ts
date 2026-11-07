@@ -505,6 +505,58 @@ export async function confirmHandoff(itemId: string): Promise<void> {
     .neq("requester_id", recipientId);
 }
 
+/**
+ * Force-return a borrowed item unilaterally. The owner calls this when the
+ * borrower has physically returned the item but hasn't initiated the return
+ * in the app (e.g. they no longer have it installed).
+ *
+ * This bypasses the two-sided handoff flow entirely — no pending recipient
+ * is required. It clears all borrow state, writes a history entry for the
+ * outgoing borrower, and cancels any outstanding pending/approved requests
+ * so the item lands back on the shelf cleanly.
+ */
+export async function forceReturnItem(itemId: string): Promise<void> {
+  const item = await getItemById(itemId);
+  if (!item) throw new Error("Item not found");
+  if (!item.borrowedBy) throw new Error("Item is not currently borrowed");
+
+  const previousBorrower = item.borrowedBy;
+
+  // 1. Clear all borrow-related fields on the item (mirrors confirmHandoff's
+  //    return-to-owner path but without requiring a pending_recipient_id)
+  const { error } = await supabase
+    .from("items")
+    .update({
+      borrowed_by: null,
+      borrowed_date: null,
+      due_date: null,
+      due_soon_reminded_at: null,
+      returned_date: null,
+      pending_recipient_id: null,
+      pending_since: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", itemId);
+  if (error) throw error;
+
+  // 2. Write borrow history entry for the outgoing borrower
+  await addHistoryEntry({
+    itemId,
+    friendId: previousBorrower,
+    borrowedDate: item.borrowedDate ?? new Date(),
+    returnedDate: new Date(),
+    dueDate: item.dueDate,
+    notes: undefined,
+  });
+
+  // 3. Cancel all pending/approved borrow requests so the item lands cleanly
+  await supabase
+    .from("borrow_requests")
+    .update({ status: "cancelled" })
+    .eq("item_id", itemId)
+    .in("status", ["pending", "approved"]);
+}
+
 export async function queryItems(filters?: ItemFilters): Promise<Item[]> {
   const userId = await getCurrentUserId();
 

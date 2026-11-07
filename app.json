@@ -24,6 +24,7 @@
         "backgroundColor": "#00BFA6"
       },
       "package": "com.zepira.lenderoo",
+      "softwareKeyboardLayoutMode": "pan",
       "intentFilters": [
         {
           "action": "VIEW",
