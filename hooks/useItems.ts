@@ -165,6 +165,23 @@ export function useConfirmHandoff() {
   }
 }
 
+export function useForceReturn() {
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: (id: string) => db.forceReturnItem(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.borrowRequests.incoming })
+      queryClient.invalidateQueries({ queryKey: queryKeys.borrowRequests.count })
+    }
+  })
+  return {
+    forceReturn: mutation.mutateAsync,
+    loading: mutation.isPending,
+    error: mutation.error,
+  }
+}
+
 export function useActiveItems() {
   const result = useQuery({
     queryKey: queryKeys.items.active,
