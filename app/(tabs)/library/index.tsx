@@ -15,7 +15,7 @@ import type { Item, ItemStatus, BorrowRequestWithDetails } from "lib/types";
 import { getIncomingBorrowRequests, approveBorrowRequest, denyBorrowRequest } from "@/lib/services/borrow-requests";
 import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
 import { supabase } from "@/lib/supabase";
-import { subscribeLogged } from "@/lib/realtime";
+import { screenChannel, subscribeLogged } from "@/lib/realtime";
 import * as toast from "@/lib/toast";
 import { sortFavouritesFirst } from "@/lib/utils";
 import { ItemCard, calcCardLayout } from "@/components/ItemCard";
@@ -137,12 +137,12 @@ export default function ItemsScreen() {
 
   useEffect(() => {
     let channel: any;
+    let cancelled = false;
     const setupSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
       channel = subscribeLogged(
-        supabase
-          .channel("borrow-requests-library")
+        screenChannel("borrow-requests-library")
           .on("postgres_changes", {
             event: "*",
             schema: "public",
@@ -156,7 +156,10 @@ export default function ItemsScreen() {
       );
     };
     setupSubscription();
-    return () => { if (channel) supabase.removeChannel(channel); };
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleApproveBorrowRequest = async (requestId: string) => {
@@ -212,7 +215,7 @@ export default function ItemsScreen() {
                 opacity: pressed ? 0.6 : 1,
               })}
             >
-              <Plus size={22} color={THEME.light.primary} />
+              <Plus size={22} color={theme.primaryInk} />
             </Pressable>
           }
         />
@@ -241,7 +244,7 @@ export default function ItemsScreen() {
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Plus size={22} color={THEME.light.primary} />
+            <Plus size={22} color={theme.primaryInk} />
           </Pressable>
         }
       />

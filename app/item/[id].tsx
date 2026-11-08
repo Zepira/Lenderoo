@@ -89,7 +89,7 @@ import type {
 } from "lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
-import { subscribeLogged } from "@/lib/realtime";
+import { screenChannel, subscribeLogged } from "@/lib/realtime";
 import { resolveAvatarSource } from "@/lib/services/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -271,8 +271,7 @@ export default function ItemDetailScreen() {
   useEffect(() => {
     if (!item?.id || isOwner) return;
     const channel = subscribeLogged(
-      supabase
-        .channel(`item-${item.id}-requests`)
+      screenChannel(`item-${item.id}-requests`)
         .on(
           "postgres_changes",
           {
@@ -755,7 +754,7 @@ export default function ItemDetailScreen() {
                 style={{
                   paddingHorizontal: 10,
                   paddingVertical: 4,
-                  backgroundColor: cfg.color + "EE",
+                  backgroundColor: cfg.ink.light,
                   borderRadius: 8,
                 }}
               >
@@ -1115,7 +1114,7 @@ export default function ItemDetailScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <BodyStrong style={{ color: theme.secondary }}>
+                        <BodyStrong style={{ color: theme.secondaryInk }}>
                           {getInitials(appUser?.name)}
                         </BodyStrong>
                       </View>
@@ -1161,7 +1160,7 @@ export default function ItemDetailScreen() {
                               justifyContent: "center",
                             }}
                           >
-                            <BodyStrong style={{ color: theme.secondary }}>
+                            <BodyStrong style={{ color: theme.secondaryInk }}>
                               {getInitials(borrowerProfile.name)}
                             </BodyStrong>
                           </View>

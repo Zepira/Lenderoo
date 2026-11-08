@@ -27,6 +27,7 @@ module.exports = {
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
+          ink: "hsl(var(--secondary-ink))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",

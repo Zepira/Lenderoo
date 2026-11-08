@@ -9,6 +9,9 @@ import { DarkTheme, DefaultTheme, type Theme } from "@react-navigation/native";
 // - primaryStrong (#0F766E, teal-700): filled buttons and any fill behind
 //   white text (5.5:1). primaryStrongPressed (#115E59, teal-800) when pressed.
 // - primaryInk: teal text. teal-700 on light (5.4:1), brand teal on dark (8.2:1).
+// - secondaryInk: yellow-family text. amber-700 #B45309 on light (4.9:1; the
+//   brand yellow is 1.5:1 on white), brand yellow on dark (11.5:1). Also the
+//   fill for white text in the yellow family (5.0:1).
 export const THEME = {
   light: {
     primary: "#00BFA6",
@@ -18,6 +21,7 @@ export const THEME = {
     primaryInk: "#0F766E",
     secondary: "#FFC857",
     secondaryForeground: "#111827",
+    secondaryInk: "#B45309",
     destructive: "#FF6B6B",
     destructiveForeground: "#FFFFFF",
     background: "#FDFDFD",
@@ -40,6 +44,7 @@ export const THEME = {
     primaryInk: "#00BFA6",
     secondary: "#FFC857",
     secondaryForeground: "#111827",
+    secondaryInk: "#FFC857",
     destructive: "#FF6B6B",
     destructiveForeground: "#FFFFFF",
     background: "#0A0F1E",

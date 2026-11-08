@@ -19,6 +19,8 @@
     /* Secondary: #FFC857 (yellow) */
     --secondary: 40 100% 67%;
     --secondary-foreground: 222 47% 11%;
+    /* Secondary ink: amber-700 #B45309 for yellow-family text on light (4.9:1) */
+    --secondary-ink: 26 90% 37%;
 
     /* Destructive / Accent: #FF6B6B (coral) */
     --destructive: 0 100% 71%;
@@ -57,7 +59,9 @@
     --radius: 1rem;
   }
 
-  .dark {
+  /* .dark:root (not .dark) so NativeWind reads these as its dark-scheme root
+     variables, switched by colorScheme.set() in app/_layout.tsx. */
+  .dark:root {
     --primary: 173 100% 37%;
     --primary-foreground: 0 0% 100%;
     --primary-strong: 175 77% 26%;
@@ -67,6 +71,7 @@
 
     --secondary: 40 100% 67%;
     --secondary-foreground: 222 47% 11%;
+    --secondary-ink: 40 100% 67%;
 
     --destructive: 0 100% 71%;
     --destructive-foreground: 0 0% 100%;

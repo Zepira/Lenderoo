@@ -371,16 +371,16 @@ export default function SettingsScreen() {
             }}
           >
             <SettingsItem
-              icon={<Bell size={20} color={THEME.light.secondary} />}
+              icon={<Bell size={20} color={theme.secondaryInk} />}
               label="Notifications"
-              badge={{ text: "Coming Soon", color: THEME.light.secondary }}
+              badge={{ text: "Coming Soon", color: theme.secondaryInk }}
               onPress={() => {}}
               isLast
             />
           </View>
 
           {/* Appearance — always-visible theme picker */}
-          {/* <View
+          <View
             style={{
               backgroundColor: theme.card,
               borderRadius: 24,
@@ -393,10 +393,10 @@ export default function SettingsScreen() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <View className="w-10 h-10 bg-muted rounded-xl items-center justify-center">
                 {themeMode === "dark"
-                  ? <Moon size={20} color={THEME.light.secondary} />
+                  ? <Moon size={20} color={theme.secondaryInk} />
                   : themeMode === "light"
-                  ? <Sun size={20} color={THEME.light.secondary} />
-                  : <Monitor size={20} color={THEME.light.secondary} />}
+                  ? <Sun size={20} color={theme.secondaryInk} />
+                  : <Monitor size={20} color={theme.secondaryInk} />}
               </View>
               <Text className="font-sans-medium text-foreground" style={{ fontSize: 15 }}>
                 Appearance
@@ -429,7 +429,7 @@ export default function SettingsScreen() {
                 );
               })}
             </View>
-          </View> */}
+          </View>
 
           {/* Support */}
           <SectionHeader title="Support" />

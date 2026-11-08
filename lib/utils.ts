@@ -621,7 +621,7 @@ export function getItemStatusDisplay(
     return { label: "Return Pending", color: THEME.light.mutedForeground };
   }
   if (isLentOut && isBorrowedByMe) {
-    return { label: "Borrowed by you", color: THEME.light.secondary };
+    return { label: "Borrowed by you", color: THEME.light.secondaryInk };
   }
   if (itemStatus === "requested") {
     return { label: "Pending Pickup", color: THEME.light.mutedForeground };
@@ -633,7 +633,7 @@ export function getItemStatusDisplay(
     return { label: "Borrowing Next", color: THEME.light.mutedForeground };
   }
   if (request?.status === "pending") {
-    return { label: "Requested", color: THEME.light.secondary };
+    return { label: "Requested", color: THEME.light.secondaryInk };
   }
   if (isLentOut) {
     return { label: "Borrowed", color: THEME.light.mutedForeground };

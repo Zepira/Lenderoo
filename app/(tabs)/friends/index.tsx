@@ -36,7 +36,7 @@ import { THEME } from "@/lib/theme";
 import { resolveAvatarSource } from "@/lib/services/avatar";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
-import { subscribeLogged } from "@/lib/realtime";
+import { screenChannel, subscribeLogged } from "@/lib/realtime";
 
 export default function FriendsScreen() {
   const { activeTheme } = useThemeContext();
@@ -70,16 +70,16 @@ export default function FriendsScreen() {
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
 
     async function setup() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
 
       channel = subscribeLogged(
-        supabase
-          .channel("friend-connections-changes")
+        screenChannel("friend-connections-changes")
           .on(
             "postgres_changes",
             {
@@ -112,6 +112,7 @@ export default function FriendsScreen() {
 
     setup();
     return () => {
+      cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
   }, []);

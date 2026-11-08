@@ -1,4 +1,5 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
+import { supabase } from './supabase'
 
 /**
  * Subscribe to a channel with status logging. A misconfigured channel
@@ -22,4 +23,19 @@ export function subscribeLogged(channel: RealtimeChannel, label: string): Realti
       console.error(`[realtime] "${label}" subscription failed:`, status, err);
     }
   })
+}
+
+/**
+ * Create a channel for one screen instance. supabase.channel(name) hands
+ * back the existing channel when one with that topic is already open, so a
+ * screen mounted twice (pushed again on the stack, or remounted before the
+ * old instance's cleanup ran) got the first instance's already-subscribed
+ * channel and `.on()` threw "cannot add postgres_changes callbacks ... after
+ * subscribe()". A per-call suffix gives every mount its own channel; each
+ * screen still removes its own channel on unmount.
+ */
+let channelSeq = 0
+export function screenChannel(name: string): RealtimeChannel {
+  channelSeq += 1
+  return supabase.channel(`${name}:${channelSeq}`)
 }

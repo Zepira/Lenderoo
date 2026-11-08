@@ -57,7 +57,7 @@ import type {
 } from "@/lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
-import { subscribeLogged } from "@/lib/realtime";
+import { screenChannel, subscribeLogged } from "@/lib/realtime";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import {
@@ -160,8 +160,7 @@ export default function FriendDetailScreen() {
     loadBorrowedItems();
     if (!id) return;
     const ch = subscribeLogged(
-      supabase
-        .channel(`friend-${id}-borrowed-items`)
+      screenChannel(`friend-${id}-borrowed-items`)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "items" },
@@ -208,8 +207,7 @@ export default function FriendDetailScreen() {
     loadOwnedItems();
     if (!id) return;
     const ich = subscribeLogged(
-      supabase
-        .channel(`friend-${id}-owned-items`)
+      screenChannel(`friend-${id}-owned-items`)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "items" },
@@ -218,8 +216,7 @@ export default function FriendDetailScreen() {
       `friend-${id}-owned-items`,
     );
     const rch = subscribeLogged(
-      supabase
-        .channel(`friend-${id}-borrow-requests`)
+      screenChannel(`friend-${id}-borrow-requests`)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "borrow_requests" },
@@ -259,8 +256,7 @@ export default function FriendDetailScreen() {
     loadHistory();
     if (!id) return;
     const hch = subscribeLogged(
-      supabase
-        .channel(`friend-${id}-history`)
+      screenChannel(`friend-${id}-history`)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "borrow_history" },
@@ -544,7 +540,7 @@ export default function FriendDetailScreen() {
                     }}
                   >
                     <View style={{ alignItems: "center" }}>
-                      <StatDisplay className="text-secondary">
+                      <StatDisplay className="text-secondary-ink">
                         {ownedItems.length}
                       </StatDisplay>
                       <TinyLabel>Items</TinyLabel>
