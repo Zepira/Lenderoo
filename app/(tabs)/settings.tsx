@@ -7,6 +7,7 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import * as Application from "expo-application";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,14 +17,17 @@ import {
   Lock,
   Users,
   Bell,
-  Heart,
   LogOut,
   Camera,
   Sun,
   Moon,
   Monitor,
   Trash2,
+  Mail,
+  Shield,
+  FileText,
 } from "lucide-react-native";
+import * as WebBrowser from "expo-web-browser";
 import { Text } from "@/components/ui/text";
 import {
   PageTitle,
@@ -39,6 +43,7 @@ import {
   SectionHeader,
 } from "@/components/settings/SettingsItem";
 import * as toast from "@/lib/toast";
+import { APP_INFO } from "@/lib/constants";
 import { AvatarPickerModal } from "@/components/AvatarPickerModal";
 import { resolveAvatarSource, uploadAvatarImage } from "@/lib/services/avatar";
 import { deleteAccount } from "@/lib/services/account";
@@ -128,7 +133,7 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = async () => {
     const message =
-      "This permanently deletes your profile, photo, and library items with no one else currently holding them. Any item you're actively lending or borrowing is automatically marked returned. This cannot be undone.";
+      "This permanently deletes your name, email, phone number, profile photo, every item in your library with its photos, your friends, requests and favourites. Anything you're lending or borrowing is marked returned first. Friends keep their record of things they lent you, shown as \"Deleted User\". This cannot be undone.";
     const confirmed =
       Platform.OS === "web"
         ? window.confirm(`Delete Account?\n\n${message}`)
@@ -443,10 +448,25 @@ export default function SettingsScreen() {
             }}
           >
             <SettingsItem
-              icon={<Heart size={20} color={THEME.light.primary} />}
-              label="Help Center"
-              badge={{ text: "Coming Soon", color: theme.primaryInk }}
-              onPress={() => {}}
+              icon={<Mail size={20} color={THEME.light.primary} />}
+              label="Contact Support"
+              onPress={() =>
+                Linking.openURL(
+                  `mailto:${APP_INFO.SUPPORT_EMAIL}?subject=${encodeURIComponent("Lenderoo support")}`,
+                ).catch(() =>
+                  toast.error(`Email us at ${APP_INFO.SUPPORT_EMAIL}`),
+                )
+              }
+            />
+            <SettingsItem
+              icon={<Shield size={20} color={THEME.light.primary} />}
+              label="Privacy Policy"
+              onPress={() => WebBrowser.openBrowserAsync(APP_INFO.PRIVACY_POLICY_URL)}
+            />
+            <SettingsItem
+              icon={<FileText size={20} color={THEME.light.primary} />}
+              label="Terms of Use"
+              onPress={() => WebBrowser.openBrowserAsync(APP_INFO.TERMS_OF_SERVICE_URL)}
             />
             <SettingsItem
               icon={<Trash2 size={20} color={THEME.light.destructive} />}

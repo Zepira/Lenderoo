@@ -181,6 +181,11 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
             We'd love to hear your thoughts! Share any feedback, suggestions, or
             issues you've encountered.
           </Text>
+          <Text variant="small" className="text-muted-foreground mb-4">
+            Feedback is anonymous: it isn't linked to your account. We include
+            your device model and app version to help fix problems, and may show
+            your comment, without your name, on our public roadmap.
+          </Text>
 
           {/* Feedback Input */}
           <View className="mb-4">

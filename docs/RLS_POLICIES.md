@@ -12,14 +12,22 @@ Row Level Security (RLS) is enabled on all tables in the database. This ensures 
 
 **Purpose**: Store user profiles and authentication data
 
-**Policies**:
-- ✅ **View all profiles** - Any authenticated user can view any user profile
-  - *Why?* Needed for friend discovery, showing friend avatars, displaying names, etc.
-  - *Security*: Only basic profile info is exposed (name, email, avatar)
+**Policies** (migration 049):
+- ✅ **View own profile** - Users can read only their own row (email, phone, push token, friend code)
 - ✅ **Update own profile** - Users can only update their own profile
 - ✅ **Insert own profile** - Users can create their own profile on signup
 
-**Access Pattern**: Very permissive for reading, strict for writing
+**Other users** are read through the `public_profiles` view: `id`, `name`, `avatar_url` only. This is what the lenderoo.app privacy policy promises ("they see your name and profile photo"). Never add email, phone, push token or friend code to it.
+
+**Finding people** uses SECURITY DEFINER functions that return `id, name, avatar_url`:
+- `search_users(p_query)` - name contains the query, or email matches it exactly (partial emails never match)
+- `find_user_by_friend_code(p_code)` - exact friend code
+
+**Views** that show other people (`user_friends`, `borrow_history_with_users`, `borrow_requests_with_details`) are `security_invoker` and join `public_profiles`. Their old email/friend-code columns stay but are always NULL, so older app builds don't error. Any new view must be `security_invoker = true`: a plain view ignores RLS and is readable with the anon key.
+
+`scripts/check-privacy-rls.mjs` checks all of this against the local stack.
+
+**Access Pattern**: Own row only; others by name and photo
 
 ---
 
@@ -84,10 +92,11 @@ SELECT * FROM items WHERE user_id = '...' -- Works due to RLS policies
 **Purpose**: Track historical record of borrowed items
 
 **Policies**:
-- ✅ **View own history** - Users can view history for items they own
+- ✅ **View history** - The item's owner and the borrower (`friend_id`) only (migration 049)
 - ✅ **Insert history** - Users can create history records for their items
+- ✅ **Update history** - Owner or borrower (migration 022)
 
-**Access Pattern**: Item-owner based (you see history for your items)
+**Access Pattern**: You see loans you lent or borrowed, never other people's
 
 ---
 
@@ -142,7 +151,7 @@ SELECT * FROM items WHERE user_id = '...' -- Works due to RLS policies
 - ✅ Users can only cancel their own requests
 
 ### What's Permissive
-- ✅ All user profiles are visible (needed for friend discovery)
+- ✅ Every signed-in user can see every other user's name and photo (needed for friend discovery), nothing more
 - ✅ Friends can view each other's items (needed for borrowing)
 - ✅ Both sides of a friendship can manage the connection
 
@@ -244,6 +253,6 @@ SELECT * FROM items WHERE user_id = 'some-user-id';
 - **001_initial_schema.sql** - Created tables with RLS enabled (policies commented out)
 - **009_borrow_requests.sql** - Added borrow_requests table with basic policies
 - **010_items_rls_policies.sql** - Added items table policies (superseded by 011)
-- **011_comprehensive_rls_policies.sql** - Complete RLS policy overhaul for all tables ✅
-
-Always run migration 011 for a fresh database to ensure all policies are properly set up.
+- **011_comprehensive_rls_policies.sql** - Complete RLS policy overhaul for all tables
+- **021_borrow_history_open_read.sql** - Opened borrow_history to all signed-in users (reverted by 049)
+- **049_privacy_rls.sql** - Own-row-only users, public_profiles, search functions, owner/borrower-only history, security_invoker views ✅

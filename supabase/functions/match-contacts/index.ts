@@ -7,13 +7,16 @@ interface MatchContactsRequest {
 interface MatchedUser {
   id: string;
   name: string;
-  email: string;
   avatarUrl: string | null;
   /** Which of the caller's own hashes this account matched on — lets the
    *  client look up its local contact name for this person. */
   matchedHash: string;
 }
 
+// Returns only id, name and photo for each match — never the matched
+// person's email or phone (the caller already has those in their contacts,
+// and the privacy policy says other users only see name and photo).
+//
 // Looks up which of the caller's device contacts (sent as SHA-256 hashes of
 // normalized phone/email, never raw values) already have a Lenderoo account.
 // `verify_jwt` is on (default) — the platform validates the caller's JWT
@@ -121,7 +124,7 @@ Deno.serve(async (req) => {
 
   const { data: users, error: usersError } = await supabase
     .from('users')
-    .select('id, name, email, avatar_url')
+    .select('id, name, avatar_url')
     .in('id', remainingIds)
     .is('deleted_at', null);
 
@@ -132,7 +135,6 @@ Deno.serve(async (req) => {
   const matches: MatchedUser[] = (users ?? []).map((u) => ({
     id: u.id as string,
     name: u.name as string,
-    email: u.email as string,
     avatarUrl: (u.avatar_url as string | null) ?? null,
     matchedHash: matchedHashByUserId.get(u.id as string) ?? '',
   }));

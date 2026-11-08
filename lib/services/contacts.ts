@@ -19,7 +19,6 @@ const LOG_TAG = '[contacts]';
 export interface MatchedContactUser {
   id: string;
   name: string;
-  email: string;
   avatarUrl: string | null;
   /** This person's name as saved in the device's own contact list, if it
    *  could be resolved locally — helps disambiguate when the Lenderoo
@@ -169,7 +168,6 @@ export async function findContactsOnLenderoo(): Promise<ContactMatchResult> {
   const matches: MatchedContactUser[] = rawMatches.map((m) => ({
     id: m.id,
     name: m.name,
-    email: m.email,
     avatarUrl: m.avatarUrl,
     contactName: m.matchedHash
       ? hashToContactName.get(m.matchedHash)

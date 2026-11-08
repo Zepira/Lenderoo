@@ -48,10 +48,8 @@ function convertBorrowRequestWithDetailsFromDb(row: any): BorrowRequestWithDetai
     itemImages: row.item_images,
     itemBorrowedBy: row.item_borrowed_by,
     requesterName: row.requester_name,
-    requesterEmail: row.requester_email,
     requesterAvatarUrl: row.requester_avatar_url,
     ownerName: row.owner_name,
-    ownerEmail: row.owner_email,
   };
 }
 
