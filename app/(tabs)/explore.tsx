@@ -13,7 +13,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
 import { ItemCard, calcCardLayout } from "@/components/ItemCard";
 import { ErrorState } from "@/components/ErrorState";
-import { CATEGORY_CONFIG } from "@/lib/category-config";
+import { CATEGORY_CONFIG, categoryInk } from "@/lib/category-config";
 import { useFriendsItems } from "hooks/useItems";
 import { useOutgoingBorrowRequests } from "hooks/useBorrowRequests";
 import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
@@ -53,15 +53,18 @@ function CategoryCard({
   itemWidth,
   itemHeight,
   cardBg,
+  isDark,
   onPress,
 }: {
   category: ItemCategory;
   itemWidth: number;
   itemHeight: number;
   cardBg: string;
+  isDark: boolean;
   onPress: () => void;
 }) {
   const cfg = CATEGORY_CONFIG[category];
+  const ink = categoryInk(category, isDark);
   const Icon = cfg.Icon;
   return (
     <Pressable
@@ -81,9 +84,9 @@ function CategoryCard({
           borderColor: cfg.color + "40",
         }}
       >
-        <Icon size={40} color={cfg.color} />
+        <Icon size={40} color={ink} />
         <TinyLabel
-          style={{ color: cfg.color, fontSize: 13, fontWeight: "500" }}
+          style={{ color: ink, fontSize: 13, fontWeight: "500" }}
           className="normal-case tracking-normal"
         >
           {CATEGORY_LABELS[category]}
@@ -272,7 +275,7 @@ export default function ExploreScreen() {
   }
 
   const activeCategoryColor = selectedCategory
-    ? CATEGORY_CONFIG[selectedCategory].color
+    ? categoryInk(selectedCategory, isDark)
     : undefined;
 
   const categoryChip = selectedCategory && activeCategoryColor ? (
@@ -350,6 +353,7 @@ export default function ExploreScreen() {
                       itemWidth={itemWidth}
                       itemHeight={itemHeight}
                       cardBg={theme.card}
+                      isDark={isDark}
                       onPress={() => setSelectedCategory(category)}
                     />
                   ),

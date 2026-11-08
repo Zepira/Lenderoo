@@ -33,7 +33,7 @@ export function SettingsItem({
         {badge && (
           <View className={`px-2 py-1 rounded-lg bg-${badge.color}`}>
             <TinyLabel
-              className="text-secondary normal-case tracking-normal"
+              className="normal-case tracking-normal"
               style={{ color: badge.color }}
             >
               {badge.text}

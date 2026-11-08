@@ -49,7 +49,7 @@ export function DashboardSection({
         <SectionHeading>{title}</SectionHeading>
         {onViewAll && (
           <Button variant="link" size="sm" onPress={onViewAll} className="-mr-2">
-            <BodyStrong className="text-primary" style={{ fontSize: 14, lineHeight: 20 }}>View All</BodyStrong>
+            <BodyStrong className="text-primary-ink" style={{ fontSize: 14, lineHeight: 20 }}>View All</BodyStrong>
             <ChevronRight size={15} color={THEME.light.primary} />
           </Button>
         )}

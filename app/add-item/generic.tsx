@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/typography";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useCreateItem, useItems } from "hooks";
-import { CATEGORY_CONFIG } from "@/lib/category-config";
+import { CATEGORY_CONFIG, categoryInk } from "@/lib/category-config";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
 import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
@@ -251,7 +251,7 @@ export default function AddGenericItemScreen() {
                       contentFit="cover"
                       cachePolicy="memory"
                     />
-                    <Caption style={{ color: cfg.color }}>Tap to change photo</Caption>
+                    <Caption style={{ color: categoryInk(category, isDark) }}>Tap to change photo</Caption>
                   </View>
                 ) : (
                   <>

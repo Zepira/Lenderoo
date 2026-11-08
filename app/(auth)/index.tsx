@@ -4,10 +4,13 @@ import { router } from "expo-router";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { SplashView } from "@/components/SplashView";
+import { THEME } from "@/lib/theme";
 
 export default function WelcomeScreen() {
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: "#00BFA6" }}>
+    // Darker teal (teal-700) rather than brand #00BFA6 so the white wordmark,
+    // tagline and button text pass WCAG AA (5.5:1 vs 2.3:1).
+    <SafeAreaView className="flex-1" style={{ backgroundColor: THEME.light.primaryStrong }}>
       <StatusBar barStyle="light-content" />
 
       <SplashView />

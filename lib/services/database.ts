@@ -539,15 +539,17 @@ export async function forceReturnItem(itemId: string): Promise<void> {
     .eq("id", itemId);
   if (error) throw error;
 
-  // 2. Write borrow history entry for the outgoing borrower
-  await addHistoryEntry({
+  // 2. Write borrow history entry for the outgoing borrower. Non-blocking,
+  //    like confirmHandoff: the item is already back on the shelf at this
+  //    point, so a history failure shouldn't surface as a failed claim-back.
+  addHistoryEntry({
     itemId,
     friendId: previousBorrower,
     borrowedDate: item.borrowedDate ?? new Date(),
     returnedDate: new Date(),
     dueDate: item.dueDate,
     notes: undefined,
-  });
+  }).catch(() => {});
 
   // 3. Cancel all pending/approved borrow requests so the item lands cleanly
   await supabase

@@ -2,6 +2,7 @@ import "../global.css";
 
 import * as React from "react";
 import { View, LogBox, Linking, Platform } from "react-native";
+import { colorScheme } from "nativewind";
 import {
   configureNotifications,
   registerPushToken,
@@ -133,13 +134,22 @@ function RootLayoutContent() {
     }
   }, [user, segments, themeLoading, authLoading, router]);
 
+  // Drive NativeWind's dark variant through its colour-scheme API instead of
+  // toggling a "dark" className on the wrapper View. Changing that className
+  // at runtime made NativeWind swap the wrapper component, which remounted
+  // the whole Stack outside its navigation context and crashed with
+  // "Couldn't find a navigation context" the moment the theme changed.
+  React.useEffect(() => {
+    colorScheme.set(isDark ? "dark" : "light");
+  }, [isDark]);
+
   // Native splash is still visible while loading — nothing to render.
   if (themeLoading || authLoading) {
     return null;
   }
 
   return (
-    <View className={isDark ? "dark flex-1" : "flex-1"}>
+    <View className="flex-1">
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack screenOptions={stackScreenOptions}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
