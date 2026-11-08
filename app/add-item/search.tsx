@@ -272,7 +272,7 @@ export default function SearchBookScreen() {
                     <Caption numberOfLines={1}>{book.author.join(", ")}</Caption>
                   )}
                   {book.seriesName && (
-                    <LabelStrong style={{ color: THEME.light.primary, fontSize: 11 }} numberOfLines={1}>
+                    <LabelStrong style={{ color: theme.primaryInk, fontSize: 11 }} numberOfLines={1}>
                       {book.seriesName}{book.seriesNumber ? ` #${book.seriesNumber}` : ""}
                     </LabelStrong>
                   )}

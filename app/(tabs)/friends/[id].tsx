@@ -57,6 +57,7 @@ import type {
 } from "@/lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
+import { screenChannel, subscribeLogged } from "@/lib/realtime";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import {
@@ -158,14 +159,15 @@ export default function FriendDetailScreen() {
   useEffect(() => {
     loadBorrowedItems();
     if (!id) return;
-    const ch = supabase
-      .channel(`friend-${id}-borrowed-items`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "items" },
-        loadBorrowedItems,
-      )
-      .subscribe();
+    const ch = subscribeLogged(
+      screenChannel(`friend-${id}-borrowed-items`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "items" },
+          loadBorrowedItems,
+        ),
+      `friend-${id}-borrowed-items`,
+    );
     return () => {
       supabase.removeChannel(ch);
     };
@@ -204,22 +206,24 @@ export default function FriendDetailScreen() {
   useEffect(() => {
     loadOwnedItems();
     if (!id) return;
-    const ich = supabase
-      .channel(`friend-${id}-owned-items`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "items" },
-        loadOwnedItems,
-      )
-      .subscribe();
-    const rch = supabase
-      .channel(`friend-${id}-borrow-requests`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "borrow_requests" },
-        loadOwnedItems,
-      )
-      .subscribe();
+    const ich = subscribeLogged(
+      screenChannel(`friend-${id}-owned-items`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "items" },
+          loadOwnedItems,
+        ),
+      `friend-${id}-owned-items`,
+    );
+    const rch = subscribeLogged(
+      screenChannel(`friend-${id}-borrow-requests`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "borrow_requests" },
+          loadOwnedItems,
+        ),
+      `friend-${id}-borrow-requests`,
+    );
     return () => {
       supabase.removeChannel(ich);
       supabase.removeChannel(rch);
@@ -251,14 +255,15 @@ export default function FriendDetailScreen() {
   useEffect(() => {
     loadHistory();
     if (!id) return;
-    const hch = supabase
-      .channel(`friend-${id}-history`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "borrow_history" },
-        loadHistory,
-      )
-      .subscribe();
+    const hch = subscribeLogged(
+      screenChannel(`friend-${id}-history`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "borrow_history" },
+          loadHistory,
+        ),
+      `friend-${id}-history`,
+    );
     return () => {
       supabase.removeChannel(hch);
     };
@@ -509,7 +514,7 @@ export default function FriendDetailScreen() {
                       }}
                     >
                       <BodyStrong
-                        className="text-primary"
+                        className="text-primary-ink"
                         style={{ fontSize: 32, lineHeight: 42 }}
                       >
                         {getInitials(friend.name)}
@@ -535,14 +540,14 @@ export default function FriendDetailScreen() {
                     }}
                   >
                     <View style={{ alignItems: "center" }}>
-                      <StatDisplay className="text-secondary">
+                      <StatDisplay className="text-secondary-ink">
                         {ownedItems.length}
                       </StatDisplay>
                       <TinyLabel>Items</TinyLabel>
                     </View>
                     <View style={{ width: 1, backgroundColor: theme.border }} />
                     <View style={{ alignItems: "center" }}>
-                      <StatDisplay className="text-primary">
+                      <StatDisplay className="text-primary-ink">
                         {availableCount}
                       </StatDisplay>
                       <TinyLabel>Available</TinyLabel>
@@ -586,7 +591,7 @@ export default function FriendDetailScreen() {
                     borderRadius: 14,
                     alignItems: "center",
                     backgroundColor: active
-                      ? THEME.light.primary
+                      ? THEME.light.primaryStrong
                       : "transparent",
                   }}
                 >

@@ -20,10 +20,14 @@ module.exports = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          strong: "hsl(var(--primary-strong))",
+          "strong-pressed": "hsl(var(--primary-strong-pressed))",
+          ink: "hsl(var(--primary-ink))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
+          ink: "hsl(var(--secondary-ink))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",

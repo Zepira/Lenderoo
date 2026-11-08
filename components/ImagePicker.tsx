@@ -54,8 +54,9 @@ export function ImagePicker({
       if (!hasPermission) return;
       const result = await ImagePickerExpo.launchCameraAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [3, 4],
+        // No crop step: Android's crop screen only accepts via its "Crop"
+        // button and its handles can be unusable, and iOS ignores `aspect`
+        // anyway (square only). Uploads are resized/compressed regardless.
         quality: 0.8,
       });
       if (!result.canceled && result.assets[0]) {
@@ -79,9 +80,7 @@ export function ImagePicker({
       }
       const result = await ImagePickerExpo.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        // allowsEditing is not supported on web
-        allowsEditing: Platform.OS !== "web",
-        aspect: [3, 4],
+        // No crop step — see takePhoto above.
         quality: 0.8,
       });
       if (!result.canceled && result.assets[0]) {

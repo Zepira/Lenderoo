@@ -32,7 +32,13 @@ export type NotificationData =
   | { type: 'friend_request_accepted' }
   | { type: 'return_reminder'; itemId: string }
   | { type: 'item_due_soon'; itemId: string }
-  | { type: 'item_available'; itemId: string };
+  | { type: 'item_overdue'; itemId: string }
+  | { type: 'item_available'; itemId: string }
+  | { type: 'item_claimed_back'; itemId: string }
+  | { type: 'confirm_pickup'; itemId: string }
+  | { type: 'confirm_return'; itemId: string }
+  // Grouped daily reminder (several items) — routes to a list, not one item.
+  | { type: 'reminder_digest'; target: 'borrowed' | 'lent' | 'home' };
 
 /**
  * Set the foreground notification handler (show banner + sound when app is open).
@@ -141,8 +147,17 @@ export function handleNotificationTap(data: NotificationData): void {
       break;
     case 'return_reminder':
     case 'item_due_soon':
+    case 'item_overdue':
     case 'item_available':
+    case 'item_claimed_back':
+    case 'confirm_pickup':
+    case 'confirm_return':
       router.push(`/item/${data.itemId}` as any);
+      break;
+    case 'reminder_digest':
+      if (data.target === 'borrowed') router.push('/borrowed' as any);
+      else if (data.target === 'lent') router.push('/(tabs)/library?filter=lent' as any);
+      else router.push('/(tabs)' as any);
       break;
   }
 }

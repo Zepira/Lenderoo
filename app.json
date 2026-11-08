@@ -21,7 +21,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#00BFA6"
+        "backgroundColor": "#0F766E"
       },
       "package": "com.zepira.lenderoo",
       "softwareKeyboardLayoutMode": "pan",
@@ -57,14 +57,14 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 220,
           "resizeMode": "contain",
-          "backgroundColor": "#00BFA6"
+          "backgroundColor": "#0F766E"
         }
       ],
       [
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#00BFA6"
+          "color": "#0F766E"
         }
       ],
       [

@@ -36,6 +36,7 @@ import { THEME } from "@/lib/theme";
 import { resolveAvatarSource } from "@/lib/services/avatar";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
+import { screenChannel, subscribeLogged } from "@/lib/realtime";
 
 export default function FriendsScreen() {
   const { activeTheme } = useThemeContext();
@@ -69,46 +70,49 @@ export default function FriendsScreen() {
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
 
     async function setup() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
 
-      channel = supabase
-        .channel("friend-connections-changes")
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "friend_connections",
-            filter: `friend_user_id=eq.${user.id}`,
-          },
-          () => {
-            loadFriendRequests();
-            loadFriends();
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "friend_connections",
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            loadFriends();
-            loadSentFriendRequests();
-          },
-        )
-        .subscribe();
+      channel = subscribeLogged(
+        screenChannel("friend-connections-changes")
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "friend_connections",
+              filter: `friend_user_id=eq.${user.id}`,
+            },
+            () => {
+              loadFriendRequests();
+              loadFriends();
+            },
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "friend_connections",
+              filter: `user_id=eq.${user.id}`,
+            },
+            () => {
+              loadFriends();
+              loadSentFriendRequests();
+            },
+          ),
+        "friend-connections-changes",
+      );
     }
 
     setup();
     return () => {
+      cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
   }, []);
@@ -283,7 +287,7 @@ export default function FriendsScreen() {
                           }}
                         >
                           <BodyStrong
-                            className="text-primary"
+                            className="text-primary-ink"
                             style={{ fontSize: 18, lineHeight: 24 }}
                           >
                             {friend.name[0]?.toUpperCase()}

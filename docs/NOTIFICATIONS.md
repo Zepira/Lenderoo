@@ -14,9 +14,11 @@ payload shapes the client understands).
 
 A Postgres trigger (`notify_push_webhook()`, `supabase/migrations/028_push_notification_webhooks.sql`)
 fires a webhook to the `push-notifications` edge function on INSERT/UPDATE
-of `borrow_requests`, `friend_connections`, and `items.is_unavailable`. All
-dispatch logic lives in `buildMessages()` in
-`supabase/functions/push-notifications/index.ts`.
+of `borrow_requests` and `friend_connections`, and on `items` UPDATEs that
+change `is_unavailable`, `pending_recipient_id` or `borrowed_by` (trigger
+`items_notify_push`, widened in migration 048 — before that it only fired on
+`is_unavailable`, so #7 never actually sent). All dispatch logic lives in
+`buildMessages()` in `supabase/functions/push-notifications/index.ts`.
 
 | # | Situation | DB trigger | Notified | Type (`NotificationData.type`) |
 |---|---|---|---|---|
@@ -26,21 +28,43 @@ dispatch logic lives in `buildMessages()` in
 | 4 | Pending request cancelled by requester | `borrow_requests` UPDATE, `pending`→`cancelled` | Item owner | `borrow_request_cancelled` |
 | 5 | Friend request sent | `friend_connections` INSERT, `status='pending'` | Recipient | `friend_request_new` |
 | 6 | Friend request accepted | `friend_connections` UPDATE → `status='active'` | Original sender | `friend_request_accepted` |
-| 7 | Pending handoff assigned (pickup or return) | `items` UPDATE, `pending_recipient_id` newly set | New recipient — title reads "Confirm Pickup" or "Confirm Return" depending on whether the recipient is the owner | *(no dedicated NotificationData type yet — routes generically)* |
+| 7 | Pending handoff assigned (pickup or return) | `items` UPDATE, `pending_recipient_id` newly set | New recipient — title reads "Confirm Pickup" or "Confirm Return" depending on whether the recipient is the owner | `confirm_pickup` / `confirm_return` |
 | 8 | Item flipped unavailable → available | `items` UPDATE, `is_unavailable` `true`→`false` | Every user with an open row in `item_availability_subscriptions` for that item (sent individually, then each subscription is stamped `notified_at`) | `item_available` |
+| 12 | Owner claims an item back ("Claim back" button, `forceReturnItem`) | `items` UPDATE, `borrowed_by` set → `NULL` where the old `pending_recipient_id` was **not** the owner (a normal confirmed return has the owner as pending recipient and is excluded) | The borrower who had it — "Item returned: Alana marked "Dune" as returned." | `item_claimed_back` |
 
-## Scheduled (cron-based)
+## Scheduled (cron-based) — daily reminder digest
 
-Both jobs are pg_cron + pg_net, calling their edge function with a
-Vault-stored bearer secret (`return_reminders_cron_secret` — shared by
-both). Copy/timing for both is DB-driven via the singleton
-`notification_settings` table, editable in Supabase Studio without a
-redeploy.
+One pg_cron + pg_net job, `reminder-digest-daily` (daily 09:00 UTC), calls
+`supabase/functions/reminder-digest` with the Vault-stored bearer secret
+`return_reminders_cron_secret`. It replaced the old `return-reminders-weekly`
+and `due-soon-reminders-daily` jobs in migration 048.
 
-| # | Situation | Schedule | Query | Notified | Type |
+Each run looks at every active loan, puts each item into **at most one**
+borrower-side bucket, then sends **at most one push per person**:
+
+- **One item** for that person → the specific copy below, tapping through to
+  the item.
+- **Several items** → one grouped push ("You have 3 items due back", or a
+  mixed summary like "2 items due back now, 1 due soon, 1 item due back to
+  you"), type `reminder_digest` with `target` = `borrowed` (opens
+  `/borrowed`), `lent` (Library → Lent Out) or `home` (mixed owner/borrower).
+
+Single-item copy for #9/#10 stays DB-driven via the singleton
+`notification_settings` table (editable in Supabase Studio without a
+redeploy); #11 and all grouped copy live in the function.
+
+| # | Bucket | Condition (item borrowed, not returned) | Notified | Once-guard | Type (single item) |
 |---|---|---|---|---|---|
-| 9 | "Still got this?" — item borrowed a while, unprompted | Weekly, Monday 09:00 UTC (`return-reminders-weekly`) | `items` where `borrowed_by` set, not returned, `borrowed_date <= now - reminder_interval_days` (default 7d), and not reminded within that same window (`last_reminder_sent_at`) | Current borrower | `return_reminder` |
-| 10 | Due-soon reminder | Daily, 09:00 UTC (`due-soon-reminders-daily`) | `items` where `borrowed_by` set, not returned, `due_date` set and in the future, `due_date <= now + due_soon_reminder_days_before` (default 7d), and `due_soon_reminded_at IS NULL` for this loan | Current borrower | `item_due_soon` |
+| 11 | Time's up (overdue) | `due_date <= now` | **Both** the borrower ("Dune" is due back to Alana now) and the owner ("Dune" is due back from Sam) | `overdue_notified_at` — once per loan | `item_overdue` |
+| 10 | Due soon | `due_date` in the future and `<= now + due_soon_reminder_days_before` (default 7d) | Borrower | `due_soon_reminded_at` — once per loan | `item_due_soon` |
+| 9 | "Still got this?" | `borrowed_date <= now - reminder_interval_days` (default 7d), not reminded within that window (`last_reminder_sent_at`); only if the item didn't land in #10/#11 this run | Borrower | `last_reminder_sent_at` — repeats every interval | `return_reminder` |
+
+Once-guards are stamped even when the recipient has no push token, so
+someone who enables notifications later doesn't get a backlog.
+`overdue_notified_at` and `due_soon_reminded_at` are reset to `NULL` by the
+`items_reset_reminder_flags` BEFORE UPDATE trigger whenever `borrowed_by` or
+`due_date` changes (new borrower, return, or due date moved), so they fire
+again next loan.
 
 **#10 only fires when `due_date` is actually set**, which only happens when
 the owner has configured **Max Borrow Duration** on the item (`items.max_borrow_days`,
@@ -49,29 +73,20 @@ a structured day-count — see `components/MaxBorrowDurationInput.tsx`).
 **confirmed** (`confirmHandoff` in `lib/services/database.ts`), not at
 request approval — so a hand-off to the next queued borrower always gets a
 fresh window instead of inheriting the previous borrower's due date.
-`due_soon_reminded_at` is reset to `NULL` on every new pickup and on return,
-so the reminder can fire again next loan.
-
 Reminder #10 fires **once per loan**, a fixed number of days before
 `due_date` (`due_soon_reminder_days_before`, default 7) — the lead time is
 constant, not proportional to `max_borrow_days`. A 3-week loan and a
 10-day loan both get their reminder 7 days out by default.
 
-Items with no `max_borrow_days` configured never get a due-soon reminder —
-there's no due date to count down to. They still get the weekly "Still got
+Items with no `max_borrow_days` configured never get a due-soon (#10) or
+time's-up (#11) push — there's no due date. They still get the "Still got
 this?" nudge (#9), which is keyed off `borrowed_date`, not `due_date`.
+After #11 fires, an overdue item falls back into #9 on its normal interval.
 
 ## Known gaps (documented so they don't get assumed away)
 
-- **No overdue push.** `calculateItemStatus()` (`lib/utils.ts`) computes an
-  `"overdue"` status once `due_date` has passed, and the UI reflects it, but
-  nothing proactively notifies either party when an item goes overdue. The
-  only thing that nudges a borrower after the due date passes is the
-  weekly return-reminder (#9), which is on its own unrelated schedule.
-- **#7 (pending handoff) has no dedicated `NotificationData` type** — the
-  push still sends and routes, just without itemId-aware tap targeting the
-  other entries get. Fine for now, but a fix here should get its own row
-  update, not silently ride along with an unrelated change.
+- **09:00 UTC is evening in Australia** (19:00/20:00 AEST/AEDT). There's no
+  per-user timezone, so everyone gets the digest at the same instant.
 
 ## Manual / ad-hoc
 

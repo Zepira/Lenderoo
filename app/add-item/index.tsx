@@ -3,7 +3,7 @@ import { useRouter, useRootNavigation } from "expo-router";
 import { View, Pressable, ScrollView, useWindowDimensions, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft, X, ScanBarcode } from "lucide-react-native";
-import { CATEGORY_CONFIG } from "@/lib/category-config";
+import { CATEGORY_CONFIG, categoryInk } from "@/lib/category-config";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { PageTitle, TinyLabel, Caption } from "@/components/ui/typography";
@@ -171,9 +171,9 @@ export default function SelectCategoryScreen() {
             borderColor: cfg.color + "40",
           }}
         >
-          <cfg.Icon size={40} color={cfg.color} />
+          <cfg.Icon size={40} color={categoryInk(category, isDark)} />
           <TinyLabel
-            style={{ color: cfg.color, fontSize: 13, fontWeight: "500" }}
+            style={{ color: categoryInk(category, isDark), fontSize: 13, fontWeight: "500" }}
             className="normal-case tracking-normal"
           >
             {CATEGORY_LABELS[category]}

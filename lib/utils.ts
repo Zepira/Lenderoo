@@ -60,7 +60,7 @@ export function isDueSoon(dueDate: Date | undefined): boolean {
  * Format a max-borrow-duration day count as a human label, picking the
  * coarsest unit that divides evenly (e.g. 21 -> "3 weeks", 10 -> "10 days").
  * Mirrors the day math in supabase/migrations/046_max_borrow_duration.sql
- * and the due-soon-reminders edge function — keep in sync if either changes.
+ * and the reminder-digest edge function — keep in sync if either changes.
  */
 export function formatMaxBorrowDuration(days: number | undefined): string | null {
   if (!days || days <= 0) return null;
@@ -621,7 +621,7 @@ export function getItemStatusDisplay(
     return { label: "Return Pending", color: THEME.light.mutedForeground };
   }
   if (isLentOut && isBorrowedByMe) {
-    return { label: "Borrowed by you", color: THEME.light.secondary };
+    return { label: "Borrowed by you", color: THEME.light.secondaryInk };
   }
   if (itemStatus === "requested") {
     return { label: "Pending Pickup", color: THEME.light.mutedForeground };
@@ -633,7 +633,7 @@ export function getItemStatusDisplay(
     return { label: "Borrowing Next", color: THEME.light.mutedForeground };
   }
   if (request?.status === "pending") {
-    return { label: "Requested", color: THEME.light.secondary };
+    return { label: "Requested", color: THEME.light.secondaryInk };
   }
   if (isLentOut) {
     return { label: "Borrowed", color: THEME.light.mutedForeground };
@@ -641,5 +641,5 @@ export function getItemStatusDisplay(
   if (isMarkedUnavailable) {
     return { label: "Unavailable", color: THEME.light.mutedForeground };
   }
-  return { label: "Available", color: THEME.light.primary };
+  return { label: "Available", color: THEME.light.primaryStrong };
 }

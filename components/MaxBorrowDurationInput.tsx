@@ -116,7 +116,7 @@ export function MaxBorrowDurationInput({ days, onChange }: MaxBorrowDurationInpu
               >
                 <Caption
                   style={{
-                    color: selected ? THEME.light.primary : theme.mutedForeground,
+                    color: selected ? theme.primaryInk : theme.mutedForeground,
                     fontWeight: selected ? "600" : "400",
                   }}
                 >

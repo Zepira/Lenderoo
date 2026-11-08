@@ -89,6 +89,7 @@ import type {
 } from "lib/types";
 import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
+import { screenChannel, subscribeLogged } from "@/lib/realtime";
 import { resolveAvatarSource } from "@/lib/services/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -269,23 +270,24 @@ export default function ItemDetailScreen() {
   // Live-update borrow request status (e.g. owner approves while this screen is open)
   useEffect(() => {
     if (!item?.id || isOwner) return;
-    const channel = supabase
-      .channel(`item-${item.id}-requests`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "borrow_requests",
-          filter: `item_id=eq.${item.id}`,
-        },
-        () => {
-          loadBorrowRequest();
-          loadBorrowQueue();
-          refresh();
-        },
-      )
-      .subscribe();
+    const channel = subscribeLogged(
+      screenChannel(`item-${item.id}-requests`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "borrow_requests",
+            filter: `item_id=eq.${item.id}`,
+          },
+          () => {
+            loadBorrowRequest();
+            loadBorrowQueue();
+            refresh();
+          },
+        ),
+      `item-${item.id}-requests`,
+    );
     return () => {
       supabase.removeChannel(channel);
     };
@@ -477,7 +479,7 @@ export default function ItemDetailScreen() {
   const statusColor = isMarkedUnavailable
     ? theme.mutedForeground
     : isAvailable
-      ? theme.primary
+      ? theme.primaryStrong
       : isOverdue
         ? theme.destructive
         : theme.secondary;
@@ -531,23 +533,26 @@ export default function ItemDetailScreen() {
 
   const handleForceReturn = async () => {
     if (!item) return;
-    const confirmed = await new Promise<boolean>((resolve) => {
-      Alert.alert(
-        "Force Return",
-        `Are you sure you want to force-return "${item.name}"? This will mark it as returned even though the borrower hasn't confirmed. The borrower's borrow history will still be recorded.`,
-        [
-          { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-          { text: "Force Return", style: "destructive", onPress: () => resolve(true) },
-        ],
-      );
-    });
+    const title = "Claim back";
+    const message = `Got "${item.name}" back already? This marks it as returned without waiting for the borrower to confirm. They'll get a notification, and it stays in their borrow history.`;
+    // Alert.alert ignores custom buttons on web, so the promise would never
+    // resolve there — fall back to window.confirm.
+    const confirmed =
+      Platform.OS === "web"
+        ? window.confirm(`${title}\n\n${message}`)
+        : await new Promise<boolean>((resolve) => {
+            Alert.alert(title, message, [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: "Claim back", onPress: () => resolve(true) },
+            ]);
+          });
     if (!confirmed) return;
     try {
       await forceReturn(item.id);
-      toast.success("Item forcefully returned");
+      toast.success("Item claimed back");
       router.back();
     } catch (e: any) {
-      toast.error(e?.message || "Failed to force return");
+      toast.error(e?.message || "Couldn't claim back item");
     }
   };
 
@@ -749,7 +754,7 @@ export default function ItemDetailScreen() {
                 style={{
                   paddingHorizontal: 10,
                   paddingVertical: 4,
-                  backgroundColor: cfg.color + "EE",
+                  backgroundColor: cfg.ink.light,
                   borderRadius: 8,
                 }}
               >
@@ -846,7 +851,7 @@ export default function ItemDetailScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Caption style={{ color: theme.primary }}>
+                        <Caption style={{ color: theme.primaryInk }}>
                           {getInitials(ownerName)}
                         </Caption>
                       </View>
@@ -954,7 +959,7 @@ export default function ItemDetailScreen() {
                           borderRadius: 8,
                         }}
                       >
-                        <Caption style={{ color: theme.primary }}>
+                        <Caption style={{ color: theme.primaryInk }}>
                           {g.trim()}
                         </Caption>
                       </View>
@@ -1109,7 +1114,7 @@ export default function ItemDetailScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <BodyStrong style={{ color: theme.secondary }}>
+                        <BodyStrong style={{ color: theme.secondaryInk }}>
                           {getInitials(appUser?.name)}
                         </BodyStrong>
                       </View>
@@ -1155,7 +1160,7 @@ export default function ItemDetailScreen() {
                               justifyContent: "center",
                             }}
                           >
-                            <BodyStrong style={{ color: theme.secondary }}>
+                            <BodyStrong style={{ color: theme.secondaryInk }}>
                               {getInitials(borrowerProfile.name)}
                             </BodyStrong>
                           </View>
@@ -1239,7 +1244,7 @@ export default function ItemDetailScreen() {
                               justifyContent: "center",
                             }}
                           >
-                            <BodyStrong style={{ color: theme.primary }}>
+                            <BodyStrong style={{ color: theme.primaryInk }}>
                               {getInitials(req.requesterName)}
                             </BodyStrong>
                           </View>
@@ -1327,7 +1332,7 @@ export default function ItemDetailScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Caption style={{ color: theme.primary }}>
+                        <Caption style={{ color: theme.primaryInk }}>
                           {getInitials(displayName)}
                         </Caption>
                       </View>
@@ -1355,7 +1360,7 @@ export default function ItemDetailScreen() {
                     }}
                   >
                     <TinyLabel
-                      style={{ color: active ? "#fff" : theme.primary }}
+                      style={{ color: active ? "#fff" : theme.primaryInk }}
                       className="normal-case tracking-normal"
                     >
                       {active ? "Active" : "Returned"}
@@ -1478,7 +1483,7 @@ export default function ItemDetailScreen() {
                               justifyContent: "center",
                             }}
                           >
-                            <Caption style={{ color: theme.primary }}>
+                            <Caption style={{ color: theme.primaryInk }}>
                               {owner ? getInitials(owner.name) : "?"}
                             </Caption>
                           </View>
@@ -1489,7 +1494,7 @@ export default function ItemDetailScreen() {
                           {owner?.name ?? "Unknown"}
                         </BodyStrong>
                         <Caption
-                          style={{ color: otherAvailable ? theme.primary : theme.secondary }}
+                          style={{ color: otherAvailable ? theme.primaryInk : theme.secondary }}
                         >
                           {otherAvailable ? "Available" : "Currently lent out"}
                         </Caption>
@@ -1548,8 +1553,8 @@ export default function ItemDetailScreen() {
             ) : isOwner ? (
               /* Viewer is the owner — owner management actions. Normally the
                  owner confirms a return the borrower already initiated, but
-                 they can also force-return an item when the borrower has
-                 returned it physically but can't confirm in the app. */
+                 they can also claim it back when the borrower has returned
+                 it physically but can't confirm in the app. */
               <>
                 {action.kind === "confirmReturn" && (
                   <Button onPress={handleConfirmHandoff} disabled={confirming}>
@@ -1576,11 +1581,11 @@ export default function ItemDetailScreen() {
                   </View>
                 )}
 
-                {/* Force Return — owner can close a borrow unilaterally when
-                    the borrower has returned the item physically but can't
-                    confirm in the app. Shown whenever the item is out with a
-                    borrower and the owner isn't already the pending recipient
-                    (that case is handled by Confirm Return above). */}
+                {/* Claim back (forceReturnItem) — owner can close a borrow
+                    unilaterally when they've physically got the item back.
+                    Shown whenever the item is out with a borrower and the
+                    owner isn't already the pending recipient (that case is
+                    handled by Confirm Return above). */}
                 {!isAvailable && item.borrowedBy && !isPendingRecipient && (
                   <Button
                     variant="outline"
@@ -1589,7 +1594,7 @@ export default function ItemDetailScreen() {
                   >
                     <RotateCcw size={18} color={theme.foreground} />
                     <Text>
-                      {forcing ? "Force Returning…" : "Force Return"}
+                      {forcing ? "Claiming back…" : "Claim back"}
                     </Text>
                   </Button>
                 )}
@@ -1836,7 +1841,7 @@ export default function ItemDetailScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Caption style={{ color: theme.primary }}>
+                        <Caption style={{ color: theme.primaryInk }}>
                           {getInitials(f.name)}
                         </Caption>
                       </View>

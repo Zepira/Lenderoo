@@ -24,8 +24,8 @@ function Checkbox({ checked, onCheckedChange, disabled, className }: CheckboxPro
       onPress={() => onCheckedChange(!checked)}
       className={cn("h-6 w-6 items-center justify-center rounded-md border-2", className)}
       style={{
-        borderColor: checked ? theme.primary : theme.border,
-        backgroundColor: checked ? theme.primary : "transparent",
+        borderColor: checked ? theme.primaryStrong : theme.border,
+        backgroundColor: checked ? theme.primaryStrong : "transparent",
         opacity: disabled ? 0.5 : 1,
       }}
     >
