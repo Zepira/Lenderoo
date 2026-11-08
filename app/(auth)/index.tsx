@@ -8,8 +8,7 @@ import { THEME } from "@/lib/theme";
 
 export default function WelcomeScreen() {
   return (
-    // Darker teal (teal-700) rather than brand #00BFA6 so the white wordmark,
-    // tagline and button text pass WCAG AA (5.5:1 vs 2.3:1).
+    // primaryStrong: the fill behind white text (brand teal for now, see lib/theme.ts).
     <SafeAreaView className="flex-1" style={{ backgroundColor: THEME.light.primaryStrong }}>
       <StatusBar barStyle="light-content" />
 
