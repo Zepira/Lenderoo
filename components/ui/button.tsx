@@ -1,7 +1,6 @@
 import { TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
-import { useState } from "react";
 import { Platform, Pressable, TouchableOpacity } from "react-native";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
@@ -18,11 +17,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Primary — teal-700 #0F766E (white text 5.5:1), teal-800 #115E59 pressed.
-        // Brand teal #00BFA6 is too light for white text (2.3:1).
+        // Primary — green #00BFA6
         default: cn(
-          "bg-primary-strong active:bg-primary-strong-pressed shadow-sm shadow-primary-strong/20",
-          Platform.select({ web: "hover:bg-primary-strong-pressed" }),
+          "bg-primary active:opacity-90 shadow-sm shadow-primary/20",
+          Platform.select({ web: "hover:opacity-90" }),
         ),
         // Destructive — red #FF6B6B
         destructive: cn(
@@ -107,7 +105,7 @@ const buttonTextVariants = cva(
         ghost: "text-foreground group-active:text-foreground",
         "outline-white": "text-white",
         link: cn(
-          "text-primary-ink group-active:underline",
+          "text-primary group-active:underline",
           Platform.select({
             web: "underline-offset-4 hover:underline group-hover:underline",
           }),
@@ -140,20 +138,14 @@ function Button({
   size,
   style,
   isSelected,
-  onPressIn,
-  onPressOut,
   ...props
 }: ButtonProps) {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
-  const isPrimary = variant === "default" || variant == null;
-  // Primary darkens to teal-800 while pressed instead of fading (a fade would
-  // let the background show through and drop the white-text contrast).
-  const [pressed, setPressed] = useState(false);
 
   const getBackgroundColor = () => {
-    if (isPrimary) return pressed ? theme.primaryStrongPressed : theme.primaryStrong;
+    if (variant === "default" || variant == null) return theme.primary;
     if (variant === "secondary") return theme.secondary;
     if (variant === "destructive") return theme.destructive;
     if (variant === "outline")
@@ -168,8 +160,8 @@ function Button({
   const getShadowStyle = () => {
     // Shadow color matches the button background so it reads as a "lift" of the same hue
     const shadowColor =
-      isPrimary
-        ? theme.primaryStrong
+      variant === "default" || variant == null
+        ? theme.primary
         : variant === "secondary"
           ? theme.secondary
           : variant === "destructive"
@@ -210,15 +202,6 @@ function Button({
         )}
         style={combinedStyle}
         role="button"
-        activeOpacity={isPrimary ? 1 : undefined}
-        onPressIn={(e) => {
-          if (isPrimary) setPressed(true);
-          onPressIn?.(e);
-        }}
-        onPressOut={(e) => {
-          if (isPrimary) setPressed(false);
-          onPressOut?.(e);
-        }}
         {...props}
       />
     </TextClassContext.Provider>
