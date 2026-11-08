@@ -110,7 +110,7 @@ export function FriendList({
           paddingBottom: contentPadding + 80, // Extra padding for FAB
           flexGrow: 1,
         }}
-        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponent={ListHeaderComponent ?? undefined}
         ListEmptyComponent={renderEmpty}
         refreshControl={
           onRefresh ? (

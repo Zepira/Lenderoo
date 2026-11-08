@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { Platform, TextInput, type TextInputProps } from 'react-native';
 
 // Inputs use rounded-lg (16px) and bg-muted (#F5F5F5) per design spec.
-function Input({ className, ...props }: TextInputProps & React.RefAttributes<TextInput>) {
+function Input({ className, ...props }: TextInputProps & React.RefAttributes<React.ComponentRef<typeof TextInput>>) {
   return (
     <TextInput
       className={cn(

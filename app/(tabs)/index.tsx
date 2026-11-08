@@ -8,7 +8,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHero, LabelStrong } from "@/components/ui/typography";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ComponentRef, useCallback, useEffect, useRef, useState } from "react";
 import {
   useActiveItems,
   useBorrowedByMeItems,
@@ -106,7 +106,7 @@ export default function HomeScreen() {
     }
   };
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const firstName = appUser?.name?.split(" ")[0] ?? "there";
 
   const refresh = async () => {

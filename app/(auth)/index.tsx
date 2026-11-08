@@ -8,7 +8,7 @@ import { SplashView } from "@/components/SplashView";
 export default function WelcomeScreen() {
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: "#00BFA6" }}>
-      <StatusBar barStyle="light-content" backgroundColor="#00BFA6" />
+      <StatusBar barStyle="light-content" />
 
       <SplashView />
 

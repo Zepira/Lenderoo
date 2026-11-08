@@ -124,7 +124,7 @@ export default function BorrowedItemsScreen() {
                 {search ? "No borrowed items match your search" : "You're not borrowing anything right now"}
               </Text>
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <ItemCard

@@ -1,17 +1,18 @@
 {
   "compilerOptions": {
+    // baseUrl is deprecated in TS 6, but Metro resolves bare imports (hooks/…, lib/…) through it
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "rootDir": ".",
     "importHelpers": true,
     "allowJs": false,
     "allowSyntheticDefaultImports": true,
-    "downlevelIteration": true,
     "esModuleInterop": true,
     "preserveSymlinks": true,
     "incremental": true,
     "jsx": "react-jsx",
-    "module": "system",
-    "moduleResolution": "node",
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "noEmitOnError": false,
     "noImplicitAny": false,
     "noImplicitReturns": false,

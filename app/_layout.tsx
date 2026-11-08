@@ -125,7 +125,7 @@ function RootLayoutContent() {
         if (value) {
           router.replace("/(auth)/sign-in");
         } else {
-          router.replace("/(auth)/");
+          router.replace("/(auth)");
         }
       });
     } else if (user && inAuthGroup) {

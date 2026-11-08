@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lenderoo",
     "slug": "lenderoo",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lenderoo",
@@ -67,17 +67,6 @@
           "color": "#00BFA6"
         }
       ],
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "newArchEnabled": true
-          },
-          "android": {
-            "newArchEnabled": true
-          }
-        }
-      ],
       "expo-web-browser",
       [
         "expo-camera",
@@ -90,7 +79,9 @@
         {
           "contactsPermission": "Allow Lenderoo to access your contacts to find friends who are already using the app."
         }
-      ]
+      ],
+      "expo-image",
+      "expo-status-bar"
     ],
     "extra": {
       "router": {},

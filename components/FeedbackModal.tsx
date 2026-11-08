@@ -4,7 +4,7 @@
  * Modal for users to submit feedback
  */
 
-import { useRef, useState } from "react";
+import { type ComponentRef, useRef, useState } from "react";
 import {
   Modal,
   View,
@@ -35,7 +35,7 @@ interface FeedbackModalProps {
 
 export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
   const insets = useSafeAreaInsets();
-  const textareaRef = useRef<TextInput>(null);
+  const textareaRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [comment, setComment] = useState("");
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
