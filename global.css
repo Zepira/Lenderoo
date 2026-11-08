@@ -5,22 +5,20 @@
 @layer base {
   :root {
     /* Lenderoo Brand Colors */
-    /* Primary: #00BFA6 (brand teal) — icons, highlights, tints, borders.
-       Never put white text on it (2.3:1) or use it for text on light bg. */
+    /* Primary: #00BFA6 (brand teal) — icons, highlights, tints, borders. */
     --primary: 173 100% 37%;
     --primary-foreground: 0 0% 100%;
-    /* Primary strong: #0F766E (teal-700) — filled buttons and any fill behind
-       white text (5.5:1). Pressed: #115E59 (teal-800). Same in dark mode. */
-    --primary-strong: 175 77% 26%;
-    --primary-strong-pressed: 176 69% 22%;
-    /* Primary ink: teal text. #0F766E on light bg (5.4:1); brand teal in dark. */
-    --primary-ink: 175 77% 26%;
+    /* Role tokens (see lib/theme.ts): fills behind white text, teal text and
+       yellow text. All brand colours for now; the darker AA values were
+       rolled back. */
+    --primary-strong: 173 100% 37%;
+    --primary-strong-pressed: 173 100% 37%;
+    --primary-ink: 173 100% 37%;
 
     /* Secondary: #FFC857 (yellow) */
     --secondary: 40 100% 67%;
     --secondary-foreground: 222 47% 11%;
-    /* Secondary ink: amber-700 #B45309 for yellow-family text on light (4.9:1) */
-    --secondary-ink: 26 90% 37%;
+    --secondary-ink: 40 100% 67%;
 
     /* Destructive / Accent: #FF6B6B (coral) */
     --destructive: 0 100% 71%;
@@ -64,9 +62,8 @@
   .dark:root {
     --primary: 173 100% 37%;
     --primary-foreground: 0 0% 100%;
-    --primary-strong: 175 77% 26%;
-    --primary-strong-pressed: 176 69% 22%;
-    /* #00BFA6 on the dark background is 8.2:1; teal-700 would be 3.5:1 */
+    --primary-strong: 173 100% 37%;
+    --primary-strong-pressed: 173 100% 37%;
     --primary-ink: 173 100% 37%;
 
     --secondary: 40 100% 67%;
