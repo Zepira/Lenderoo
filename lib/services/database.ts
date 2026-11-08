@@ -833,7 +833,6 @@ export async function getHistoryForItemWithUsers(
     notes: row.notes,
     createdAt: new Date(row.created_at),
     borrowerName: row.borrower_name ?? null,
-    borrowerEmail: row.borrower_email ?? null,
     borrowerAvatarUrl: row.borrower_avatar_url ?? null,
   }));
 }
