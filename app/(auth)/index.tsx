@@ -1,29 +1,22 @@
-import { useCallback } from "react";
 import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useFocusEffect } from "expo-router";
-import { setStatusBarStyle } from "expo-status-bar";
+import { router, useIsFocused } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { SplashView } from "@/components/SplashView";
 import { THEME } from "@/lib/theme";
-import { useThemeContext } from "@/contexts/ThemeContext";
 
 export default function WelcomeScreen() {
-  const { activeTheme } = useThemeContext();
-
-  // Light status bar on the teal only while this screen is in front; a
-  // mounted <StatusBar> here kept it light on the white sign-in screen.
-  useFocusEffect(
-    useCallback(() => {
-      setStatusBarStyle("light");
-      return () => setStatusBarStyle(activeTheme === "dark" ? "light" : "dark");
-    }, [activeTheme])
-  );
+  // Light status bar on the teal only while this screen is in front. The
+  // most recently mounted <StatusBar> wins, so this one overrides the root
+  // layout's and hands back to it when unmounted (sign-in pushed on top).
+  const isFocused = useIsFocused();
 
   return (
     // primaryStrong: the fill behind white text (brand teal for now, see lib/theme.ts).
     <SafeAreaView className="flex-1" style={{ backgroundColor: THEME.light.primaryStrong }}>
+      {isFocused && <StatusBar style="light" />}
       <SplashView />
 
       <View className="px-8 pb-10 gap-3">
