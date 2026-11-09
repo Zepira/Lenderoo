@@ -18,7 +18,7 @@ import type { ItemCategory } from "lib/types";
 type CategoryStyle = {
   color: string;
   ink: { light: string; dark: string };
-  Icon: React.ComponentType<{ size: number; color: string }>;
+  Icon: React.ComponentType<{ size?: number; color?: string }>;
 };
 
 const same = (color: string) => ({ light: color, dark: color });

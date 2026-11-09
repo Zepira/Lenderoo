@@ -14,7 +14,6 @@ export function ThemeSwitcher() {
     <TouchableOpacity
       onPress={toggleTheme}
       className="p-2"
-      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
     >
       {themeMode === "dark" ? (
         <Sun size={24} color="#f59e0b" />

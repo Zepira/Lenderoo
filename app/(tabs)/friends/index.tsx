@@ -175,7 +175,7 @@ export default function FriendsScreen() {
     <View
       style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}
     >
-      <ScreenHeader title="My Friends" showBack onBack={() => router.back()} />
+      <ScreenHeader title="My Friends" onBack={() => router.back()} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

@@ -76,7 +76,7 @@ export function FriendRequests({ requests, onUpdate }: FriendRequestsProps) {
               <User size={24} color={THEME[isDark ? "dark" : "light"].primary} />
             </View>
             <View className="flex-1">
-              <Text variant="base" className="font-semibold">
+              <Text variant="default" className="font-semibold">
                 {request.userName}
               </Text>
             </View>

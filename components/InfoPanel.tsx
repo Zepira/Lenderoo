@@ -90,9 +90,9 @@ export function InfoPanelCard({
                       by {(item.metadata as BookMetadata).author}
                     </Text>
                   )}
-                  {(item.metadata as BookMetadata).series && (
+                  {(item.metadata as BookMetadata).seriesName && (
                     <Text variant="muted" numberOfLines={1}>
-                      {(item.metadata as BookMetadata).series}
+                      {(item.metadata as BookMetadata).seriesName}
                       {(item.metadata as BookMetadata).seriesNumber &&
                         ` #${(item.metadata as BookMetadata).seriesNumber}`}
                     </Text>

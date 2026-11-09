@@ -335,7 +335,7 @@ export default function AddUserFriendScreen() {
           {activeTab === "code" ? (
             <View className="gap-4 mt-6">
               <View className="gap-2">
-                <Text variant="base" className="font-semibold">
+                <Text variant="default" className="font-semibold">
                   Enter Friend Code
                 </Text>
                 <Text variant="small" className="text-muted-foreground">
@@ -375,7 +375,7 @@ export default function AddUserFriendScreen() {
           ) : (
             <View className="gap-4 mt-6">
               <View className="gap-2">
-                <Text variant="base" className="font-semibold">
+                <Text variant="default" className="font-semibold">
                   Search Users
                 </Text>
                 <Text variant="small" className="text-muted-foreground">
@@ -418,7 +418,7 @@ export default function AddUserFriendScreen() {
                       className="flex-row items-center justify-between p-4 bg-card rounded-lg border border-border"
                     >
                       <View className="flex-1 gap-1">
-                        <Text variant="base" className="font-semibold">
+                        <Text variant="default" className="font-semibold">
                           {user.name}
                         </Text>
                       </View>
@@ -440,7 +440,7 @@ export default function AddUserFriendScreen() {
           {activeTab === "contacts" && (
             <View className="gap-4 mt-6">
               <View className="gap-2">
-                <Text variant="base" className="font-semibold">
+                <Text variant="default" className="font-semibold">
                   Find Friends From Contacts
                 </Text>
                 <Text variant="small" className="text-muted-foreground">
@@ -490,7 +490,7 @@ export default function AddUserFriendScreen() {
                       className="flex-row items-center justify-between p-4 bg-card rounded-lg border border-border"
                     >
                       <View className="flex-1 gap-1">
-                        <Text variant="base" className="font-semibold">
+                        <Text variant="default" className="font-semibold">
                           {matchedUser.contactName ?? matchedUser.name}
                         </Text>
                         {matchedUser.contactName &&

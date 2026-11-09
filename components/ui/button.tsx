@@ -1,7 +1,7 @@
 import { TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Platform, Pressable, TouchableOpacity } from "react-native";
+import { Platform, TouchableOpacity } from "react-native";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 
@@ -126,8 +126,7 @@ const buttonTextVariants = cva(
   },
 );
 
-type ButtonProps = React.ComponentProps<typeof Pressable> &
-  React.RefAttributes<typeof Pressable> &
+type ButtonProps = React.ComponentProps<typeof TouchableOpacity> &
   VariantProps<typeof buttonVariants> & {
     isSelected?: boolean;
   };

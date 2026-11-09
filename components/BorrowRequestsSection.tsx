@@ -127,7 +127,7 @@ export function BorrowRequestsSection({
                   <Text className="font-semibold">
                     {request.itemName}
                   </Text>
-                  <CategoryBadge category={request.itemCategory} size="small" />
+                  <CategoryBadge category={request.itemCategory} size="sm" />
                 </View>
 
                 {/* User Info */}

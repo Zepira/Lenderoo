@@ -61,7 +61,6 @@ export function SearchBar({
         <TouchableOpacity
           onPress={handleClear}
           className="absolute right-3 top-2.5 p-1"
-          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
           <X size={18} color="#888" />
         </TouchableOpacity>

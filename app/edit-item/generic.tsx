@@ -243,7 +243,7 @@ export default function EditGenericItemScreen() {
             {friends.length === 0 ? (
               <View style={{ gap: 12 }}>
                 <Caption>No friends yet — add friends to lend items to them.</Caption>
-                <Button variant="outline" onPress={() => router.push("/add-friend" as any)}>
+                <Button variant="outline" onPress={() => router.push("/(tabs)/friends/add-user-friend")}>
                   <Text>Add a Friend</Text>
                 </Button>
               </View>
