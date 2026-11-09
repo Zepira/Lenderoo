@@ -17,9 +17,17 @@ interface AdsState {
   showBanner: boolean;
   /** Only request non-personalised ads (consent or tracking declined). */
   nonPersonalized: boolean;
+  /** Height of the loaded ad (0 until one loads); the tab bar lifts by this. */
+  adHeight: number;
+  setAdHeight: (height: number) => void;
 }
 
-const AdsContext = createContext<AdsState>({ showBanner: false, nonPersonalized: true });
+const AdsContext = createContext<AdsState>({
+  showBanner: false,
+  nonPersonalized: true,
+  adHeight: 0,
+  setAdHeight: () => {},
+});
 
 // Development only: EXPO_PUBLIC_ADS_DEV_FORCE=1 skips the kill switch and the
 // grace period so the banner (Google's test ads) can be checked.
@@ -28,6 +36,7 @@ const DEV_FORCE = __DEV__ && process.env.EXPO_PUBLIC_ADS_DEV_FORCE === "1";
 export function AdsProvider({ children }: { children: ReactNode }) {
   const { appUser } = useAuth();
   const [killSwitch, setKillSwitch] = useState<boolean | null>(null);
+  const [adHeight, setAdHeight] = useState(0);
   const [firstOpenedAt, setFirstOpenedAt] = useState<Date | null>(null);
   const [consent, setConsent] = useState<{ canRequestAds: boolean; personalised: boolean } | null>(
     null,
@@ -86,7 +95,12 @@ export function AdsProvider({ children }: { children: ReactNode }) {
 
   return (
     <AdsContext.Provider
-      value={{ showBanner: decision.show, nonPersonalized: !(consent?.personalised ?? false) }}
+      value={{
+        showBanner: decision.show,
+        nonPersonalized: !(consent?.personalised ?? false),
+        adHeight: decision.show ? adHeight : 0,
+        setAdHeight,
+      }}
     >
       {children}
     </AdsContext.Provider>

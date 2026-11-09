@@ -34,7 +34,7 @@ import type {
   BorrowRequest,
   ItemAvailabilitySubscription,
 } from "lib/types";
-import { QuietBanner, useBannerSpace } from "@/components/QuietBanner";
+import { useBannerSpace } from "@/components/QuietBanner";
 
 const CATEGORIES = Object.keys(CATEGORY_CONFIG) as ItemCategory[];
 
@@ -417,7 +417,6 @@ export default function ExploreScreen() {
           )}
         />
       )}
-      <QuietBanner />
     </View>
   );
 }

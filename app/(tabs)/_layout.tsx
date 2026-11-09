@@ -1,5 +1,5 @@
 import * as React from "react";
-import { View, Platform, Pressable } from "react-native";
+import { Animated, View, Platform, Pressable } from "react-native";
 import { router, Tabs } from "expo-router";
 import type { BottomTabBarProps } from "expo-router/tabs";
 import {
@@ -15,6 +15,7 @@ import { useThemeContext } from "../../contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { THEME } from "@/lib/theme";
+import { AD_ROUTES, AdBar, useAdBarLift } from "@/components/QuietBanner";
 import {
   TAB_BAR_BOTTOM_GAP,
   TAB_BAR_BTN_SIZE,
@@ -35,6 +36,9 @@ function FloatingTabBar({
   notificationCount,
 }: BottomTabBarProps & { notificationCount: number }) {
   const insets = useSafeAreaInsets();
+  // On Home, Library and Explore the ad bar docks at the bottom edge and the
+  // tab bar lifts to sit just above it (0 when no ad is showing).
+  const lift = useAdBarLift(AD_ROUTES.includes(state.routes[state.index]?.name));
   // Only render routes that have a tabBarIcon — hides any auto-registered
   // routes (e.g. friends/) that shouldn't appear in the floating nav.
   const routes = state.routes.filter(
@@ -115,7 +119,9 @@ function FloatingTabBar({
   return (
     // Outer wrapper — only exists to let the center button overflow above the pill.
     // box-none: the wrapper itself won't intercept events; only its children will.
-    <View
+    <>
+    <AdBar lift={lift} />
+    <Animated.View
       pointerEvents="box-none"
       style={{
         position: "absolute",
@@ -124,6 +130,7 @@ function FloatingTabBar({
         right: 12,
         height: TAB_BAR_CONTAINER_HEIGHT,
         zIndex: 999,
+        transform: [{ translateY: Animated.multiply(lift, -1) }],
       }}
     >
       {/* Pill + tab buttons in one element — visual and hit targets are identical */}
@@ -185,7 +192,8 @@ function FloatingTabBar({
           <Plus size={26} color="white" strokeWidth={2.5} />
         </Pressable>
       </View>
-    </View>
+    </Animated.View>
+    </>
   );
 }
 

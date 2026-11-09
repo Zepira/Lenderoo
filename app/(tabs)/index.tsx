@@ -26,7 +26,7 @@ import { THEME } from "@/lib/theme";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DashboardSection } from "@/components/dashboard/DashboardSection";
 import { ErrorState } from "@/components/ErrorState";
-import { QuietBanner, useBannerSpace } from "@/components/QuietBanner";
+import { useBannerSpace } from "@/components/QuietBanner";
 
 const PAGE_PADDING = 24;
 
@@ -285,7 +285,6 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
-      <QuietBanner />
     </View>
   );
 }

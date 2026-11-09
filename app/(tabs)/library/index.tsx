@@ -25,7 +25,7 @@ import { SegmentedTabs } from "@/components/SegmentedTabs";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { ErrorState } from "@/components/ErrorState";
-import { QuietBanner, useBannerSpace } from "@/components/QuietBanner";
+import { useBannerSpace } from "@/components/QuietBanner";
 
 type FilterTab = "all" | "available" | "lent";
 
@@ -303,7 +303,6 @@ export default function ItemsScreen() {
           />
         )}
       />
-      <QuietBanner />
     </View>
   );
 }
