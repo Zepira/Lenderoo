@@ -339,7 +339,8 @@ export const ItemCard = memo(function ItemCard({
         {/* Name — grows to push button to bottom */}
         <View style={{ flex: 1 }}>
           <BodyStrong
-            style={{ fontSize: 13, lineHeight: 18, marginBottom: 8 }}
+            // Always two lines tall, so one-line names don't make shorter cards.
+            style={{ fontSize: 13, lineHeight: 18, minHeight: 36, marginBottom: 8 }}
             numberOfLines={2}
           >
             {item.name}

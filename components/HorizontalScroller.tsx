@@ -25,8 +25,8 @@ interface HorizontalScrollerProps {
   contentContainerStyle?: StyleProp<ViewStyle>;
 }
 
-/** Wide enough to read as "there's more", narrow enough not to hide a card. */
-const FADE_WIDTH = 28;
+/** Wide enough to read clearly as "there's more to scroll". */
+const FADE_WIDTH = 56;
 
 /** Sideways scroller that fades out at either edge while there is more to
  *  scroll that way. */
@@ -65,6 +65,7 @@ export function HorizontalScroller({
         <LinearGradient
           pointerEvents="none"
           colors={[fadeColor, clear]}
+          locations={[0.2, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.fade, { left: 0 }]}
@@ -74,6 +75,7 @@ export function HorizontalScroller({
         <LinearGradient
           pointerEvents="none"
           colors={[clear, fadeColor]}
+          locations={[0, 0.8]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.fade, { right: 0 }]}
