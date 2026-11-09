@@ -7,47 +7,47 @@ export const PRESET_AVATARS = [
   {
     id: "quokka",
     name: "Quokka",
-    source: require("../../assets/images/avatars/cat avatar.png"),
+    source: require("../../assets/images/avatars/quokka.png"),
   },
   {
     id: "cockatoo",
     name: "Cockatoo",
-    source: require("../../assets/images/avatars/cockatoo avatar.png"),
+    source: require("../../assets/images/avatars/cockatoo.png"),
   },
   {
     id: "devil",
     name: "Tasmanian Devil",
-    source: require("../../assets/images/avatars/devil avatar.png"),
+    source: require("../../assets/images/avatars/devil.png"),
   },
   {
     id: "echidna",
     name: "Echidna",
-    source: require("../../assets/images/avatars/echidna avatar.png"),
+    source: require("../../assets/images/avatars/echidna.png"),
   },
   {
     id: "galah",
     name: "Galah",
-    source: require("../../assets/images/avatars/Gallah avatar.png"),
+    source: require("../../assets/images/avatars/galah.png"),
   },
   {
     id: "kangaroo",
     name: "Kangaroo",
-    source: require("../../assets/images/avatars/kanagroo avatar.png"),
+    source: require("../../assets/images/avatars/kangaroo.png"),
   },
   {
     id: "koala",
     name: "Koala",
-    source: require("../../assets/images/avatars/koala avatar.png"),
+    source: require("../../assets/images/avatars/koala.png"),
   },
   {
     id: "kookaburra",
     name: "Kookaburra",
-    source: require("../../assets/images/avatars/kookaburra avatar.png"),
+    source: require("../../assets/images/avatars/kookaburra.png"),
   },
   {
     id: "platypus",
     name: "Platypus",
-    source: require("../../assets/images/avatars/platypus avatar.png"),
+    source: require("../../assets/images/avatars/platypus.png"),
   },
 ] as const;
 
