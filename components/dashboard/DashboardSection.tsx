@@ -1,9 +1,10 @@
-import { View, ScrollView } from 'react-native';
+import { View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { SectionHeading, BodyStrong } from '@/components/ui/typography';
 import { Button } from '@/components/ui/button';
 import { THEME } from '@/lib/theme';
 import { ItemCard } from '@/components/ItemCard';
+import { HorizontalScroller } from '@/components/HorizontalScroller';
 import { sortFavouritesFirst } from '@/lib/utils';
 import type { BorrowRequest, Item } from 'lib/types';
 
@@ -23,6 +24,10 @@ interface DashboardSectionProps {
    *  return) ahead of ones that don't. Favourites still break ties within
    *  the same priority. */
   getPriority?: (item: Item) => number;
+  /** The page's horizontal padding; the card row scrolls out past it. */
+  bleed: number;
+  /** The page background, for the row's edge fades. */
+  fadeColor: string;
 }
 
 export function DashboardSection({
@@ -34,6 +39,8 @@ export function DashboardSection({
   getRequest,
   onChanged,
   getPriority,
+  bleed,
+  fadeColor,
 }: DashboardSectionProps) {
   if (items.length === 0) return null;
   const favouritesFirst = sortFavouritesFirst(items);
@@ -54,10 +61,11 @@ export function DashboardSection({
           </Button>
         )}
       </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 12, paddingBottom: 4 }}
+      <HorizontalScroller
+        bleed={bleed}
+        fadeColor={fadeColor}
+        gap={12}
+        contentContainerStyle={{ paddingBottom: 4 }}
       >
         {sortedItems.map((item) => (
           <ItemCard
@@ -71,7 +79,7 @@ export function DashboardSection({
             onChanged={onChanged}
           />
         ))}
-      </ScrollView>
+      </HorizontalScroller>
     </View>
   );
 }

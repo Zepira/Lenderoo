@@ -69,7 +69,7 @@ const buttonVariants = cva(
         ),
         // Compact card-sized button (e.g. ItemCard actions)
         xs: cn(
-          "h-9 px-3 rounded-xl gap-1",
+          "h-9 px-2.5 rounded-xl gap-1",
           Platform.select({ web: "has-[>svg]:px-2.5" }),
         ),
         icon: "h-14 w-14",
