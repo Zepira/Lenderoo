@@ -8,7 +8,6 @@ import {
   UserCog,
   Plus,
   BookText,
-  MessageSquare,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
@@ -17,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { THEME } from "@/lib/theme";
 import { BorrowRequestBanner } from "@/components/BorrowRequestBannerNative";
-import { FeedbackModal } from "@/components/FeedbackModal";
 import { useRealtimeSync, useIncomingRequestCount, usePendingHandoffs } from "@/hooks";
 
 const BTN_SIZE = 60;
@@ -193,7 +191,6 @@ export default function TabLayout() {
   const isDark = activeTheme === "dark";
   const insets = useSafeAreaInsets();
   const [bannerDismissed, setBannerDismissed] = React.useState(false);
-  const [feedbackModalVisible, setFeedbackModalVisible] = React.useState(false);
 
   // Single source of truth for all realtime DB updates
   useRealtimeSync();
@@ -222,10 +219,6 @@ export default function TabLayout() {
   };
 
   const screenOptions = React.useMemo(() => ({ headerShown: false }), []);
-
-  const handleFeedbackPress = () => {
-    setFeedbackModalVisible(true);
-  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -287,29 +280,6 @@ export default function TabLayout() {
         <Tabs.Screen name="friends" options={{ headerShown: false }} />
       </Tabs>
 
-      {/* Feedback Button */}
-      <Button
-        size="icon"
-        variant="secondary"
-        className="absolute right-4 w-14 h-14 rounded-full shadow-lg items-center justify-center"
-        style={{
-          elevation: 6,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.2,
-          shadowRadius: 6,
-          bottom: insets.bottom + CONTAINER_HEIGHT,
-        }}
-        onPress={handleFeedbackPress}
-      >
-        <MessageSquare size={22} color="white" />
-      </Button>
-
-      {/* Feedback Modal */}
-      <FeedbackModal
-        visible={feedbackModalVisible}
-        onClose={() => setFeedbackModalVisible(false)}
-      />
     </View>
   );
 }
