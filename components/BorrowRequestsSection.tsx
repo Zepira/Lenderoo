@@ -132,16 +132,19 @@ export function BorrowRequestsSection({
 
                 {/* User Info */}
                 <View className="flex-row gap-2 items-center">
-                  <Avatar className="w-5 h-5" alt={request.requesterName}>
-                    {request.requesterAvatarUrl ? (
+                  {/* size-6 (not w-/h-) so it replaces Avatar's default size-8.
+                      The fallback is always rendered: the primitive shows it
+                      whenever the image is missing or fails to load (it hides
+                      a failed image, which left a blank space here). */}
+                  <Avatar className="size-6" alt={request.requesterName}>
+                    {request.requesterAvatarUrl && (
                       <AvatarImage source={resolveAvatarSource(request.requesterAvatarUrl) ?? { uri: '' }} />
-                    ) : (
-                      <AvatarFallback>
-                        <Text variant="small" className="text-xs">
-                          {getInitials(request.requesterName)}
-                        </Text>
-                      </AvatarFallback>
                     )}
+                    <AvatarFallback className="bg-primary/15">
+                      <Text className="font-sans-bold text-primary" style={{ fontSize: 10, lineHeight: 12 }}>
+                        {getInitials(request.requesterName)}
+                      </Text>
+                    </AvatarFallback>
                   </Avatar>
                   <Caption className="flex-1" numberOfLines={1}>
                     Requested by {request.requesterName}
