@@ -5,7 +5,7 @@ import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 
 // Cards use rounded-3xl (24px) and a soft colored shadow per design spec.
-function Card({ className, style, ...props }: ViewProps & React.RefAttributes<View>) {
+function Card({ className, style, ...props }: ViewProps & React.RefAttributes<React.ComponentRef<typeof View>>) {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
@@ -27,7 +27,7 @@ function Card({ className, style, ...props }: ViewProps & React.RefAttributes<Vi
 function CardHeader({
   className,
   ...props
-}: ViewProps & React.RefAttributes<View>) {
+}: ViewProps & React.RefAttributes<React.ComponentRef<typeof View>>) {
   return (
     <View className={cn("flex flex-col gap-1.5 px-6", className)} {...props} />
   );
@@ -64,14 +64,14 @@ function CardDescription({
 function CardContent({
   className,
   ...props
-}: ViewProps & React.RefAttributes<View>) {
+}: ViewProps & React.RefAttributes<React.ComponentRef<typeof View>>) {
   return <View className={cn("px-6", className)} {...props} />;
 }
 
 function CardFooter({
   className,
   ...props
-}: ViewProps & React.RefAttributes<View>) {
+}: ViewProps & React.RefAttributes<React.ComponentRef<typeof View>>) {
   return (
     <View
       className={cn("flex flex-row items-center px-6", className)}

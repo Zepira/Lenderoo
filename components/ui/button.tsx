@@ -1,7 +1,7 @@
 import { TextClassContext } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Platform, Pressable, TouchableOpacity } from "react-native";
+import { Platform, TouchableOpacity } from "react-native";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 
@@ -69,7 +69,7 @@ const buttonVariants = cva(
         ),
         // Compact card-sized button (e.g. ItemCard actions)
         xs: cn(
-          "h-9 px-3 rounded-xl gap-1",
+          "h-9 px-2.5 rounded-xl gap-1",
           Platform.select({ web: "has-[>svg]:px-2.5" }),
         ),
         icon: "h-14 w-14",
@@ -126,8 +126,7 @@ const buttonTextVariants = cva(
   },
 );
 
-type ButtonProps = React.ComponentProps<typeof Pressable> &
-  React.RefAttributes<typeof Pressable> &
+type ButtonProps = React.ComponentProps<typeof TouchableOpacity> &
   VariantProps<typeof buttonVariants> & {
     isSelected?: boolean;
   };

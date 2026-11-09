@@ -16,6 +16,15 @@ const H_PADDING = 32; // 16px left + 16px right
 const COL_GAP = 12; // matches columnWrapperStyle={{ gap: 12 }} on every grid FlatList
 const MIN_CARD_WIDTH = 120;
 
+// Card action labels stay on one line: narrow Android phones (360dp) left
+// "Confirm Pickup" no room, so it wrapped. Shrinks a little only if needed.
+const ONE_LINE = {
+  numberOfLines: 1,
+  adjustsFontSizeToFit: true,
+  minimumFontScale: 0.8,
+  style: { fontSize: 11, flexShrink: 1 },
+} as const;
+
 export function calcCardLayout(screenWidth: number) {
   const numColumns = Math.max(
     2,
@@ -189,7 +198,7 @@ export const ItemCard = memo(function ItemCard({
         ) : (
           <>
             {Icon && <Icon size={12} color={iconColor} />}
-            <Text>{action.label}</Text>
+            <Text {...ONE_LINE}>{action.label}</Text>
           </>
         )}
       </Button>
@@ -205,12 +214,12 @@ export const ItemCard = memo(function ItemCard({
         {isSubscribed ? (
           <>
             <BellOff size={12} color={theme.foreground} />
-            <Text>Cancel Notify</Text>
+            <Text {...ONE_LINE}>Cancel Notify</Text>
           </>
         ) : (
           <>
             <Bell size={12} color="#fff" />
-            <Text>Notify Me</Text>
+            <Text {...ONE_LINE}>Notify Me</Text>
           </>
         )}
       </Button>
@@ -330,7 +339,8 @@ export const ItemCard = memo(function ItemCard({
         {/* Name — grows to push button to bottom */}
         <View style={{ flex: 1 }}>
           <BodyStrong
-            style={{ fontSize: 13, lineHeight: 18, marginBottom: 8 }}
+            // Always two lines tall, so one-line names don't make shorter cards.
+            style={{ fontSize: 13, lineHeight: 18, minHeight: 36, marginBottom: 8 }}
             numberOfLines={2}
           >
             {item.name}

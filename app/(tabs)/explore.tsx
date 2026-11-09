@@ -302,7 +302,7 @@ export default function ExploreScreen() {
         )}
       </Pressable>
     </View>
-  ) : null;
+  ) : undefined;
 
   if (error) {
     return (

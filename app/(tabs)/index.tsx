@@ -8,7 +8,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHero, LabelStrong } from "@/components/ui/typography";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ComponentRef, useCallback, useEffect, useRef, useState } from "react";
 import {
   useActiveItems,
   useBorrowedByMeItems,
@@ -27,11 +27,14 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { DashboardSection } from "@/components/dashboard/DashboardSection";
 import { ErrorState } from "@/components/ErrorState";
 
+const PAGE_PADDING = 24;
+
 export default function HomeScreen() {
   const { appUser, user } = useAuth();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
+  const pageBg = isDark ? theme.muted : "#F3F4F6";
 
   const {
     items: lentOutItems,
@@ -106,7 +109,7 @@ export default function HomeScreen() {
     }
   };
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const firstName = appUser?.name?.split(" ")[0] ?? "there";
 
   const refresh = async () => {
@@ -127,7 +130,7 @@ export default function HomeScreen() {
 
   return (
     <View
-      style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}
+      style={{ flex: 1, backgroundColor: pageBg }}
     >
       <ScrollView
         ref={scrollRef}
@@ -231,7 +234,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Sections */}
-        <View style={{ paddingHorizontal: 24, marginTop: 36, gap: 36 }}>
+        <View style={{ paddingHorizontal: PAGE_PADDING, marginTop: 36, gap: 36 }}>
           {loading &&
           borrowedItems.length === 0 &&
           lentOutItems.length === 0 ? (
@@ -248,6 +251,8 @@ export default function HomeScreen() {
                 getRequest={(item) => outgoingRequestsByItemId.get(item.id)}
                 onChanged={refresh}
                 getPriority={(item) => getPendingActionPriority(item, user?.id)}
+                bleed={PAGE_PADDING}
+                fadeColor={pageBg}
               />
               <DashboardSection
                 title="Borrowed"
@@ -257,6 +262,8 @@ export default function HomeScreen() {
                 onViewAll={() => router.push("/borrowed" as any)}
                 onChanged={refresh}
                 getPriority={(item) => getPendingActionPriority(item, user?.id)}
+                bleed={PAGE_PADDING}
+                fadeColor={pageBg}
               />
               <DashboardSection
                 title="Lending"
@@ -266,6 +273,8 @@ export default function HomeScreen() {
                 onViewAll={() => router.push("/(tabs)/library?filter=lent" as any)}
                 onChanged={refresh}
                 getPriority={(item) => getPendingActionPriority(item, user?.id)}
+                bleed={PAGE_PADDING}
+                fadeColor={pageBg}
               />
             </>
           )}

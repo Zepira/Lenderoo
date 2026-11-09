@@ -6,13 +6,13 @@ Never forget who borrowed your stuff. Lenderoo lets you track items you've lent 
 
 | Layer | Technology |
 |---|---|
-| Framework | React Native 0.81.5 (New Architecture) + Expo Router v6 |
+| Framework | Expo SDK 58: React Native 0.88.1 (New Architecture) + Expo Router 58 |
 | Styling | NativeWind v4.2.1 (Tailwind CSS) |
 | Language | TypeScript (strict mode) |
 | Backend | Supabase (auth, PostgreSQL, storage) |
 | Data fetching | TanStack Query v5 |
 | Icons | Lucide React Native |
-| Toasts | `burnt` |
+| Toasts | `components/ToastHost` (native), `sonner` (web) |
 | Package manager | Yarn 4.5.0 |
 | Linter/formatter | Biome |
 

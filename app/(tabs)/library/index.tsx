@@ -265,7 +265,7 @@ export default function ItemsScreen() {
             <View style={{ alignItems: "center", paddingTop: 48 }}>
               <ActivityIndicator color={theme.primary} size="large" />
             </View>
-          ) : null
+          ) : undefined
         }
         ListHeaderComponent={
           <View style={{ gap: 12, marginBottom: 4 }}>

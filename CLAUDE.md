@@ -30,9 +30,9 @@ cron job, new case in `push-notifications`' `buildMessages()`, a new
 This is a React Native app using Expo Router with NativeWind for styling. The project uses Yarn 4.5.0 as the package manager and is configured with React Native's New Architecture enabled for both iOS and Android.
 
 **Key Technologies:**
-- **Expo Router** (v6) for file-based routing
+- **Expo Router** (Expo SDK 58) for file-based routing
 - **NativeWind** (v4.2.1) for Tailwind CSS styling
-- **React Native** 0.81.5 with React 19.1.0
+- **React Native** 0.88.1 with React 19.3.0 (Expo SDK 58)
 - **TypeScript** with strict mode enabled
 - **Biome** for linting and formatting
 - **Jest** for testing
@@ -76,7 +76,7 @@ npx @biomejs/biome check .
 
 ### File-Based Routing (Expo Router)
 
-The app uses Expo Router v6 with typed routes enabled. Routes are defined by the file structure in the `app/` directory:
+The app uses Expo Router with typed routes enabled. Routes are defined by the file structure in the `app/` directory:
 
 - **`app/_layout.tsx`**: Root layout that handles authentication and navigation
 - **`app/(auth)/`**: Authentication screens (sign-in, sign-up)
@@ -150,7 +150,7 @@ Components are in `components/`, utilities in `lib/`, hooks in `hooks/`.
 
 ### New Architecture Enabled
 
-Both iOS and Android have React Native's New Architecture enabled via `expo-build-properties` in `app.json`. This requires building development builds; the app won't run in Expo Go with native features that depend on the new architecture.
+React Native 0.82+ always runs the New Architecture (there is no opt-out flag any more). This requires building development builds; the app won't run in Expo Go with native features that depend on the new architecture.
 
 ## Code Style
 

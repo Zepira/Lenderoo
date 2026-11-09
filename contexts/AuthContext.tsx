@@ -68,17 +68,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      // Expired/invalid refresh token — clear state silently so the root
-      // layout redirects to sign-in without surfacing an error to the user.
-      if (event === 'TOKEN_REFRESH_FAILED') {
-        setSession(null);
-        setUser(null);
-        setAppUser(null);
-        setLoading(false);
-        return;
-      }
-
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      // An expired/invalid refresh token arrives as SIGNED_OUT with no
+      // session; the null-session branch below clears state silently.
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {

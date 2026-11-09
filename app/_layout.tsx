@@ -2,7 +2,6 @@ import "../global.css";
 
 import * as React from "react";
 import { View, LogBox, Linking, Platform } from "react-native";
-import { colorScheme } from "nativewind";
 import {
   configureNotifications,
   registerPushToken,
@@ -39,7 +38,7 @@ import { supabase } from "@/lib/supabase";
 export { ErrorBoundary } from "expo-router";
 
 export const unstable_settings = {
-  initialRouteName: "(tabs)",
+  anchor: "(tabs)",
 };
 
 SplashScreen.preventAutoHideAsync();
@@ -126,22 +125,13 @@ function RootLayoutContent() {
         if (value) {
           router.replace("/(auth)/sign-in");
         } else {
-          router.replace("/(auth)/");
+          router.replace("/(auth)");
         }
       });
     } else if (user && inAuthGroup) {
       router.replace("/(tabs)");
     }
   }, [user, segments, themeLoading, authLoading, router]);
-
-  // Drive NativeWind's dark variant through its colour-scheme API instead of
-  // toggling a "dark" className on the wrapper View. Changing that className
-  // at runtime made NativeWind swap the wrapper component, which remounted
-  // the whole Stack outside its navigation context and crashed with
-  // "Couldn't find a navigation context" the moment the theme changed.
-  React.useEffect(() => {
-    colorScheme.set(isDark ? "dark" : "light");
-  }, [isDark]);
 
   // Native splash is still visible while loading — nothing to render.
   if (themeLoading || authLoading) {

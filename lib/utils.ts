@@ -255,7 +255,9 @@ export function enrichItem(item: Item, friend: Friend): ItemWithDetails {
   const daysUntilDueValue = item.dueDate
     ? daysUntilDue(item.dueDate)
     : undefined;
-  const daysBorrowedValue = daysBorrowed(item.borrowedDate, item.returnedDate);
+  const daysBorrowedValue = item.borrowedDate
+    ? daysBorrowed(item.borrowedDate, item.returnedDate)
+    : 0;
 
   return {
     ...item,
@@ -302,7 +304,7 @@ export function toProperCase(str: string): string {
 /**
  * Generate initials from a name (e.g., "John Doe" -> "JD")
  */
-export function getInitials(name: string): string {
+export function getInitials(name: string | undefined): string {
   if (!name) return "?";
 
   const words = name.trim().split(/\s+/);

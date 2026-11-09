@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { useColorScheme } from "react-native";
+import { colorScheme, useColorScheme } from "nativewind";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const THEME_STORAGE_KEY = "@lenderoo:theme";
@@ -13,7 +13,11 @@ const THEME_STORAGE_KEY = "@lenderoo:theme";
 export type ThemeMode = "light" | "dark" | "system";
 
 export function useTheme() {
-  const systemColorScheme = useColorScheme();
+  // NativeWind's colour scheme is the single source of truth: className
+  // styles read it, and activeTheme below reads it back for inline styles.
+  // Computing activeTheme separately (from RN's useColorScheme) let the two
+  // drift apart, leaving dark-mode text on light-mode backgrounds.
+  const { colorScheme: nativeWindScheme } = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>("light");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -38,6 +42,11 @@ export function useTheme() {
     loadTheme();
   }, []);
 
+  // Hand the preference to NativeWind ("system" follows the device).
+  useEffect(() => {
+    if (!isLoading) colorScheme.set(themeMode);
+  }, [themeMode, isLoading]);
+
   // Set theme preference
   const setThemeMode = useCallback(async (mode: ThemeMode) => {
     try {
@@ -56,13 +65,8 @@ export function useTheme() {
     setThemeMode(modes[nextIndex]);
   }, [themeMode, setThemeMode]);
 
-  // Calculate actual theme to use
-  const activeTheme =
-    themeMode === "system"
-      ? systemColorScheme === "dark"
-        ? "dark"
-        : "light"
-      : themeMode;
+  const activeTheme: "light" | "dark" =
+    nativeWindScheme === "dark" ? "dark" : "light";
 
   return {
     themeMode,

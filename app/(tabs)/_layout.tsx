@@ -1,7 +1,7 @@
 import * as React from "react";
 import { View, Platform, Pressable } from "react-native";
 import { router, Tabs } from "expo-router";
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarProps } from "expo-router/tabs";
 import {
   Search,
   Home,
@@ -29,7 +29,8 @@ const CONTAINER_HEIGHT = 120;
 function FloatingTabBar({
   state,
   descriptors,
-  navigation,
+  emitter,
+  navigateToTab,
   notificationCount,
 }: BottomTabBarProps & { notificationCount: number }) {
   const insets = useSafeAreaInsets();
@@ -47,13 +48,12 @@ function FloatingTabBar({
     const isFocused = state.index === index;
     const showBadge = route.name === "settings" && notificationCount > 0;
     const onPress = () => {
-      const event = navigation.emit({
+      const event = emitter.emit({
         type: "tabPress",
         target: route.key,
         canPreventDefault: true,
       });
-      if (!isFocused && !event.defaultPrevented)
-        navigation.navigate(route.name);
+      if (!isFocused && !event.defaultPrevented) navigateToTab(route.key);
     };
     return (
       <Pressable

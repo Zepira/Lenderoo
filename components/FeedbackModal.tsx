@@ -4,11 +4,10 @@
  * Modal for users to submit feedback
  */
 
-import { useRef, useState } from "react";
+import { type ComponentRef, useRef, useState } from "react";
 import {
   Modal,
   View,
-  ScrollView,
   Image,
   ActivityIndicator,
   Alert,
@@ -25,6 +24,9 @@ import { Text } from "./ui/text";
 import { Textarea } from "./ui/textarea";
 import { submitFeedback } from "@/lib/services/feedback";
 import * as toast from "@/lib/toast";
+import { THEME } from "@/lib/theme";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { HorizontalScroller } from "./HorizontalScroller";
 
 const MAX_SCREENSHOTS = 3;
 
@@ -35,7 +37,8 @@ interface FeedbackModalProps {
 
 export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
   const insets = useSafeAreaInsets();
-  const textareaRef = useRef<TextInput>(null);
+  const { activeTheme } = useThemeContext();
+  const textareaRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [comment, setComment] = useState("");
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -206,8 +209,12 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
           {/* Screenshots */}
           <View className="mb-4 gap-2">
             {screenshots.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View className="flex-row gap-2">
+              <HorizontalScroller
+                bleed={24}
+                fadeColor={activeTheme === "dark" ? THEME.dark.background : THEME.light.background}
+                gap={8}
+                contentContainerStyle={{ paddingTop: 8 }}
+              >
                   {screenshots.map((uri) => (
                     <View key={uri} className="relative">
                       <Image
@@ -225,8 +232,7 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
                       </Pressable>
                     </View>
                   ))}
-                </View>
-              </ScrollView>
+              </HorizontalScroller>
             )}
             {screenshots.length < MAX_SCREENSHOTS && (
               <Button

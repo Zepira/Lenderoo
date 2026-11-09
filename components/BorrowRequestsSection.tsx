@@ -7,6 +7,7 @@
 import { View, Alert, ActivityIndicator, Platform } from "react-native";
 import { Image } from "expo-image";
 import { Text } from "@/components/ui/text";
+import { BodyStrong, Caption } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -103,15 +104,16 @@ export function BorrowRequestsSection({
         return (
           <View
             key={request.id}
-            className="bg-card border border-border rounded-lg p-3 gap-3"
+            className="bg-card border border-border rounded-2xl p-3 gap-3"
           >
             <View className="flex-row gap-3">
               {/* Item Thumbnail */}
-              <View className="w-16 h-16 bg-muted rounded-lg items-center justify-center overflow-hidden">
+              {/* Stretches to the height of the details beside it */}
+              <View className="w-20 min-h-20 bg-muted rounded-xl items-center justify-center overflow-hidden">
                 {itemImage ? (
                   <Image
                     source={{ uri: itemImage }}
-                    style={{ width: 64, height: 64 }}
+                    style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
                     contentFit="cover"
                     cachePolicy="memory-disk"
                   />
@@ -123,51 +125,52 @@ export function BorrowRequestsSection({
               {/* Request Details */}
               <View className="flex-1 gap-2">
                 {/* Item Name and Category */}
-                <View className="gap-1">
-                  <Text className="font-semibold">
-                    {request.itemName}
-                  </Text>
-                  <CategoryBadge category={request.itemCategory} size="small" />
+                <View className="gap-1.5">
+                  <BodyStrong numberOfLines={2}>{request.itemName}</BodyStrong>
+                  <CategoryBadge category={request.itemCategory} size="sm" />
                 </View>
 
                 {/* User Info */}
                 <View className="flex-row gap-2 items-center">
-                  <Avatar className="w-6 h-6" alt={request.requesterName}>
-                    {request.requesterAvatarUrl ? (
+                  {/* size-6 (not w-/h-) so it replaces Avatar's default size-8.
+                      The fallback is always rendered: the primitive shows it
+                      whenever the image is missing or fails to load (it hides
+                      a failed image, which left a blank space here). */}
+                  <Avatar className="size-6" alt={request.requesterName}>
+                    {request.requesterAvatarUrl && (
                       <AvatarImage source={resolveAvatarSource(request.requesterAvatarUrl) ?? { uri: '' }} />
-                    ) : (
-                      <AvatarFallback>
-                        <Text variant="small" className="text-xs">
-                          {getInitials(request.requesterName)}
-                        </Text>
-                      </AvatarFallback>
                     )}
+                    <AvatarFallback className="bg-primary/15">
+                      <Text className="font-sans-bold text-primary" style={{ fontSize: 10, lineHeight: 12 }}>
+                        {getInitials(request.requesterName)}
+                      </Text>
+                    </AvatarFallback>
                   </Avatar>
-                  <Text variant="small" className="text-muted-foreground">
+                  <Caption className="flex-1" numberOfLines={1}>
                     Requested by {request.requesterName}
-                  </Text>
+                  </Caption>
                 </View>
 
                 {/* Optional Message */}
                 {request.message && (
-                  <View className="bg-muted p-2 rounded border-l-2 border-blue-500">
-                    <Text variant="small" className="italic">
+                  <View className="bg-muted px-2.5 py-1.5 rounded-lg border-l-2 border-primary">
+                    <Caption className="italic text-foreground">
                       "{request.message}"
-                    </Text>
+                    </Caption>
                   </View>
                 )}
 
                 {/* Requested Due Date */}
                 {request.requestedDueDate && (
-                  <Text variant="small" className="text-muted-foreground">
+                  <Caption>
                     Requested return: {new Date(request.requestedDueDate).toLocaleDateString()}
-                  </Text>
+                  </Caption>
                 )}
 
                 {/* Timestamp */}
-                <Text variant="small" className="text-muted-foreground">
+                <Caption style={{ fontSize: 12, lineHeight: 16 }}>
                   {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                </Text>
+                </Caption>
               </View>
             </View>
 
