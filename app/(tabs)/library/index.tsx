@@ -25,10 +25,12 @@ import { SegmentedTabs } from "@/components/SegmentedTabs";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { ErrorState } from "@/components/ErrorState";
+import { QuietBanner, useBannerSpace } from "@/components/QuietBanner";
 
 type FilterTab = "all" | "available" | "lent";
 
 export default function ItemsScreen() {
+  const bannerSpace = useBannerSpace();
   const params = useLocalSearchParams<{ filter?: FilterTab }>();
   const [activeFilter, setActiveFilter] = useState<FilterTab>(
     params.filter === "available" || params.filter === "lent" ? params.filter : "all"
@@ -259,7 +261,7 @@ export default function ItemsScreen() {
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 160, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 160 + bannerSpace, gap: 12 }}
         showsVerticalScrollIndicator={false}
         onRefresh={refresh}
         refreshing={loading}
@@ -301,6 +303,7 @@ export default function ItemsScreen() {
           />
         )}
       />
+      <QuietBanner />
     </View>
   );
 }

@@ -15,14 +15,17 @@ import { useThemeContext } from "../../contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { THEME } from "@/lib/theme";
+import {
+  TAB_BAR_BOTTOM_GAP,
+  TAB_BAR_BTN_SIZE,
+  TAB_BAR_CONTAINER_HEIGHT,
+  TAB_BAR_NAV_HEIGHT,
+} from "@/lib/tab-bar";
 import { BorrowRequestBanner } from "@/components/BorrowRequestBannerNative";
 import { useRealtimeSync, useIncomingRequestCount, usePendingHandoffs } from "@/hooks";
 
-const BTN_SIZE = 60;
-const NAV_HEIGHT = 74;
 // Container is taller than the pill so the overlapping button stays within
 // the touchable area while visually sitting above the navbar.
-const CONTAINER_HEIGHT = 120;
 
 function FloatingTabBar({
   state,
@@ -60,7 +63,7 @@ function FloatingTabBar({
         hitSlop={{ top: 20, bottom: 20, left: 8, right: 8 }}
         style={{
           flex: 1,
-          height: NAV_HEIGHT,
+          height: TAB_BAR_NAV_HEIGHT,
           alignItems: "center",
           justifyContent: "center",
           ...Platform.select({ web: { cursor: "pointer" } as object }),
@@ -116,10 +119,10 @@ function FloatingTabBar({
       pointerEvents="box-none"
       style={{
         position: "absolute",
-        bottom: insets.bottom + 8,
+        bottom: insets.bottom + TAB_BAR_BOTTOM_GAP,
         left: 12,
         right: 12,
-        height: CONTAINER_HEIGHT,
+        height: TAB_BAR_CONTAINER_HEIGHT,
         zIndex: 999,
       }}
     >
@@ -130,7 +133,7 @@ function FloatingTabBar({
           bottom: 0,
           left: 0,
           right: 0,
-          height: NAV_HEIGHT,
+          height: TAB_BAR_NAV_HEIGHT,
           borderRadius: 37,
           backgroundColor: "#101828",
           flexDirection: "row",
@@ -144,7 +147,7 @@ function FloatingTabBar({
       >
         {leftRoutes.map((route, i) => renderTab(route, i))}
         {/* Gap for the floating center button */}
-        <View style={{ width: BTN_SIZE + 16 }} />
+        <View style={{ width: TAB_BAR_BTN_SIZE + 16 }} />
         {rightRoutes.map((route, i) => renderTab(route, i + half))}
       </View>
 
@@ -161,9 +164,9 @@ function FloatingTabBar({
         <Pressable
           onPress={() => router.push("/add-item")}
           style={{
-            width: BTN_SIZE,
-            height: BTN_SIZE,
-            borderRadius: BTN_SIZE / 2,
+            width: TAB_BAR_BTN_SIZE,
+            height: TAB_BAR_BTN_SIZE,
+            borderRadius: TAB_BAR_BTN_SIZE / 2,
             backgroundColor: THEME.light.primaryStrong,
             borderWidth: 4,
             borderColor: "white",
