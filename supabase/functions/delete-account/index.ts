@@ -24,9 +24,11 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 //   nothing else has a stake in these once the account is gone.
 // - Their files in the public `avatars` and `item-images` buckets (everything
 //   under `<userId>/`): deleted, so no photo stays reachable by URL.
-// - The auth.users row is banned (not deleted), its email scrubbed and the
-//   name/phone/avatar copied into user_metadata at sign-up cleared, so the id
-//   stays valid but the account can never sign in again and no PII is left.
+// - The auth.users row is banned (not deleted), its email scrubbed, its
+//   password replaced with a random one nobody knows (so the old password
+//   hash is gone) and the name/phone/avatar copied into user_metadata at
+//   sign-up cleared, so the id stays valid but the account can never sign in
+//   again and no PII is left.
 //
 // Keep the lenderoo.app "Delete your account and data" page
 // (lenderoo.com repo, src/components/DataDeletion.tsx) in step with this list.
@@ -190,13 +192,19 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to scrub profile: ${usersError.message}`);
     }
 
-    // ── Ban the auth record and scrub its email and the sign-up metadata
-    //    (name, phone, avatar) so the id stays valid (all the FKs above
-    //    still resolve) but the account can never sign in and no PII sits
-    //    in auth.users either. user_metadata is merged, so set each key to
-    //    null rather than passing {}.
+    // ── Ban the auth record and scrub its email, password and the sign-up
+    //    metadata (name, phone, avatar) so the id stays valid (all the FKs
+    //    above still resolve) but the account can never sign in and no PII
+    //    sits in auth.users either. The password is overwritten with 32
+    //    random bytes that are never stored or returned, which replaces the
+    //    old hash. user_metadata is merged, so set each key to null rather
+    //    than passing {}.
+    const randomPassword = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
+      b.toString(16).padStart(2, '0'),
+    ).join('');
     const { error: authUpdateError } = await supabase.auth.admin.updateUserById(userId, {
       email: placeholderEmail,
+      password: randomPassword,
       user_metadata: { name: null, phone: null, avatar_url: null },
       ban_duration: '876000h', // ~100 years — effectively permanent
     });
