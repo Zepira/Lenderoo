@@ -20,6 +20,8 @@ import { THEME } from "@/lib/theme";
 /** Tabs that show the ad bar (route names in app/(tabs)). */
 export const AD_ROUTES = ["index", "library", "explore"];
 const SLIDE_MS = 220;
+/** After a failed load (no fill, offline), try again this much later. */
+const RETRY_MS = 60_000;
 
 // Real ad units come from EAS env vars; development builds always use
 // Google's test unit. A release build without a unit id shows no ads.
@@ -55,9 +57,20 @@ export function AdBar({ lift }: { lift: Animated.Value }) {
   const { activeTheme } = useThemeContext();
   const theme = activeTheme === "dark" ? THEME.dark : THEME.light;
   const { showBanner, nonPersonalized, adHeight, setAdHeight } = useAds();
-  const [failed, setFailed] = useState(false);
+  // After a failed load, wait RETRY_MS, then remount the BannerAd (new key),
+  // which requests a fresh ad.
+  const [attempt, setAttempt] = useState(0);
+  const [waiting, setWaiting] = useState(false);
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setTimeout(() => {
+      setWaiting(false);
+      setAttempt((a) => a + 1);
+    }, RETRY_MS);
+    return () => clearTimeout(timer);
+  }, [waiting]);
 
-  if (!showBanner || !UNIT_ID || failed) return null;
+  if (!showBanner || !UNIT_ID) return null;
 
   const barHeight = adHeight + insets.bottom;
   return (
@@ -83,16 +96,20 @@ export function AdBar({ lift }: { lift: Animated.Value }) {
         },
       ]}
     >
-      <BannerAd
-        unitId={UNIT_ID}
-        size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-        requestOptions={{ requestNonPersonalizedAdsOnly: nonPersonalized }}
-        onAdLoaded={({ height }) => setAdHeight(Math.ceil(height))}
-        onAdFailedToLoad={() => {
-          setFailed(true);
-          setAdHeight(0);
-        }}
-      />
+      {!waiting && (
+        <BannerAd
+          key={attempt}
+          unitId={UNIT_ID}
+          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+          requestOptions={{ requestNonPersonalizedAdsOnly: nonPersonalized }}
+          onAdLoaded={({ height }) => setAdHeight(Math.ceil(height))}
+          onAdFailedToLoad={() => {
+            // Hide the bar (the tab bar drops back down) and retry later.
+            setAdHeight(0);
+            setWaiting(true);
+          }}
+        />
+      )}
     </Animated.View>
   );
 }
