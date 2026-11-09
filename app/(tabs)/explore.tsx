@@ -2,11 +2,11 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   View,
   FlatList,
-  Pressable,
   useWindowDimensions,
   ActivityIndicator,
   ScrollView,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { useFocusEffect, useRouter } from "expo-router";
 import { X } from "lucide-react-native";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -147,9 +147,13 @@ export default function ExploreScreen() {
 
   // Subscriptions/favourites aren't covered by the realtime sync (different
   // tables), so keep refetching them off the item list like before.
+  // Keyed on the item ids (a string), not the lists: the lists can be new
+  // arrays on every render, which re-ran this effect, refetched, set state,
+  // re-rendered and looped forever (~12 requests/s while idle).
+  const itemIdsKey = items.map((i) => i.id).join(",");
   useEffect(() => {
-    if (items.length === 0) return;
-    const ids = items.map((i) => i.id);
+    if (!itemIdsKey) return;
+    const ids = itemIdsKey.split(",");
     getMyAvailabilitySubscriptionsForItems(ids).then(setSubscriptionMap);
     let cancelled = false;
     getMyFavouriteItemIds(ids).then((favIds) => {
@@ -160,7 +164,7 @@ export default function ExploreScreen() {
     return () => {
       cancelled = true;
     };
-  }, [items]);
+  }, [itemIdsKey]);
 
   const handleNotify = useCallback(
     async (item: Item) => {

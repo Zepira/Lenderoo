@@ -26,6 +26,7 @@ import {
   Mail,
   Shield,
   FileText,
+  MessageSquare,
 } from "lucide-react-native";
 import * as WebBrowser from "expo-web-browser";
 import { Text } from "@/components/ui/text";
@@ -45,6 +46,7 @@ import {
 import * as toast from "@/lib/toast";
 import { APP_INFO } from "@/lib/constants";
 import { AvatarPickerModal } from "@/components/AvatarPickerModal";
+import { FeedbackModal } from "@/components/FeedbackModal";
 import { resolveAvatarSource, uploadAvatarImage } from "@/lib/services/avatar";
 import { deleteAccount } from "@/lib/services/account";
 import { BorrowRequestsSection } from "@/components/BorrowRequestsSection";
@@ -74,6 +76,7 @@ export default function SettingsScreen() {
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
   const [signingOut, setSigningOut] = useState(false);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
@@ -448,6 +451,11 @@ export default function SettingsScreen() {
             }}
           >
             <SettingsItem
+              icon={<MessageSquare size={20} color={THEME.light.primary} />}
+              label="Send Feedback"
+              onPress={() => setFeedbackVisible(true)}
+            />
+            <SettingsItem
               icon={<Mail size={20} color={THEME.light.primary} />}
               label="Contact Support"
               onPress={() =>
@@ -490,6 +498,7 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
+      <FeedbackModal visible={feedbackVisible} onClose={() => setFeedbackVisible(false)} />
       <AvatarPickerModal
         visible={avatarModalVisible}
         onClose={() => !updatingAvatar && setAvatarModalVisible(false)}

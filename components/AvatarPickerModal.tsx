@@ -3,12 +3,12 @@ import {
   Modal,
   View,
   Image,
-  Pressable,
   ScrollView,
   ActivityIndicator,
   Alert,
   Platform,
-} from 'react-native';
+} from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import * as ImagePickerExpo from 'expo-image-picker';
 import { Camera, ImageIcon, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

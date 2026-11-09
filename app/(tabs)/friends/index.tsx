@@ -3,11 +3,12 @@ import { useState, useEffect, useCallback } from "react";
 import {
   View,
   ScrollView,
-  Pressable,
   Image,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
+import { formatCount } from "lib/utils";
 import {
   ChevronRight,
   Plus,
@@ -301,7 +302,7 @@ export default function FriendsScreen() {
                         className="text-muted-foreground"
                         style={{ marginTop: 1 }}
                       >
-                        {itemCounts[friend.id] ?? 0} items shared
+                        {formatCount(itemCounts[friend.id] ?? 0, "item")} shared
                       </LabelStrong>
                     </View>
                   </View>

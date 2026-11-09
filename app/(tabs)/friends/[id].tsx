@@ -10,11 +10,11 @@ import {
   View,
   Image,
   Alert,
-  Pressable,
   Platform,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ArrowLeft,
@@ -278,11 +278,16 @@ export default function FriendDetailScreen() {
   );
 
   // Refresh the current user's favourites whenever the loaded item lists change
+  // Keyed on the item ids (a string), not the lists: the lists can be new
+  // arrays on every render, which re-ran this effect, refetched, set state,
+  // re-rendered and looped forever (~12 requests/s while idle).
+  const favouriteIdsKey = [...items, ...ownedItems, ...historyItems]
+    .map((i) => i.id)
+    .join(",");
   useEffect(() => {
-    const ids = [...items, ...ownedItems, ...historyItems].map((i) => i.id);
-    if (ids.length === 0) return;
-    getMyFavouriteItemIds(ids).then(setFavouriteIds);
-  }, [items, ownedItems, historyItems]);
+    if (!favouriteIdsKey) return;
+    getMyFavouriteItemIds(favouriteIdsKey.split(",")).then(setFavouriteIds);
+  }, [favouriteIdsKey]);
 
   const withFavourite = (list: Item[]) =>
     list.map((i) => ({ ...i, isFavourite: favouriteIds.has(i.id) }));

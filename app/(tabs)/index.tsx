@@ -79,13 +79,16 @@ export default function HomeScreen() {
   const loading = lentLoading || borrowedLoading;
   const error = lentError || borrowedError || allError;
 
+  // Keyed on the item ids (a string), not the lists: the lists can be new
+  // arrays on every render, which re-ran this effect, refetched, set state,
+  // re-rendered and looped forever (~12 requests/s while idle).
+  const favouriteIdsKey = [...lentOutItems, ...borrowedItems, ...requestedItems]
+    .map((i) => i.id)
+    .join(",");
   useEffect(() => {
-    const ids = [...lentOutItems, ...borrowedItems, ...requestedItems].map(
-      (i) => i.id,
-    );
-    if (ids.length === 0) return;
-    getMyFavouriteItemIds(ids).then(setFavouriteIds);
-  }, [lentOutItems, borrowedItems, requestedItems]);
+    if (!favouriteIdsKey) return;
+    getMyFavouriteItemIds(favouriteIdsKey.split(",")).then(setFavouriteIds);
+  }, [favouriteIdsKey]);
 
   const withFavourite = (list: Item[]) =>
     list.map((i) => ({ ...i, isFavourite: favouriteIds.has(i.id) }));

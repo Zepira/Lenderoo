@@ -25,17 +25,6 @@ yarn start        # starts Expo dev server with tunnel
 
 Then press `a` for Android or `i` for iOS. Do not use `w` (web) — AsyncStorage is not configured for web.
 
-### Dev auto-login
-
-Add your test credentials to `.env` to skip the login screen locally:
-
-```
-EXPO_PUBLIC_DEV_EMAIL=your@email.com
-EXPO_PUBLIC_DEV_PASSWORD=yourpassword
-```
-
-The app signs in automatically when `__DEV__` is true and these are set.
-
 ## Project Structure
 
 ```

@@ -155,9 +155,6 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 # Optional — book search via Hardcover
 EXPO_PUBLIC_HARDCOVER_API_TOKEN=
 
-# Optional — dev auto-login (never set in production)
-EXPO_PUBLIC_DEV_EMAIL=
-EXPO_PUBLIC_DEV_PASSWORD=
 ```
 
 Copy `.env.example` to `.env` and fill in your values.

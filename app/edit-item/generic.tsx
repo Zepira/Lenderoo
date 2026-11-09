@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { View, Alert, Pressable, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

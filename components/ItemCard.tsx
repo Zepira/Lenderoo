@@ -3,10 +3,10 @@ import type { ReactNode } from "react";
 import {
   View,
   Image,
-  Pressable,
   ActivityIndicator,
   useWindowDimensions,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import type { StyleProp, ViewStyle } from "react-native";
 import { router } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";

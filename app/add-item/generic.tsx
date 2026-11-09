@@ -4,9 +4,9 @@ import {
   View,
   Alert,
   ActivityIndicator,
-  Pressable,
   TextInput,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Image } from "expo-image";
 import { Camera } from "lucide-react-native";

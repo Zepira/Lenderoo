@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter, useRootNavigation } from "expo-router";
-import { View, Pressable, ScrollView, useWindowDimensions, ActivityIndicator } from "react-native";
+import { View, ScrollView, useWindowDimensions, ActivityIndicator } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft, X, ScanBarcode } from "lucide-react-native";
 import { CATEGORY_CONFIG, categoryInk } from "@/lib/category-config";

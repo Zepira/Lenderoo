@@ -1,4 +1,5 @@
-import { View, Pressable } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { ChevronRight } from "lucide-react-native";
 import { BodyText, TinyLabel } from "@/components/ui/typography";
 

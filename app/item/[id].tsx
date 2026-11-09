@@ -4,13 +4,14 @@ import {
   useRouter,
   useNavigation,
   useFocusEffect,
+  useIsFocused,
 } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import {
   ScrollView,
   View,
   Image,
   Alert,
-  Pressable,
   TouchableOpacity,
   Platform,
   Modal,
@@ -18,6 +19,7 @@ import {
   Keyboard,
   FlatList,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/ui/button";
@@ -105,6 +107,8 @@ import {
 } from "@/components/ui/typography";
 import type { ItemStatus, BookMetadata } from "lib/types";
 
+const HERO_HEIGHT = 400;
+
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -114,6 +118,9 @@ export default function ItemDetailScreen() {
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
+  // True while the hero photo is still under the status bar.
+  const [heroUnderStatusBar, setHeroUnderStatusBar] = useState(true);
   const { item, loading, error, refresh } = useItem(id!);
 
   const isBorrower =
@@ -450,6 +457,8 @@ export default function ItemDetailScreen() {
     : 0;
 
   const cfg = CATEGORY_CONFIG[item.category] ?? CATEGORY_CONFIG.other;
+  const pageBg = isDark ? theme.muted : "#FFFFFF";
+  const pageBgClear = isDark ? "rgba(30, 41, 59, 0)" : "rgba(255, 255, 255, 0)";
   const imageUrl =
     item.images?.[0] ?? (item as any).imageUrls?.[0] ?? (item as any).imageUrl;
   const bookMeta =
@@ -613,9 +622,7 @@ export default function ItemDetailScreen() {
   };
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#ffffff" }}
-    >
+    <View style={{ flex: 1, backgroundColor: pageBg }}>
       {/* Back button — absolutely positioned, clears status bar via insets */}
       <View
         style={{
@@ -680,12 +687,32 @@ export default function ItemDetailScreen() {
         </Pressable>
       </View>
 
+      {/* White status bar over the hero photo (it has a dark scrim, below);
+          the most recently mounted <StatusBar> wins, so the root layout's
+          takes over again once scrolled past it or off this screen. */}
+      {isFocused && imageUrl && heroUnderStatusBar && <StatusBar style="light" />}
+
+      {/* Once past the hero, fade content out under the status bar and the
+          floating buttons instead of letting it run behind them. */}
+      {!heroUnderStatusBar && (
+        <LinearGradient
+          pointerEvents="none"
+          colors={[pageBg, pageBg, pageBgClear]}
+          locations={[0, 0.55, 1]}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, height: insets.top + 72, zIndex: 5 }}
+        />
+      )}
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 160 }}
+        scrollEventThrottle={32}
+        onScroll={(e) =>
+          setHeroUnderStatusBar(e.nativeEvent.contentOffset.y < HERO_HEIGHT - insets.top)
+        }
       >
         {/* ── Hero Image ── */}
-        <View style={{ height: 400, width: "100%" }}>
+        <View style={{ height: HERO_HEIGHT, width: "100%" }}>
           {imageUrl ? (
             <View>
               <Image
@@ -738,6 +765,15 @@ export default function ItemDetailScreen() {
               bottom: 0,
             }}
           />
+
+          {/* Top scrim so the status bar and floating buttons read on any photo */}
+          {imageUrl && (
+            <LinearGradient
+              pointerEvents="none"
+              colors={["rgba(0,0,0,0.45)", "rgba(0,0,0,0)"]}
+              style={{ position: "absolute", top: 0, left: 0, right: 0, height: insets.top + 72 }}
+            />
+          )}
 
           {/* Floating info */}
           <View
@@ -1276,7 +1312,9 @@ export default function ItemDetailScreen() {
             const activeAvatar = isBorrower
               ? (appUser?.avatarUrl ?? null)
               : (borrowerProfile?.avatarUrl ?? null);
-            const showActiveRow = !isAvailable && !!item.borrowedDate;
+            // Counted only when the row can be drawn, so the count always
+            // matches the list below it.
+            const showActiveRow = !isAvailable && !!item.borrowedDate && !!activeName;
             const totalCount = borrowHistory.length + (showActiveRow ? 1 : 0);
             if (totalCount === 0) return null;
 
@@ -1381,7 +1419,6 @@ export default function ItemDetailScreen() {
                 </Caption>
                 <View style={{ gap: 10, marginBottom: 24 }}>
                   {showActiveRow &&
-                    activeName &&
                     renderRow(
                       "active",
                       activeName,
