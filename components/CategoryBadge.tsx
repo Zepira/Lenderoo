@@ -5,12 +5,11 @@
  */
 
 import { View } from 'react-native'
-import * as LucideIcons from 'lucide-react-native'
 import type { ItemCategory } from 'lib/types'
-import { CATEGORY_ICONS, CATEGORY_LABELS } from 'lib/constants'
-import { Badge } from '@/components/ui/badge'
+import { CATEGORY_LABELS } from 'lib/constants'
+import { CATEGORY_CONFIG, categoryInk } from '@/lib/category-config'
 import { Text } from '@/components/ui/text'
-import { cn } from '@/lib/utils'
+import { useThemeContext } from '@/contexts/ThemeContext'
 
 interface CategoryBadgeProps {
   /** The category to display */
@@ -23,43 +22,46 @@ interface CategoryBadgeProps {
   className?: string
 }
 
-const categoryColors = {
-  book: 'border-blue-500 text-blue-600',
-  tool: 'border-orange-500 text-orange-600',
-  clothing: 'border-purple-500 text-purple-600',
-  electronics: 'border-cyan-500 text-cyan-600',
-  game: 'border-pink-500 text-pink-600',
-  sports: 'border-green-500 text-green-600',
-  kitchen: 'border-yellow-500 text-yellow-600',
-  other: 'border-gray-500 text-gray-600',
+const SIZES = {
+  sm: { icon: 12, font: 11, padX: 8, padY: 3 },
+  md: { icon: 14, font: 12, padX: 10, padY: 4 },
+  lg: { icon: 16, font: 14, padX: 12, padY: 5 },
 } as const
 
+// A compact pill in the category's own colour (the same colours as item
+// cards and the item screen). Sized to its content: it never stretches to
+// fill its parent.
 export function CategoryBadge({
   category,
   showLabel = true,
   size = 'md',
   className,
 }: CategoryBadgeProps) {
-  const iconName = CATEGORY_ICONS[category]
-  const Icon = (LucideIcons as any)[iconName]
-  const label = CATEGORY_LABELS[category]
-
-  const iconSize = {
-    sm: 12,
-    md: 16,
-    lg: 20,
-  }[size]
-
-  const colorClass = categoryColors[category]
+  const { activeTheme } = useThemeContext()
+  const cfg = CATEGORY_CONFIG[category] ?? CATEGORY_CONFIG.other
+  const ink = categoryInk(category, activeTheme === 'dark')
+  const s = SIZES[size]
 
   return (
-    <Badge variant="outline" className={cn('gap-1.5', colorClass, className)}>
-      {Icon && <Icon size={iconSize} />}
+    <View
+      className={className}
+      style={{
+        alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: s.padX,
+        paddingVertical: s.padY,
+        borderRadius: 999,
+        backgroundColor: `${cfg.color}22`,
+      }}
+    >
+      <cfg.Icon size={s.icon} color={ink} />
       {showLabel && (
-        <Text className="font-medium">
-          {label}
+        <Text className="font-sans-bold" style={{ fontSize: s.font, lineHeight: s.font + 4, color: ink }}>
+          {CATEGORY_LABELS[category]}
         </Text>
       )}
-    </Badge>
+    </View>
   )
 }
