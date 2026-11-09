@@ -12,7 +12,6 @@ import {
   View,
   Image,
   Alert,
-  Pressable,
   TouchableOpacity,
   Platform,
   Modal,
@@ -20,6 +19,7 @@ import {
   Keyboard,
   FlatList,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/ui/button";

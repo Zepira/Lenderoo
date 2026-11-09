@@ -10,11 +10,11 @@ import {
   View,
   Image,
   Alert,
-  Pressable,
   Platform,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ArrowLeft,

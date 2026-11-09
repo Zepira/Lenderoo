@@ -4,9 +4,9 @@ import {
   View,
   FlatList,
   useWindowDimensions,
-  Pressable,
   ActivityIndicator,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Plus } from "lucide-react-native";
 import { BorrowRequestsSection } from "components/BorrowRequestsSection";

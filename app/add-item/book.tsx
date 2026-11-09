@@ -5,10 +5,10 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Pressable,
   TextInput,
   Platform,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Camera, BookOpen, Library } from "lucide-react-native";
 import { Button } from "@/components/ui/button";

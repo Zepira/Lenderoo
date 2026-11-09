@@ -2,11 +2,11 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   View,
   FlatList,
-  Pressable,
   useWindowDimensions,
   ActivityIndicator,
   ScrollView,
 } from "react-native";
+import { Pressable } from "@/components/ui/pressable";
 import { useFocusEffect, useRouter } from "expo-router";
 import { X } from "lucide-react-native";
 import { ScreenHeader } from "@/components/ScreenHeader";
