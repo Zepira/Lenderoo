@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { AuthProvider } from "../contexts/AuthContext";
 import { queryClient } from "../lib/query-client";
+import { ToastHost } from "./ToastHost";
 
 interface ProviderProps {
   children: ReactNode;
@@ -15,6 +16,7 @@ export function Provider({ children }: ProviderProps) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>{children}</AuthProvider>
+        {Platform.OS !== "web" && <ToastHost />}
       </ThemeProvider>
       {Platform.OS === "web" && (
         <Toaster position="top-center" richColors closeButton />

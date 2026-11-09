@@ -2,20 +2,12 @@
  * Unified Toast API
  *
  * Platform-specific toast implementation:
- * - Mobile (iOS/Android): uses burnt (native toasts) or Alert fallback in Expo Go
+ * - Mobile (iOS/Android): drawn by components/ToastHost (mounted in Provider)
  * - Web: uses sonner (React-based toasts)
  */
 
-import { Platform, Alert } from "react-native";
+import { Platform } from "react-native";
 import { toast as sonnerToast } from "sonner";
-
-// Try to import burnt, but gracefully handle if it's not available (Expo Go)
-let Burnt: any = null;
-try {
-  Burnt = require("burnt");
-} catch (e) {
-  console.log("Burnt module not available, using Alert fallback");
-}
 
 export type ToastOptions = {
   title?: string;
@@ -23,132 +15,82 @@ export type ToastOptions = {
   duration?: number;
 };
 
+type ToastKind = "success" | "error" | "warning" | "info" | "none";
+
+export type NativeToast = {
+  kind: ToastKind;
+  title: string;
+  description?: string;
+  duration: number;
+};
+
+type Listener = (toast: NativeToast | null) => void;
+const listeners = new Set<Listener>();
+
+/** Used by ToastHost; a null toast means dismiss. */
+export function subscribeToToasts(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function present(kind: ToastKind, message: string, options?: ToastOptions) {
+  const duration = options?.duration || 3000;
+  if (Platform.OS === "web") {
+    const webToast = kind === "none" ? sonnerToast : sonnerToast[kind];
+    webToast(options?.title || message, { description: options?.description, duration });
+    return;
+  }
+  // With a title, the message becomes the second line.
+  const title = options?.title || message;
+  const description = options?.description ?? (options?.title ? message : undefined);
+  for (const listener of listeners) listener({ kind, title, description, duration });
+}
+
 /**
  * Show a generic toast message
  */
 export function show(message: string, options?: ToastOptions) {
-  if (Platform.OS === "web") {
-    sonnerToast(options?.title || message, {
-      description: options?.description,
-      duration: options?.duration || 3000,
-    });
-  } else {
-    if (Burnt) {
-      Burnt.toast({
-        title: options?.title || message,
-        preset: "none",
-        haptic: "none",
-        duration: (options?.duration || 3000) / 1000,
-      });
-    } else {
-      // Fallback to Alert for Expo Go
-      Alert.alert(options?.title || "Info", message);
-    }
-  }
+  present("none", message, options);
 }
 
 /**
  * Show a success toast
  */
 export function success(message: string, options?: ToastOptions) {
-  if (Platform.OS === "web") {
-    sonnerToast.success(options?.title || message, {
-      description: options?.description,
-      duration: options?.duration || 3000,
-    });
-  } else {
-    if (Burnt) {
-      Burnt.toast({
-        title: options?.title || message,
-        preset: "done",
-        haptic: "success",
-        duration: (options?.duration || 3000) / 1000,
-      });
-    } else {
-      // Fallback to Alert for Expo Go
-      Alert.alert("✓ " + (options?.title || "Success"), message);
-    }
-  }
+  present("success", message, options);
 }
 
 /**
  * Show an error toast
  */
 export function error(message: string, options?: ToastOptions) {
-  if (Platform.OS === "web") {
-    sonnerToast.error(options?.title || message, {
-      description: options?.description,
-      duration: options?.duration || 3000,
-    });
-  } else {
-    if (Burnt) {
-      Burnt.toast({
-        title: options?.title || message,
-        preset: "error",
-        haptic: "error",
-        duration: (options?.duration || 3000) / 1000,
-      });
-    } else {
-      // Fallback to Alert for Expo Go
-      Alert.alert("✗ " + (options?.title || "Error"), message);
-    }
-  }
+  present("error", message, options);
 }
 
 /**
  * Show a warning toast
  */
 export function warning(message: string, options?: ToastOptions) {
-  if (Platform.OS === "web") {
-    sonnerToast.warning(options?.title || message, {
-      description: options?.description,
-      duration: options?.duration || 3000,
-    });
-  } else {
-    if (Burnt) {
-      Burnt.toast({
-        title: options?.title || message,
-        preset: "none",
-        haptic: "warning",
-        duration: (options?.duration || 3000) / 1000,
-      });
-    } else {
-      // Fallback to Alert for Expo Go
-      Alert.alert("⚠ " + (options?.title || "Warning"), message);
-    }
-  }
+  present("warning", message, options);
 }
 
 /**
  * Show an info toast
  */
 export function info(message: string, options?: ToastOptions) {
-  if (Platform.OS === "web") {
-    sonnerToast.info(options?.title || message, {
-      description: options?.description,
-      duration: options?.duration || 3000,
-    });
-  } else {
-    if (Burnt) {
-      Burnt.toast({
-        title: options?.title || message,
-        preset: "none",
-        haptic: "none",
-        duration: (options?.duration || 3000) / 1000,
-      });
-    } else {
-      // Fallback to Alert for Expo Go
-      Alert.alert("ℹ " + (options?.title || "Info"), message);
-    }
-  }
+  present("info", message, options);
 }
 
 /**
- * Dismiss all toasts (web only)
+ * Dismiss all toasts
  */
 export function dismiss() {
   if (Platform.OS === "web") {
     sonnerToast.dismiss();
+  } else {
+    for (const listener of listeners) listener(null);
   }
 }
 

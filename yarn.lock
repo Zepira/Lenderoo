@@ -3288,20 +3288,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"burnt@npm:^0.12.2":
-  version: 0.12.2
-  resolution: "burnt@npm:0.12.2"
-  dependencies:
-    sf-symbols-typescript: "npm:^1.0.0"
-    sonner: "npm:^0.3.5"
-  peerDependencies:
-    expo: "*"
-    react: "*"
-    react-native: "*"
-  checksum: 10/8ecaaa22f6e365640ba247aabfb56311eca4f7199cb07519dffd4fe9fd30d173b5cd9ab4e1ecede1e538d613c5eb9820eb752ba0ac220a468b046ed2d5c060f6
-  languageName: node
-  linkType: hard
-
 "bytes@npm:3.1.2":
   version: 3.1.2
   resolution: "bytes@npm:3.1.2"
@@ -5208,7 +5194,6 @@ __metadata:
     "@types/react": "npm:~19.3.0"
     babel-preset-expo: "npm:~58.0.0"
     base64-arraybuffer: "npm:^1.0.2"
-    burnt: "npm:^0.12.2"
     class-variance-authority: "npm:^0.7.1"
     clsx: "npm:^2.1.1"
     date-fns: "npm:^4.1.0"
@@ -7396,13 +7381,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sf-symbols-typescript@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "sf-symbols-typescript@npm:1.0.0"
-  checksum: 10/008ddfcadceb33ec29fb182104516234cc3f771254619696918481744bc28be51070f226859e4dfc2faf5f094dd8ca13e0364b2bb3d22e8cf044ce37f749df0b
-  languageName: node
-  linkType: hard
-
 "sf-symbols-typescript@npm:^2.1.0, sf-symbols-typescript@npm:^2.2.0":
   version: 2.2.0
   resolution: "sf-symbols-typescript@npm:2.2.0"
@@ -7471,16 +7449,6 @@ __metadata:
   version: 1.6.9
   resolution: "slugify@npm:1.6.9"
   checksum: 10/101599a77585ac3b3fe49662db8666260c8ee1c5090d28a13c6ecabf16b42057e69ea209654797f46b13faee4c53224f48784044bd734a9443b7b88e0357110e
-  languageName: node
-  linkType: hard
-
-"sonner@npm:^0.3.5":
-  version: 0.3.5
-  resolution: "sonner@npm:0.3.5"
-  peerDependencies:
-    react: ^18.0.0
-    react-dom: ^18.0.0
-  checksum: 10/ad42c64bf372b5659c07ed0ce615487f6b8ccb5c4a0eb69d113dd00da34a43129c17bf7cbf9ab0e7354910282a0030064f42e7443013d3d9dc9b06b7f4c5af53
   languageName: node
   linkType: hard
 
