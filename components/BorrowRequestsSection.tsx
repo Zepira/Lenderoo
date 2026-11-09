@@ -108,11 +108,12 @@ export function BorrowRequestsSection({
           >
             <View className="flex-row gap-3">
               {/* Item Thumbnail */}
-              <View className="w-16 h-16 bg-muted rounded-xl items-center justify-center overflow-hidden">
+              {/* Stretches to the height of the details beside it */}
+              <View className="w-20 min-h-20 bg-muted rounded-xl items-center justify-center overflow-hidden">
                 {itemImage ? (
                   <Image
                     source={{ uri: itemImage }}
-                    style={{ width: 64, height: 64 }}
+                    style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
                     contentFit="cover"
                     cachePolicy="memory-disk"
                   />
