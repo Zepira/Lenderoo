@@ -9,16 +9,24 @@ import { THEME } from "@/lib/theme";
 /**
  * The one ad in the app (docs/ADS-PLAN.md): a full-width bar docked to the
  * bottom edge, with the floating tab bar lifted to sit just above it. Shown on
- * Home, Library and Explore only; on other tabs it slides away and the tab
- * bar slides back down. Renders nothing when ads are off or no ad loads.
+ * browsing screens only (see isAdScreen; Borrowed renders its own); elsewhere
+ * the tab bar sits in its usual place. Renders nothing when ads are off or no
+ * ad loads.
  *
  * The floating tab bar renders this (app/(tabs)/_layout.tsx) and reads
  * useAdBarLift() for how far to lift itself; screens pad their content with
  * useBannerSpace().
  */
 
-/** Tabs that show the ad bar (route names in app/(tabs)). */
-export const AD_ROUTES = ["index", "library", "explore"];
+/**
+ * Whether a tab screen shows the ad bar. Browsing screens only: never Settings,
+ * and never the Add Friend form (docs/ADS-PLAN.md §2.2).
+ * `tab` is the route in app/(tabs); `nested` the screen inside a tab's stack.
+ */
+export function isAdScreen(tab: string | undefined, nested: string | undefined): boolean {
+  if (tab === "friends") return nested !== "add-user-friend";
+  return tab === "index" || tab === "library" || tab === "explore";
+}
 const SLIDE_MS = 220;
 /** After a failed load (no fill, offline), try again this much later. */
 const RETRY_MS = 60_000;
@@ -41,10 +49,10 @@ function useLoadedAdHeight() {
   return UNIT_ID ? adHeight : 0;
 }
 
-/** Animated lift for the tab bar: the ad's height on ad tabs, 0 elsewhere. */
-export function useAdBarLift(onAdRoute: boolean): Animated.Value {
+/** Animated lift for the tab bar: the ad's height while the bar shows, else 0. */
+export function useAdBarLift(visible: boolean): Animated.Value {
   const adHeight = useLoadedAdHeight();
-  const target = onAdRoute ? adHeight : 0;
+  const target = visible ? adHeight : 0;
   const lift = useRef(new Animated.Value(target)).current;
   useEffect(() => {
     Animated.timing(lift, { toValue: target, duration: SLIDE_MS, useNativeDriver: true }).start();
@@ -52,7 +60,13 @@ export function useAdBarLift(onAdRoute: boolean): Animated.Value {
   return lift;
 }
 
-export function AdBar({ lift }: { lift: Animated.Value }) {
+/**
+ * The ad only exists while it's on screen (`visible`): it unmounts on other
+ * tabs and when a screen opens over the tabs, so a hidden banner never loads
+ * or refreshes (AdMob counts that as an impression nobody saw). It reloads
+ * when the screen comes back and slides in once loaded.
+ */
+export function AdBar({ lift, visible }: { lift: Animated.Value; visible: boolean }) {
   const insets = useSafeAreaInsets();
   const { activeTheme } = useThemeContext();
   const theme = activeTheme === "dark" ? THEME.dark : THEME.light;
@@ -70,7 +84,11 @@ export function AdBar({ lift }: { lift: Animated.Value }) {
     return () => clearTimeout(timer);
   }, [waiting]);
 
-  if (!showBanner || !UNIT_ID) return null;
+  useEffect(() => {
+    if (!visible) setAdHeight(0);
+  }, [visible, setAdHeight]);
+
+  if (!showBanner || !UNIT_ID || !visible) return null;
 
   const barHeight = adHeight + insets.bottom;
   return (

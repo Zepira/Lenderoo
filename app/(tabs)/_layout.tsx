@@ -1,7 +1,8 @@
 import * as React from "react";
 import { Animated, View, Platform, Pressable } from "react-native";
-import { router, Tabs } from "expo-router";
+import { router, Tabs, useIsFocused } from "expo-router";
 import type { BottomTabBarProps } from "expo-router/tabs";
+import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import {
   Search,
   Home,
@@ -15,7 +16,7 @@ import { useThemeContext } from "../../contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { THEME } from "@/lib/theme";
-import { AD_ROUTES, AdBar, useAdBarLift } from "@/components/QuietBanner";
+import { AdBar, isAdScreen, useAdBarLift } from "@/components/QuietBanner";
 import {
   TAB_BAR_BOTTOM_GAP,
   TAB_BAR_BTN_SIZE,
@@ -36,9 +37,14 @@ function FloatingTabBar({
   notificationCount,
 }: BottomTabBarProps & { notificationCount: number }) {
   const insets = useSafeAreaInsets();
-  // On Home, Library and Explore the ad bar docks at the bottom edge and the
-  // tab bar lifts to sit just above it (0 when no ad is showing).
-  const lift = useAdBarLift(AD_ROUTES.includes(state.routes[state.index]?.name));
+  // On browsing screens the ad bar docks at the bottom edge and the tab bar
+  // lifts to sit just above it (0 when no ad is showing). Hidden while a
+  // screen is open over the tabs, so the ad never loads out of sight.
+  const tabsFocused = useIsFocused();
+  const focusedTab = state.routes[state.index];
+  const nestedScreen = focusedTab ? getFocusedRouteNameFromRoute(focusedTab) : undefined;
+  const adVisible = tabsFocused && isAdScreen(focusedTab?.name, nestedScreen);
+  const lift = useAdBarLift(adVisible);
   // Only render routes that have a tabBarIcon — hides any auto-registered
   // routes (e.g. friends/) that shouldn't appear in the floating nav.
   const routes = state.routes.filter(
@@ -120,7 +126,7 @@ function FloatingTabBar({
     // Outer wrapper — only exists to let the center button overflow above the pill.
     // box-none: the wrapper itself won't intercept events; only its children will.
     <>
-    <AdBar lift={lift} />
+    <AdBar lift={lift} visible={adVisible} />
     <Animated.View
       pointerEvents="box-none"
       style={{

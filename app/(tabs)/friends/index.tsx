@@ -38,8 +38,10 @@ import { resolveAvatarSource } from "@/lib/services/avatar";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
 import { screenChannel, subscribeLogged } from "@/lib/realtime";
+import { useBannerSpace } from "@/components/QuietBanner";
 
 export default function FriendsScreen() {
+  const bannerSpace = useBannerSpace();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
@@ -180,7 +182,7 @@ export default function FriendsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 160 }}
+        contentContainerStyle={{ paddingBottom: 160 + bannerSpace }}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={handleRefresh} />

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { View, FlatList, useWindowDimensions, ActivityIndicator } from "react-native";
-import { router } from "expo-router";
+import { router, useIsFocused } from "expo-router";
 import { useBorrowedByMeItems } from "hooks/useItems";
 import { getMyFavouriteItemIds, setItemFavourite } from "@/lib/services/favourites";
 import * as toast from "@/lib/toast";
@@ -13,8 +13,12 @@ import { useThemeContext } from "@/contexts/ThemeContext";
 import { ErrorState } from "@/components/ErrorState";
 import { Text } from "@/components/ui/text";
 import type { Item } from "lib/types";
+import { AdBar, useAdBarLift } from "@/components/QuietBanner";
 
 export default function BorrowedItemsScreen() {
+  // No tab bar here, so this screen docks its own ad bar while in front.
+  const isFocused = useIsFocused();
+  const adLift = useAdBarLift(isFocused);
   const [search, setSearch] = useState("");
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
@@ -140,6 +144,7 @@ export default function BorrowedItemsScreen() {
           />
         )}
       />
+      <AdBar lift={adLift} visible={isFocused} />
     </View>
   );
 }

@@ -69,6 +69,7 @@ import {
   Caption,
   TinyLabel,
 } from "@/components/ui/typography";
+import { useBannerSpace } from "@/components/QuietBanner";
 
 // ── Tab type ──────────────────────────────────────────────────────────────────
 type Tab = "library" | "borrowing" | "history";
@@ -100,6 +101,7 @@ function convertItemFromDb(data: any): Item {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function FriendDetailScreen() {
+  const bannerSpace = useBannerSpace();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
@@ -417,7 +419,7 @@ export default function FriendDetailScreen() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 160 }}
+        contentContainerStyle={{ paddingBottom: 160 + bannerSpace }}
         refreshControl={
           <RefreshControl
             refreshing={ownedItemsLoading || historyLoading}
