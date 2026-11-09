@@ -25,6 +25,36 @@ cron job, new case in `push-notifications`' `buildMessages()`, a new
 `notification_settings` columns all count. Treat an out-of-date
 `docs/NOTIFICATIONS.md` as a bug, not a nice-to-have.
 
+## Ads
+
+`docs/ADS-PLAN.md` holds the rules (§2 is non-negotiable): one quiet banner
+only, never interstitials/app-open/rewarded/native ads; never on Settings,
+forms, lending flows, sign-in, onboarding or any sheet/modal; 7-day grace
+period; PG content; non-personalised if consent or tracking is declined; a
+Supabase kill switch; Remove ads forever.
+
+- **Where:** the bar is `components/QuietBanner.tsx`, rendered by the floating
+  tab bar (`app/(tabs)/_layout.tsx`) and by Borrowed. `isAdScreen()` lists the
+  screens; adding one is a product decision, so check with Alana. Screens with
+  the bar pad their scroll content with `useBannerSpace()`.
+- **Never out of sight:** the banner must only be mounted while visible (a
+  hidden banner that loads or refreshes is an unseen impression, against
+  AdMob policy).
+- **Rules:** `lib/ads/should-show-ads.ts` (pure, 100% tested); state in
+  `contexts/AdsContext.tsx`; consent in `lib/ads/consent.ts`.
+- **Kill switch:** `app_config` row `ads` → `{"enabled": true|false}`
+  (migration 050), changed in the Supabase dashboard only.
+- **Ids:** AdMob app ids `ADMOB_ANDROID_APP_ID` / `ADMOB_IOS_APP_ID` (native,
+  `app.config.ts`) and banner units `EXPO_PUBLIC_ADMOB_BANNER_IOS` /
+  `_ANDROID`, as EAS env vars. Development builds always use Google's test
+  ids; a release build without unit ids shows no ads.
+- **Testing:** `EXPO_PUBLIC_ADS_DEV_FORCE=1` in `.env.local` (development only)
+  skips the kill switch and grace period. Never tap a real ad on our own
+  devices.
+- **Remove ads:** scaffolding behind `FEATURES.ENABLE_REMOVE_ADS` (off);
+  `lib/ads/remove-ads.ts` isn't wired to a store yet (plan step P1).
+- Store/legal answers and the QA checklist: `docs/ADS-STORE-DRAFTS.md`.
+
 ## Project Overview
 
 This is a React Native app using Expo Router with NativeWind for styling. The project uses Yarn 4.5.0 as the package manager and is configured with React Native's New Architecture enabled for both iOS and Android.

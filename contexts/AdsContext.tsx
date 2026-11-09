@@ -9,6 +9,7 @@ import { AppState } from "react-native";
 import mobileAds, { MaxAdContentRating } from "react-native-google-mobile-ads";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchAdsEnabled, getCachedAdsEnabled, getFirstOpenedAt } from "@/lib/ads/remote";
+import { getRemoveAdsPurchased } from "@/lib/ads/remove-ads";
 import { gatherConsent, requestTrackingIfNeeded } from "@/lib/ads/consent";
 import { graceStartFrom, isInGracePeriod, shouldShowAds } from "@/lib/ads/should-show-ads";
 
@@ -20,6 +21,8 @@ interface AdsState {
   /** Height of the loaded ad (0 until one loads); the tab bar lifts by this. */
   adHeight: number;
   setAdHeight: (height: number) => void;
+  /** Call after a Remove ads purchase or restore succeeds. */
+  markRemoveAdsPurchased: () => void;
 }
 
 const AdsContext = createContext<AdsState>({
@@ -27,6 +30,7 @@ const AdsContext = createContext<AdsState>({
   nonPersonalized: true,
   adHeight: 0,
   setAdHeight: () => {},
+  markRemoveAdsPurchased: () => {},
 });
 
 // Development only: EXPO_PUBLIC_ADS_DEV_FORCE=1 skips the kill switch and the
@@ -37,6 +41,7 @@ export function AdsProvider({ children }: { children: ReactNode }) {
   const { appUser } = useAuth();
   const [killSwitch, setKillSwitch] = useState<boolean | null>(null);
   const [adHeight, setAdHeight] = useState(0);
+  const [purchasedRemoveAds, setPurchasedRemoveAds] = useState(false);
   const [firstOpenedAt, setFirstOpenedAt] = useState<Date | null>(null);
   const [consent, setConsent] = useState<{ canRequestAds: boolean; personalised: boolean } | null>(
     null,
@@ -46,6 +51,7 @@ export function AdsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     getCachedAdsEnabled().then((cached) => setKillSwitch((v) => v ?? cached));
     getFirstOpenedAt().then(setFirstOpenedAt);
+    getRemoveAdsPurchased().then(setPurchasedRemoveAds);
     fetchAdsEnabled().then(setKillSwitch);
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") fetchAdsEnabled().then(setKillSwitch);
@@ -53,7 +59,6 @@ export function AdsProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, []);
 
-  const purchasedRemoveAds = false; // Wired up with the Remove ads purchase (docs/ADS-PLAN.md P1).
   const graceStart = DEV_FORCE ? new Date(0) : graceStartFrom(firstOpenedAt, appUser?.createdAt ?? null);
   const eligible =
     (DEV_FORCE || killSwitch === true) &&
@@ -100,6 +105,7 @@ export function AdsProvider({ children }: { children: ReactNode }) {
         nonPersonalized: !(consent?.personalised ?? false),
         adHeight: decision.show ? adHeight : 0,
         setAdHeight,
+        markRemoveAdsPurchased: () => setPurchasedRemoveAds(true),
       }}
     >
       {children}

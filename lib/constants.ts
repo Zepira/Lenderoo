@@ -313,6 +313,7 @@ export const STORAGE_KEYS = {
   // Ads (docs/ADS-PLAN.md)
   ADS_ENABLED: "@lenderoo:ads_enabled",
   FIRST_OPENED_AT: "@lenderoo:first_opened_at",
+  REMOVE_ADS_PURCHASED: "@lenderoo:remove_ads_purchased",
 } as const;
 
 // ============================================================================
@@ -346,6 +347,10 @@ export const FEATURES = {
   ENABLE_BARCODE_SCANNING: false,
   ENABLE_CLOUD_SYNC: true, // Enabled with Supabase backend
   ENABLE_PUSH_NOTIFICATIONS: false, // Enable when configured
+  // "Remove ads" purchase (docs/ADS-PLAN.md §3). Off until Apple's Paid Apps
+  // agreement and Google's merchant account are active and the store
+  // purchase is wired up in lib/ads/remove-ads.ts.
+  ENABLE_REMOVE_ADS: false,
 } as const;
 
 // ============================================================================

@@ -1,6 +1,14 @@
 # Lenderoo — ads plan (quiet banner + "Remove ads")
 
-_Decided with Alana, 9 Nov 2026. All money AUD. Status: planned, not started._
+_Decided with Alana, 9 Nov 2026. All money AUD. Status: built (A2–A4, P1 scaffolding), off behind the kill switch; waiting on AdMob setup (A1) and store answers (A5)._
+
+**Changes agreed while building (9 Nov 2026):** the banner is a full-width bar
+docked to the bottom edge with the floating tab bar resting on it (a banner
+floating above the tab bar looked like it was hovering). It shows on Home,
+Library, Explore, Friends, a friend's profile and Borrowed; never Settings or
+the Add Friend form (§5 updated below). Google's adaptive size is kept. The
+grace period starts at the earlier of first open and account creation (no new
+profile column). No custom screen before Apple's tracking prompt.
 
 ## 1. Goal
 
@@ -40,7 +48,7 @@ A small, steady income built in so Lenderoo can pay its own hosting if costs go 
 
 ## 5. Placement (to confirm against Lenderoo's screens)
 
-Claude Code proposes the 2–3 screens from the real app before building. Default: the main library/list screens only, banner above the tab bar. Not on item detail, forms, lending flows, settings, onboarding.
+Home, Library, Explore, Friends, a friend's profile and Borrowed: a full-width bar at the bottom edge, with the tab bar resting on it. Not on Settings, the Add Friend form, item detail, forms, lending flows, onboarding or sign-in.
 
 ## 6. Watch after launch (monthly)
 
