@@ -1312,7 +1312,9 @@ export default function ItemDetailScreen() {
             const activeAvatar = isBorrower
               ? (appUser?.avatarUrl ?? null)
               : (borrowerProfile?.avatarUrl ?? null);
-            const showActiveRow = !isAvailable && !!item.borrowedDate;
+            // Counted only when the row can be drawn, so the count always
+            // matches the list below it.
+            const showActiveRow = !isAvailable && !!item.borrowedDate && !!activeName;
             const totalCount = borrowHistory.length + (showActiveRow ? 1 : 0);
             if (totalCount === 0) return null;
 
@@ -1417,7 +1419,6 @@ export default function ItemDetailScreen() {
                 </Caption>
                 <View style={{ gap: 10, marginBottom: 24 }}>
                   {showActiveRow &&
-                    activeName &&
                     renderRow(
                       "active",
                       activeName,
