@@ -322,7 +322,7 @@ export const STORAGE_KEYS = {
 export const APP_INFO = {
   NAME: "Lenderoo",
   TAGLINE: "Never forget who borrowed your stuff",
-  SUPPORT_EMAIL: "support@lenderoo.app",
+  SUPPORT_EMAIL: "support@zepiralabs.com",
   PRIVACY_POLICY_URL: "https://lenderoo.app/privacy",
   TERMS_OF_SERVICE_URL: "https://lenderoo.app/terms",
   GITHUB_URL: "https://github.com/yourusername/lenderoo",

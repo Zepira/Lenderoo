@@ -71,7 +71,15 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Lenderoo to access your camera to scan barcodes."
+          "cameraPermission": "Lenderoo uses your camera to scan barcodes and take photos of your things and your profile photo."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Lenderoo uses your photos so you can choose pictures of your things, a profile photo or a screenshot for feedback.",
+          "cameraPermission": "Lenderoo uses your camera to scan barcodes and take photos of your things and your profile photo.",
+          "microphonePermission": false
         }
       ],
       [

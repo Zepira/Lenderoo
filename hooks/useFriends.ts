@@ -18,7 +18,6 @@ function convertFriendUserToFriend(friendUser: FriendUser): Friend {
     id: friendUser.id,
     userId: '',
     name: friendUser.name,
-    email: friendUser.email,
     avatarUrl: friendUser.avatarUrl,
     totalItemsBorrowed: 0,
     currentItemsBorrowed: 0,

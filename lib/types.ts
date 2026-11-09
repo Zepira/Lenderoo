@@ -239,7 +239,6 @@ export interface BorrowHistory {
 /** BorrowHistory enriched with borrower profile info */
 export interface BorrowHistoryWithUser extends BorrowHistory {
   borrowerName: string | null;
-  borrowerEmail: string | null;
   borrowerAvatarUrl: string | null;
 }
 
@@ -304,14 +303,10 @@ export interface BorrowRequestWithDetails extends BorrowRequest {
   itemBorrowedBy?: string;
   /** Name of the requester */
   requesterName: string;
-  /** Email of the requester */
-  requesterEmail: string;
   /** Avatar URL of the requester */
   requesterAvatarUrl?: string;
   /** Name of the owner */
   ownerName: string;
-  /** Email of the owner */
-  ownerEmail: string;
 }
 
 // ============================================================================

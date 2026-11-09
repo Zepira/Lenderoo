@@ -7,12 +7,12 @@
 import { supabase } from "../supabase";
 import type { Item } from "../types";
 
+// Other users' email, phone and friend code are never readable (migration
+// 049): people are identified by id, name and photo only.
 export interface FriendUser {
   id: string;
   name: string;
-  email: string;
   avatarUrl?: string;
-  friendCode: string;
   friendsSince: Date;
 }
 
@@ -23,9 +23,7 @@ export interface FriendRequest {
   status: "pending" | "active" | "rejected";
   createdAt: Date;
   userName: string;
-  userEmail: string;
   userAvatarUrl?: string;
-  userFriendCode: string;
 }
 
 export interface AddFriendResult {
@@ -105,12 +103,12 @@ export async function addFriendByCode(
 
   if (!user) throw new Error("Not authenticated");
 
-  // Find user with friend code
-  const { data: friendData, error: findError } = await supabase
-    .from("users")
-    .select("id")
-    .eq("friend_code", friendCode.toUpperCase().trim())
-    .single();
+  // Find user with friend code (exact match, server-side; see migration 049)
+  const { data: matches, error: findError } = await supabase.rpc(
+    "find_user_by_friend_code",
+    { p_code: friendCode }
+  );
+  const friendData = (matches as { id: string }[] | null)?.[0];
 
   if (findError || !friendData) {
     return {
@@ -169,7 +167,8 @@ export async function addFriendByCode(
 }
 
 /**
- * Search for users by name or email
+ * Search for users by name (contains) or email (exact match only). Runs in
+ * the search_users database function, which never returns emails.
  */
 export async function searchUsers(query: string): Promise<FriendUser[]> {
   if (!query || query.trim().length < 2) {
@@ -182,16 +181,9 @@ export async function searchUsers(query: string): Promise<FriendUser[]> {
 
   if (!user) throw new Error("Not authenticated");
 
-  const searchTerm = `%${query.trim()}%`;
-
-  // Search users by name or email
-  const { data, error } = await supabase
-    .from("users")
-    .select("id, name, email, avatar_url, friend_code")
-    .neq("id", user.id) // Exclude current user
-    .is("deleted_at", null) // Exclude deleted accounts
-    .or(`name.ilike.${searchTerm},email.ilike.${searchTerm}`)
-    .limit(20);
+  const { data, error } = await supabase.rpc("search_users", {
+    p_query: query.trim(),
+  });
 
   if (error) throw error;
 
@@ -204,14 +196,17 @@ export async function searchUsers(query: string): Promise<FriendUser[]> {
   const friendIds = new Set(connections?.map((c) => c.friend_user_id) || []);
 
   // Filter out users who are already friends
-  const availableUsers = (data || [])
+  const rows = (data || []) as {
+    id: string;
+    name: string;
+    avatar_url: string | null;
+  }[];
+  const availableUsers = rows
     .filter((u) => !friendIds.has(u.id))
     .map((u) => ({
       id: u.id,
       name: u.name,
-      email: u.email,
       avatarUrl: u.avatar_url || undefined,
-      friendCode: u.friend_code,
       friendsSince: new Date(), // Not applicable for search results
     }));
 
@@ -280,9 +275,7 @@ export async function getMyFriends(): Promise<FriendUser[]> {
   return (data || []).map((row) => ({
     id: row.friend_user_id,
     name: row.friend_name,
-    email: row.friend_email,
     avatarUrl: row.friend_avatar_url || undefined,
-    friendCode: row.friend_code,
     friendsSince: new Date(row.friends_since),
   }));
 }
@@ -302,7 +295,7 @@ export async function getFriendUserById(
 
   const { data: connection, error: connectionError } = await supabase
     .from("user_friends")
-    .select("friends_since, friend_name, friend_email, friend_avatar_url, friend_code")
+    .select("friends_since, friend_name, friend_avatar_url")
     .eq("user_id", user.id)
     .eq("friend_user_id", friendUserId)
     .maybeSingle();
@@ -312,9 +305,7 @@ export async function getFriendUserById(
   return {
     id: friendUserId,
     name: connection.friend_name,
-    email: connection.friend_email,
     avatarUrl: connection.friend_avatar_url || undefined,
-    friendCode: connection.friend_code,
     friendsSince: connection.friends_since
       ? new Date(connection.friends_since)
       : new Date(),
@@ -324,20 +315,19 @@ export async function getFriendUserById(
 export interface UserPublicProfile {
   id: string;
   name: string;
-  email: string;
   avatarUrl?: string;
 }
 
 /**
- * Get basic public profile for any user by ID.
- * Does not require friendship — uses the open users read policy.
+ * Get basic public profile (name and photo) for any user by ID.
+ * Does not require friendship — reads the public_profiles view.
  */
 export async function getUserPublicProfile(
   userId: string
 ): Promise<UserPublicProfile | null> {
   const { data, error } = await supabase
-    .from("users")
-    .select("id, name, email, avatar_url")
+    .from("public_profiles")
+    .select("id, name, avatar_url")
     .eq("id", userId)
     .maybeSingle();
 
@@ -346,7 +336,6 @@ export async function getUserPublicProfile(
   return {
     id: data.id,
     name: data.name,
-    email: data.email,
     avatarUrl: data.avatar_url || undefined,
   };
 }
@@ -538,8 +527,8 @@ export async function getPendingFriendRequests(): Promise<FriendRequest[]> {
   // Get user details for each requester
   const requesterIds = connections.map((c) => c.user_id);
   const { data: requesters, error: usersError } = await supabase
-    .from("users")
-    .select("id, name, email, avatar_url, friend_code")
+    .from("public_profiles")
+    .select("id, name, avatar_url")
     .in("id", requesterIds);
 
   if (usersError) {
@@ -556,9 +545,7 @@ export async function getPendingFriendRequests(): Promise<FriendRequest[]> {
       status: conn.status as "pending",
       createdAt: new Date(conn.created_at),
       userName: requester?.name || "Unknown",
-      userEmail: requester?.email || "",
       userAvatarUrl: requester?.avatar_url || undefined,
-      userFriendCode: requester?.friend_code || "",
     };
   });
 
@@ -594,8 +581,8 @@ export async function getSentPendingFriendRequests(): Promise<FriendRequest[]> {
   // Get user details for each recipient
   const recipientIds = connections.map((c) => c.friend_user_id);
   const { data: recipients, error: usersError } = await supabase
-    .from("users")
-    .select("id, name, email, avatar_url, friend_code")
+    .from("public_profiles")
+    .select("id, name, avatar_url")
     .in("id", recipientIds);
 
   if (usersError) {
@@ -611,9 +598,7 @@ export async function getSentPendingFriendRequests(): Promise<FriendRequest[]> {
       status: conn.status as "pending",
       createdAt: new Date(conn.created_at),
       userName: recipient?.name || "Unknown",
-      userEmail: recipient?.email || "",
       userAvatarUrl: recipient?.avatar_url || undefined,
-      userFriendCode: recipient?.friend_code || "",
     };
   });
 }

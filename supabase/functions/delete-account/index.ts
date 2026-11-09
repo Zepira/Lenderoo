@@ -20,10 +20,42 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 //   confirmed yet: the pending fields are just cleared — the handoff never
 //   completed, so there's no history to write.
 // - friend_connections, remaining borrow_requests, favourites, availability
-//   subscriptions, contact hashes: hard-deleted — nothing else has a stake
-//   in these once the account is gone.
-// - The auth.users row is banned (not deleted) and its email scrubbed, so
-//   the id stays valid but the account can never sign in again.
+//   subscriptions, contact hashes and legacy `friends` rows: hard-deleted —
+//   nothing else has a stake in these once the account is gone.
+// - Their files in the public `avatars` and `item-images` buckets (everything
+//   under `<userId>/`): deleted, so no photo stays reachable by URL.
+// - The auth.users row is banned (not deleted), its email scrubbed, its
+//   password replaced with a random one nobody knows (so the old password
+//   hash is gone) and the name/phone/avatar copied into user_metadata at
+//   sign-up cleared, so the id stays valid but the account can never sign in
+//   again and no PII is left.
+//
+// Keep the lenderoo.app "Delete your account and data" page
+// (lenderoo.com repo, src/components/DataDeletion.tsx) in step with this list.
+
+const STORAGE_BUCKETS = ['avatars', 'item-images'] as const;
+
+// Removes every object under `<userId>/` in a bucket. Uploads are flat
+// (`<userId>/<file>`), so one level is enough. Lists in pages and repeats
+// until the folder is empty; capped so a storage fault can't loop forever.
+// deno-lint-ignore no-explicit-any
+async function deleteUserFolder(supabase: any, bucket: string, userId: string): Promise<number> {
+  let removed = 0;
+  for (let round = 0; round < 50; round++) {
+    const { data: files, error } = await supabase.storage
+      .from(bucket)
+      .list(userId, { limit: 1000 });
+    if (error) throw new Error(`Failed to list ${bucket}: ${error.message}`);
+    const paths = (files ?? [])
+      .filter((f: { id: string | null }) => f.id !== null) // skip sub-folders
+      .map((f: { name: string }) => `${userId}/${f.name}`);
+    if (paths.length === 0) return removed;
+    const { error: removeError } = await supabase.storage.from(bucket).remove(paths);
+    if (removeError) throw new Error(`Failed to delete ${bucket} files: ${removeError.message}`);
+    removed += paths.length;
+  }
+  return removed;
+}
 Deno.serve(async (req) => {
   const authHeader = req.headers.get('authorization') ?? '';
   const jwt = authHeader.replace(/^Bearer\s+/i, '');
@@ -130,6 +162,15 @@ Deno.serve(async (req) => {
     await supabase.from('item_favourites').delete().eq('user_id', userId);
     await supabase.from('item_availability_subscriptions').delete().eq('user_id', userId);
     await supabase.from('user_contact_hashes').delete().eq('user_id', userId);
+    // Legacy pre-friend_connections contact list (may not exist on every
+    // database; ignore a missing-table error).
+    await supabase.from('friends').delete().eq('user_id', userId);
+
+    // ── Their photos in public storage (profile photo, item photos). Done
+    //    after the item rows are gone so nothing still points at them.
+    for (const bucket of STORAGE_BUCKETS) {
+      await deleteUserFolder(supabase, bucket, userId);
+    }
 
     // ── Tombstone the profile row itself.
     const placeholderEmail = `deleted-${userId}@lenderoo.invalid`;
@@ -151,11 +192,20 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to scrub profile: ${usersError.message}`);
     }
 
-    // ── Ban the auth record and scrub its email so the id stays valid (all
-    //    the FKs above still resolve) but the account can never sign in and
-    //    no real email sits in auth.users either.
+    // ── Ban the auth record and scrub its email, password and the sign-up
+    //    metadata (name, phone, avatar) so the id stays valid (all the FKs
+    //    above still resolve) but the account can never sign in and no PII
+    //    sits in auth.users either. The password is overwritten with 32
+    //    random bytes that are never stored or returned, which replaces the
+    //    old hash. user_metadata is merged, so set each key to null rather
+    //    than passing {}.
+    const randomPassword = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
+      b.toString(16).padStart(2, '0'),
+    ).join('');
     const { error: authUpdateError } = await supabase.auth.admin.updateUserById(userId, {
       email: placeholderEmail,
+      password: randomPassword,
+      user_metadata: { name: null, phone: null, avatar_url: null },
       ban_duration: '876000h', // ~100 years — effectively permanent
     });
 
