@@ -30,10 +30,14 @@ export default function BorrowedItemsScreen() {
   // once favourites arrive a beat later — see app/(tabs)/library/index.tsx.
   const [favouritesReady, setFavouritesReady] = useState(false);
 
+  // Keyed on the item ids (a string), not the lists: the lists can be new
+  // arrays on every render, which re-ran this effect, refetched, set state,
+  // re-rendered and looped forever (~12 requests/s while idle).
+  const favouriteIdsKey = items.map((i) => i.id).join(",");
   useEffect(() => {
-    if (items.length === 0) return;
+    if (!favouriteIdsKey) return;
     let cancelled = false;
-    getMyFavouriteItemIds(items.map((i) => i.id)).then((ids) => {
+    getMyFavouriteItemIds(favouriteIdsKey.split(",")).then((ids) => {
       if (cancelled) return;
       setFavouriteIds(ids);
       setFavouritesReady(true);
@@ -41,7 +45,7 @@ export default function BorrowedItemsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [items]);
+  }, [favouriteIdsKey]);
 
   const filteredItems = useMemo(() => {
     const q = search.toLowerCase();
