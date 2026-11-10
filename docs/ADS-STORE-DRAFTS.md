@@ -16,10 +16,18 @@ Add these data types (on top of what's already declared for the app):
 
 | Data type | Used for | Linked to the user? | Used for tracking? |
 |---|---|---|---|
-| **Identifiers → Device ID** | Third-Party Advertising | No | **Yes**, because the app asks for tracking permission (ATT) and uses the advertising identifier when allowed |
-| **Usage Data → Advertising Data** | Third-Party Advertising, Analytics | No | Yes |
-| **Location → Coarse Location** (approximate, from IP) | Third-Party Advertising | No | No |
-| **Diagnostics → Crash Data, Performance Data, Other Diagnostic Data** | Analytics (SDK health) | No | No |
+| **Identifiers → Device ID** | Third-Party Advertising, Analytics | No | **Yes** |
+| **Usage Data → Advertising Data** | Third-Party Advertising, Analytics | No | **Yes** |
+| **Usage Data → Product Interaction** | Third-Party Advertising | No | **Yes** |
+| **Location → Coarse Location** (from IP) | Third-Party Advertising | No | **Yes** |
+| **Diagnostics → Performance Data** | Third-Party Advertising, Analytics | No | No |
+| **Diagnostics → Crash Data** (already declared for Analytics) | add Third-Party Advertising | No | No |
+
+Source: Google's "Data disclosure" page for the iOS Google Mobile Ads SDK
+(checked 10 Nov 2026), which lists crash logs, performance data, device ID,
+advertising data, coarse location and product interactions. Google doesn't
+say which are "tracking"; the ones used to target ads are marked Yes to be
+safe, since the app asks for tracking permission.
 
 "Does this app track?" → **Yes** (only the SDK's advertising identifier, and
 only when the person allows it in Apple's prompt).
@@ -29,14 +37,16 @@ only when the person allows it in Apple's prompt).
 **App content → Ads:** Yes, the app contains ads.
 
 **App content → Advertising ID:** Yes, the app uses an advertising ID, for
-**Advertising or marketing** and **Analytics**. (The ads library adds the
+**Advertising or marketing**, **Analytics** and **Fraud prevention, security
+and compliance** (Google: collected "for advertising, analytics, and fraud
+prevention purposes"). (The ads library adds the
 `AD_ID` permission automatically.)
 
 **App content → Data safety** (add to the existing answers):
 
 | Data type | Collected | Shared | Purpose | Optional? |
 |---|---|---|---|---|
-| Device or other IDs (advertising ID) | Yes | Yes (Google) | Advertising or marketing, Analytics, Fraud prevention | No |
+| Device or other IDs (advertising ID, app set ID) | Yes | Yes (Google) | Advertising or marketing, Analytics, Fraud prevention | No |
 | Approximate location (from IP) | Yes | Yes (Google) | Advertising or marketing, Analytics, Fraud prevention | No |
 | App activity → App interactions | Yes | Yes (Google) | Advertising or marketing, Analytics | No |
 | App info and performance → Crash logs, Diagnostics | Yes | Yes (Google) | Analytics | No |
