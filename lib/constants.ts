@@ -310,6 +310,9 @@ export const STORAGE_KEYS = {
   ONBOARDING_COMPLETED: "@lenderoo:onboarding_completed",
   LAST_SYNC: "@lenderoo:last_sync",
   MIGRATION_COMPLETE: "@lenderoo:migration_complete",
+  // Ads (docs/ADS-PLAN.md)
+  ADS_ENABLED: "@lenderoo:ads_enabled",
+  FIRST_OPENED_AT: "@lenderoo:first_opened_at",
 } as const;
 
 // ============================================================================
