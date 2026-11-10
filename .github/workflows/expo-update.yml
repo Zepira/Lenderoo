@@ -47,7 +47,7 @@ jobs:
           while IFS= read -r file; do
             case "$file" in
               # Dependency / config files that can pull in native modules
-              package.json|yarn.lock|eas.json|app.json|app.config.js| \
+              package.json|yarn.lock|eas.json|app.json|app.config.js|app.config.ts| \
               babel.config.js|metro.config.js)
                 NATIVE=true
                 break

@@ -77,7 +77,27 @@ google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
 The website must also be the **Marketing URL / Website** in both store
 listings, so AdMob can find the file. AdMob verifies it within about a day.
 
-## 5. Device QA checklist (before turning ads on)
+## 5. App Review notes (1.1.0: ads code included, ads switched off)
+
+1.1.0 ships the ads code dormant: the kill switch is off and the build has
+no real AdMob ad unit ids, so it never requests an ad, never starts the ad
+SDK and never shows Apple's tracking prompt. A reviewer will still find
+`NSUserTrackingUsageDescription` in the app, so paste this into App Store
+Connect → the version → App Review Information → Notes:
+
+> This version includes Google AdMob for a small banner ad we plan to turn
+> on in a later update. Ads are currently switched off server-side, so no
+> ads are shown and the App Tracking Transparency prompt does not appear in
+> this build. When ads are turned on, the prompt is shown once, before any
+> ad request, and only to users who have used the app for at least 7 days.
+
+Turning ads on for real needs a **new build** with the AdMob app ids
+(`ADMOB_IOS_APP_ID`, `ADMOB_ANDROID_APP_ID`) and banner unit ids
+(`EXPO_PUBLIC_ADMOB_BANNER_IOS`, `EXPO_PUBLIC_ADMOB_BANNER_ANDROID`) set as
+EAS production env vars: the app id is baked into the native project, so the
+kill switch alone can't start ads in 1.1.0.
+
+## 6. Device QA checklist (before turning ads on)
 
 Use Google's **test ads only** on our own devices. Never tap a real ad in
 Lenderoo on your own phone: AdMob can suspend the account for it.

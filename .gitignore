@@ -59,3 +59,11 @@ secrets.json
 *.mobileprovision
 .env
 supabase/.temp/
+
+# Local build outputs and logs
+build-out/
+*.ipa
+*.aab
+*.apk
+coverage/
+.*.log
