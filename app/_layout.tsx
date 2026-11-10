@@ -159,6 +159,7 @@ function RootLayoutContent() {
         <Stack.Screen name="item" options={{ headerShown: false }} />
         <Stack.Screen name="edit-item" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="borrowed" options={{ headerShown: false }} />
         <Stack.Screen
           name="modal"
           options={{

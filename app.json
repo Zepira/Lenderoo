@@ -7,7 +7,9 @@
     "icon": "./assets/images/icon.png",
     "scheme": "lenderoo",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.zepira.lenderoo",
@@ -35,7 +37,10 @@
               "host": "mobile.lenderoo.app"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },

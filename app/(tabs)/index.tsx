@@ -26,10 +26,12 @@ import { THEME } from "@/lib/theme";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DashboardSection } from "@/components/dashboard/DashboardSection";
 import { ErrorState } from "@/components/ErrorState";
+import { useBannerSpace } from "@/components/QuietBanner";
 
 const PAGE_PADDING = 24;
 
 export default function HomeScreen() {
+  const bannerSpace = useBannerSpace();
   const { appUser, user } = useAuth();
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
@@ -145,7 +147,7 @@ export default function HomeScreen() {
             tintColor={THEME.light.primary}
           />
         }
-        contentContainerStyle={{ paddingBottom: 160 }}
+        contentContainerStyle={{ paddingBottom: 160 + bannerSpace }}
       >
         {/* Header — no top radius so pull-down shows white, not grey */}
         <View

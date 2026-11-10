@@ -1,7 +1,8 @@
 import * as React from "react";
-import { View, Platform, Pressable } from "react-native";
-import { router, Tabs } from "expo-router";
+import { Animated, View, Platform, Pressable } from "react-native";
+import { router, Tabs, useIsFocused } from "expo-router";
 import type { BottomTabBarProps } from "expo-router/tabs";
+import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import {
   Search,
   Home,
@@ -15,14 +16,18 @@ import { useThemeContext } from "../../contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { THEME } from "@/lib/theme";
+import { AdBar, isAdScreen, useAdBarLift } from "@/components/QuietBanner";
+import {
+  TAB_BAR_BOTTOM_GAP,
+  TAB_BAR_BTN_SIZE,
+  TAB_BAR_CONTAINER_HEIGHT,
+  TAB_BAR_NAV_HEIGHT,
+} from "@/lib/tab-bar";
 import { BorrowRequestBanner } from "@/components/BorrowRequestBannerNative";
 import { useRealtimeSync, useIncomingRequestCount, usePendingHandoffs } from "@/hooks";
 
-const BTN_SIZE = 60;
-const NAV_HEIGHT = 74;
 // Container is taller than the pill so the overlapping button stays within
 // the touchable area while visually sitting above the navbar.
-const CONTAINER_HEIGHT = 120;
 
 function FloatingTabBar({
   state,
@@ -32,6 +37,14 @@ function FloatingTabBar({
   notificationCount,
 }: BottomTabBarProps & { notificationCount: number }) {
   const insets = useSafeAreaInsets();
+  // On browsing screens the ad bar docks at the bottom edge and the tab bar
+  // lifts to sit just above it (0 when no ad is showing). Hidden while a
+  // screen is open over the tabs, so the ad never loads out of sight.
+  const tabsFocused = useIsFocused();
+  const focusedTab = state.routes[state.index];
+  const nestedScreen = focusedTab ? getFocusedRouteNameFromRoute(focusedTab) : undefined;
+  const adVisible = tabsFocused && isAdScreen(focusedTab?.name, nestedScreen);
+  const lift = useAdBarLift(adVisible);
   // Only render routes that have a tabBarIcon — hides any auto-registered
   // routes (e.g. friends/) that shouldn't appear in the floating nav.
   const routes = state.routes.filter(
@@ -60,7 +73,7 @@ function FloatingTabBar({
         hitSlop={{ top: 20, bottom: 20, left: 8, right: 8 }}
         style={{
           flex: 1,
-          height: NAV_HEIGHT,
+          height: TAB_BAR_NAV_HEIGHT,
           alignItems: "center",
           justifyContent: "center",
           ...Platform.select({ web: { cursor: "pointer" } as object }),
@@ -112,15 +125,18 @@ function FloatingTabBar({
   return (
     // Outer wrapper — only exists to let the center button overflow above the pill.
     // box-none: the wrapper itself won't intercept events; only its children will.
-    <View
+    <>
+    <AdBar lift={lift} visible={adVisible} />
+    <Animated.View
       pointerEvents="box-none"
       style={{
         position: "absolute",
-        bottom: insets.bottom + 8,
+        bottom: insets.bottom + TAB_BAR_BOTTOM_GAP,
         left: 12,
         right: 12,
-        height: CONTAINER_HEIGHT,
+        height: TAB_BAR_CONTAINER_HEIGHT,
         zIndex: 999,
+        transform: [{ translateY: Animated.multiply(lift, -1) }],
       }}
     >
       {/* Pill + tab buttons in one element — visual and hit targets are identical */}
@@ -130,7 +146,7 @@ function FloatingTabBar({
           bottom: 0,
           left: 0,
           right: 0,
-          height: NAV_HEIGHT,
+          height: TAB_BAR_NAV_HEIGHT,
           borderRadius: 37,
           backgroundColor: "#101828",
           flexDirection: "row",
@@ -144,7 +160,7 @@ function FloatingTabBar({
       >
         {leftRoutes.map((route, i) => renderTab(route, i))}
         {/* Gap for the floating center button */}
-        <View style={{ width: BTN_SIZE + 16 }} />
+        <View style={{ width: TAB_BAR_BTN_SIZE + 16 }} />
         {rightRoutes.map((route, i) => renderTab(route, i + half))}
       </View>
 
@@ -161,9 +177,9 @@ function FloatingTabBar({
         <Pressable
           onPress={() => router.push("/add-item")}
           style={{
-            width: BTN_SIZE,
-            height: BTN_SIZE,
-            borderRadius: BTN_SIZE / 2,
+            width: TAB_BAR_BTN_SIZE,
+            height: TAB_BAR_BTN_SIZE,
+            borderRadius: TAB_BAR_BTN_SIZE / 2,
             backgroundColor: THEME.light.primaryStrong,
             borderWidth: 4,
             borderColor: "white",
@@ -182,7 +198,8 @@ function FloatingTabBar({
           <Plus size={26} color="white" strokeWidth={2.5} />
         </Pressable>
       </View>
-    </View>
+    </Animated.View>
+    </>
   );
 }
 
