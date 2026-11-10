@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, Platform, StyleSheet } from "react-native";
+import { Animated, Platform, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BannerAd, BannerAdSize, TestIds } from "react-native-google-mobile-ads";
 import { useAds } from "@/contexts/AdsContext";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
+import { FEATURES } from "@/lib/constants";
+import { Text } from "@/components/ui/text";
+import { useRemoveAds } from "hooks/useRemoveAds";
 
 /**
  * The one ad in the app (docs/ADS-PLAN.md): a full-width bar docked to the
@@ -28,6 +31,8 @@ export function isAdScreen(tab: string | undefined, nested: string | undefined):
   return tab === "index" || tab === "library" || tab === "explore";
 }
 const SLIDE_MS = 220;
+/** Row for the small "Remove ads" link above the ad (only with FEATURES.ENABLE_REMOVE_ADS). */
+const REMOVE_ADS_ROW = 22;
 /** After a failed load (no fill, offline), try again this much later. */
 const RETRY_MS = 60_000;
 
@@ -41,12 +46,14 @@ const UNIT_ID = __DEV__
     });
 
 /**
- * Height of the loaded ad (0 until one loads, or if ads are off / it failed).
- * The bar is this plus the bottom safe area.
+ * Height of the bar's content: the loaded ad plus the Remove ads link row
+ * (0 until an ad loads, or if ads are off / it failed). The bar is this plus
+ * the bottom safe area.
  */
 function useLoadedAdHeight() {
   const { adHeight } = useAds();
-  return UNIT_ID ? adHeight : 0;
+  if (!UNIT_ID || adHeight === 0) return 0;
+  return adHeight + (FEATURES.ENABLE_REMOVE_ADS ? REMOVE_ADS_ROW : 0);
 }
 
 /** Animated lift for the tab bar: the ad's height while the bar shows, else 0. */
@@ -70,7 +77,9 @@ export function AdBar({ lift, visible }: { lift: Animated.Value; visible: boolea
   const insets = useSafeAreaInsets();
   const { activeTheme } = useThemeContext();
   const theme = activeTheme === "dark" ? THEME.dark : THEME.light;
-  const { showBanner, nonPersonalized, adHeight, setAdHeight } = useAds();
+  const { showBanner, nonPersonalized, setAdHeight } = useAds();
+  const contentHeight = useLoadedAdHeight();
+  const removeAds = useRemoveAds();
   // After a failed load, wait RETRY_MS, then remount the BannerAd (new key),
   // which requests a fresh ad.
   const [attempt, setAttempt] = useState(0);
@@ -90,7 +99,7 @@ export function AdBar({ lift, visible }: { lift: Animated.Value; visible: boolea
 
   if (!showBanner || !UNIT_ID || !visible) return null;
 
-  const barHeight = adHeight + insets.bottom;
+  const barHeight = contentHeight + insets.bottom;
   return (
     <Animated.View
       style={[
@@ -105,7 +114,7 @@ export function AdBar({ lift, visible }: { lift: Animated.Value; visible: boolea
           transform: [
             {
               translateY: lift.interpolate({
-                inputRange: [0, Math.max(adHeight, 1)],
+                inputRange: [0, Math.max(contentHeight, 1)],
                 outputRange: [barHeight, 0],
                 extrapolate: "clamp",
               }),
@@ -114,6 +123,17 @@ export function AdBar({ lift, visible }: { lift: Animated.Value; visible: boolea
         },
       ]}
     >
+      {FEATURES.ENABLE_REMOVE_ADS && contentHeight > 0 && (
+        <Pressable
+          onPress={removeAds.buy}
+          hitSlop={8}
+          style={{ height: REMOVE_ADS_ROW, alignSelf: "flex-end", justifyContent: "center", paddingHorizontal: 12 }}
+        >
+          <Text className="font-sans-medium text-muted-foreground" style={{ fontSize: 11, lineHeight: 14 }}>
+            Remove ads
+          </Text>
+        </Pressable>
+      )}
       {!waiting && (
         <BannerAd
           key={attempt}

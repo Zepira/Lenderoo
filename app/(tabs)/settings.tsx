@@ -27,6 +27,8 @@ import {
   Shield,
   FileText,
   MessageSquare,
+  Heart,
+  RotateCcw,
 } from "lucide-react-native";
 import * as WebBrowser from "expo-web-browser";
 import { Text } from "@/components/ui/text";
@@ -44,7 +46,9 @@ import {
   SectionHeader,
 } from "@/components/settings/SettingsItem";
 import * as toast from "@/lib/toast";
-import { APP_INFO } from "@/lib/constants";
+import { APP_INFO, FEATURES } from "@/lib/constants";
+import { useRemoveAds } from "hooks/useRemoveAds";
+import { useAds } from "@/contexts/AdsContext";
 import { AvatarPickerModal } from "@/components/AvatarPickerModal";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { resolveAvatarSource, uploadAvatarImage } from "@/lib/services/avatar";
@@ -77,6 +81,8 @@ export default function SettingsScreen() {
   const theme = isDark ? THEME.dark : THEME.light;
   const [signingOut, setSigningOut] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const removeAds = useRemoveAds();
+  const { showBanner } = useAds();
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
@@ -438,6 +444,36 @@ export default function SettingsScreen() {
               })}
             </View>
           </View>
+
+          {/* Remove ads (docs/ADS-PLAN.md §3) — hidden until purchases are set up */}
+          {FEATURES.ENABLE_REMOVE_ADS && (
+            <>
+              <SectionHeader title="Support Lenderoo" />
+              <View
+                style={{
+                  backgroundColor: theme.card,
+                  borderRadius: 24,
+                  overflow: "hidden",
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                }}
+              >
+                {showBanner && (
+                  <SettingsItem
+                    icon={<Heart size={20} color={THEME.light.primary} />}
+                    label={removeAds.busy ? "Working…" : "Remove ads"}
+                    onPress={removeAds.buy}
+                  />
+                )}
+                <SettingsItem
+                  icon={<RotateCcw size={20} color={THEME.light.primary} />}
+                  label="Restore purchases"
+                  onPress={removeAds.restore}
+                  isLast
+                />
+              </View>
+            </>
+          )}
 
           {/* Support */}
           <SectionHeader title="Support" />
