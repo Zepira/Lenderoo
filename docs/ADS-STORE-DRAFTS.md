@@ -3,7 +3,7 @@
 _Drafts for docs/ADS-PLAN.md step A5. Before submitting, check the answers
 against Google's current "Data disclosure" page for the Google Mobile Ads SDK
 (AdMob help centre) and the App Store / Play forms, which change from time to
-time. Replace `pub-XXXXXXXXXXXXXXXX` with the AdMob publisher id._
+time._
 
 The data below is collected **by the Google Mobile Ads SDK**, not by Lenderoo
 itself. Lenderoo still has to declare it.
@@ -71,7 +71,7 @@ answer; ad data is held by Google under its own policy).
 Host a plain-text file at **https://lenderoo.app/app-ads.txt** containing:
 
 ```
-google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+google.com, pub-6945594976032622, DIRECT, f08c47fec0942fa0
 ```
 
 The website must also be the **Marketing URL / Website** in both store
