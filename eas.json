@@ -21,8 +21,8 @@
   "submit": {
     "production": {
       "android": {
-        "serviceAccountKeyPath": "android/zepira-390c2fd69214.json",
-        "track": "internal"
+        "track": "alpha",
+        "releaseStatus": "draft"
       },
       "ios": {
         "ascAppId": "6788645728",
