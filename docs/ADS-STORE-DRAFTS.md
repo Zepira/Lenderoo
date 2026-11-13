@@ -3,7 +3,7 @@
 _Drafts for docs/ADS-PLAN.md step A5. Before submitting, check the answers
 against Google's current "Data disclosure" page for the Google Mobile Ads SDK
 (AdMob help centre) and the App Store / Play forms, which change from time to
-time. Replace `pub-XXXXXXXXXXXXXXXX` with the AdMob publisher id._
+time._
 
 The data below is collected **by the Google Mobile Ads SDK**, not by Lenderoo
 itself. Lenderoo still has to declare it.
@@ -16,10 +16,18 @@ Add these data types (on top of what's already declared for the app):
 
 | Data type | Used for | Linked to the user? | Used for tracking? |
 |---|---|---|---|
-| **Identifiers → Device ID** | Third-Party Advertising | No | **Yes**, because the app asks for tracking permission (ATT) and uses the advertising identifier when allowed |
-| **Usage Data → Advertising Data** | Third-Party Advertising, Analytics | No | Yes |
-| **Location → Coarse Location** (approximate, from IP) | Third-Party Advertising | No | No |
-| **Diagnostics → Crash Data, Performance Data, Other Diagnostic Data** | Analytics (SDK health) | No | No |
+| **Identifiers → Device ID** | Third-Party Advertising, Analytics | No | **Yes** |
+| **Usage Data → Advertising Data** | Third-Party Advertising, Analytics | No | **Yes** |
+| **Usage Data → Product Interaction** | Third-Party Advertising | No | **Yes** |
+| **Location → Coarse Location** (from IP) | Third-Party Advertising | No | **Yes** |
+| **Diagnostics → Performance Data** | Third-Party Advertising, Analytics | No | No |
+| **Diagnostics → Crash Data** (already declared for Analytics) | add Third-Party Advertising | No | No |
+
+Source: Google's "Data disclosure" page for the iOS Google Mobile Ads SDK
+(checked 10 Nov 2026), which lists crash logs, performance data, device ID,
+advertising data, coarse location and product interactions. Google doesn't
+say which are "tracking"; the ones used to target ads are marked Yes to be
+safe, since the app asks for tracking permission.
 
 "Does this app track?" → **Yes** (only the SDK's advertising identifier, and
 only when the person allows it in Apple's prompt).
@@ -29,14 +37,16 @@ only when the person allows it in Apple's prompt).
 **App content → Ads:** Yes, the app contains ads.
 
 **App content → Advertising ID:** Yes, the app uses an advertising ID, for
-**Advertising or marketing** and **Analytics**. (The ads library adds the
+**Advertising or marketing**, **Analytics** and **Fraud prevention, security
+and compliance** (Google: collected "for advertising, analytics, and fraud
+prevention purposes"). (The ads library adds the
 `AD_ID` permission automatically.)
 
 **App content → Data safety** (add to the existing answers):
 
 | Data type | Collected | Shared | Purpose | Optional? |
 |---|---|---|---|---|
-| Device or other IDs (advertising ID) | Yes | Yes (Google) | Advertising or marketing, Analytics, Fraud prevention | No |
+| Device or other IDs (advertising ID, app set ID) | Yes | Yes (Google) | Advertising or marketing, Analytics, Fraud prevention | No |
 | Approximate location (from IP) | Yes | Yes (Google) | Advertising or marketing, Analytics, Fraud prevention | No |
 | App activity → App interactions | Yes | Yes (Google) | Advertising or marketing, Analytics | No |
 | App info and performance → Crash logs, Diagnostics | Yes | Yes (Google) | Analytics | No |
@@ -71,13 +81,33 @@ answer; ad data is held by Google under its own policy).
 Host a plain-text file at **https://lenderoo.app/app-ads.txt** containing:
 
 ```
-google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+google.com, pub-6945594976032622, DIRECT, f08c47fec0942fa0
 ```
 
 The website must also be the **Marketing URL / Website** in both store
 listings, so AdMob can find the file. AdMob verifies it within about a day.
 
-## 5. Device QA checklist (before turning ads on)
+## 5. App Review notes (1.1.0: ads code included, ads switched off)
+
+1.1.0 ships the ads code dormant: the kill switch is off and the build has
+no real AdMob ad unit ids, so it never requests an ad, never starts the ad
+SDK and never shows Apple's tracking prompt. A reviewer will still find
+`NSUserTrackingUsageDescription` in the app, so paste this into App Store
+Connect → the version → App Review Information → Notes:
+
+> This version includes Google AdMob for a small banner ad we plan to turn
+> on in a later update. Ads are currently switched off server-side, so no
+> ads are shown and the App Tracking Transparency prompt does not appear in
+> this build. When ads are turned on, the prompt is shown once, before any
+> ad request, and only to users who have used the app for at least 7 days.
+
+Turning ads on for real needs a **new build** with the AdMob app ids
+(`ADMOB_IOS_APP_ID`, `ADMOB_ANDROID_APP_ID`) and banner unit ids
+(`EXPO_PUBLIC_ADMOB_BANNER_IOS`, `EXPO_PUBLIC_ADMOB_BANNER_ANDROID`) set as
+EAS production env vars: the app id is baked into the native project, so the
+kill switch alone can't start ads in 1.1.0.
+
+## 6. Device QA checklist (before turning ads on)
 
 Use Google's **test ads only** on our own devices. Never tap a real ad in
 Lenderoo on your own phone: AdMob can suspend the account for it.

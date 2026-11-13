@@ -61,8 +61,28 @@ export function BarcodeScannerModal({
                 </Button>
               </View>
 
+              {/* The frame the caption talks about: wide, like a product barcode. */}
+              <View className="flex-1 items-center justify-center">
+                <View
+                  pointerEvents="none"
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                  style={{
+                    width: "85%",
+                    maxWidth: 360,
+                    aspectRatio: 1.8,
+                    borderWidth: 3,
+                    borderColor: "#fff",
+                    borderRadius: 20,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <ScanLine size={40} color="rgba(255,255,255,0.7)" />
+                </View>
+              </View>
+
               <View className="items-center gap-3">
-                <ScanLine size={48} color="#fff" />
                 <Caption className="text-white text-center">
                   Line up the barcode within the frame
                 </Caption>

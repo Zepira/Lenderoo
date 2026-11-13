@@ -104,7 +104,7 @@
     },
     "owner": "lenderoo",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/c0ac397d-ebc2-4651-91ce-6c6a8206aefc"

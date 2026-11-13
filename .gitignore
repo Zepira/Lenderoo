@@ -37,7 +37,9 @@ node_modules
 .idea
 
 .env
-# local env files
+# local env files (every .env.* except the committed example)
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
@@ -59,3 +61,11 @@ secrets.json
 *.mobileprovision
 .env
 supabase/.temp/
+
+# Local build outputs and logs
+build-out/
+*.ipa
+*.aab
+*.apk
+coverage/
+.*.log
