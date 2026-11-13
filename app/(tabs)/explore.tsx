@@ -85,9 +85,9 @@ function CategoryCard({
           borderColor: cfg.color + "40",
         }}
       >
-        <Icon size={40} color={ink} />
+        <Icon size={itemWidth >= 160 ? 64 : 40} color={ink} />
         <TinyLabel
-          style={{ color: ink, fontSize: 13, fontWeight: "500" }}
+          style={{ color: ink, fontSize: itemWidth >= 160 ? 17 : 13, lineHeight: itemWidth >= 160 ? 22 : undefined, fontWeight: "500" }}
           className="normal-case tracking-normal"
         >
           {CATEGORY_LABELS[category]}
@@ -114,7 +114,7 @@ export default function ExploreScreen() {
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
   const { width } = useWindowDimensions();
-  const { numColumns } = calcCardLayout(width);
+  const { numColumns, cardWidth } = calcCardLayout(width);
 
   // react-query-backed (both keyed under the `['items', ...]` / borrow
   // request prefixes the global realtime sync invalidates on any DB change)
@@ -269,9 +269,11 @@ export default function ExploreScreen() {
   const outerPadding = 16;
   const gap = 12;
   const availableWidth = width - outerPadding * 2;
-  const numCols = Math.max(2, Math.floor((availableWidth + gap) / (100 + gap)));
+  // At most 4 across: two neat rows of bigger tiles on an iPad instead of one thin strip.
+  const numCols = Math.min(4, Math.max(2, Math.floor((availableWidth + gap) / (100 + gap))));
   const itemWidth = Math.floor((availableWidth - gap * (numCols - 1)) / numCols);
-  const itemHeight = Math.round(itemWidth * 1.15);
+  // Phone tiles are a little taller than wide; the wide iPad tiles are landscape.
+  const itemHeight = Math.round(itemWidth * (itemWidth >= 160 ? 0.62 : 1.15));
 
   const rows: (ItemCategory | null)[][] = [];
   for (let i = 0; i < CATEGORIES.length; i += numCols) {
@@ -411,7 +413,7 @@ export default function ExploreScreen() {
               notifyBusy={notifyingId === item.id}
               onToggleFavourite={() => handleToggleFavourite(item)}
               onChanged={loadItems}
-              style={{ flex: 1 }}
+              style={{ width: cardWidth }}
               onPress={() => router.push(`/item/${item.id}` as any)}
             />
           )}

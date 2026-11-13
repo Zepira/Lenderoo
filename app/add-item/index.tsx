@@ -126,9 +126,10 @@ export default function SelectCategoryScreen() {
 
   // ~90px min gives 4 cols on 390px phone, more on tablets — keeps the grid
   // compact so it plus the scan button fits on shorter Android screens.
-  const numColumns = Math.max(
-    3,
-    Math.floor((availableWidth + gap) / (90 + gap)),
+  // At most 4 across, so an iPad shows two rows of larger tiles, not one thin strip.
+  const numColumns = Math.min(
+    4,
+    Math.max(3, Math.floor((availableWidth + gap) / (90 + gap))),
   );
   const itemWidth = Math.floor(
     (availableWidth - gap * (numColumns - 1)) / numColumns,
@@ -172,7 +173,7 @@ export default function SelectCategoryScreen() {
             borderColor: cfg.color + "40",
           }}
         >
-          <cfg.Icon size={40} color={categoryInk(category, isDark)} />
+          <cfg.Icon size={itemWidth >= 160 ? 64 : 40} color={categoryInk(category, isDark)} />
           <TinyLabel
             style={{ color: categoryInk(category, isDark), fontSize: 13, fontWeight: "500" }}
             className="normal-case tracking-normal"

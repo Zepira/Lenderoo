@@ -26,4 +26,6 @@ User-visible changes, newest first. These double as the store release notes.
 - Invite a friend: share your friend code and a link to the app from Add
   Friend.
 - The barcode scanner shows a frame to line the barcode up in.
+- Made for iPad too: content sits in a readable column, grids use the extra
+  width, request cards and friends go two-up, and the tab bar stays compact.
 - Built on Expo SDK 58 for iOS 27.

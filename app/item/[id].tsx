@@ -18,6 +18,7 @@ import {
   TextInput,
   Keyboard,
   FlatList,
+  useWindowDimensions,
 } from "react-native";
 import { Pressable } from "@/components/ui/pressable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -97,6 +98,7 @@ import { resolveAvatarSource } from "@/lib/services/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
+import { READABLE_WIDTH } from "@/lib/layout";
 import {
   PageHero,
   SectionHeading,
@@ -119,6 +121,9 @@ export default function ItemDetailScreen() {
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
   const insets = useSafeAreaInsets();
+  // The card spans the screen; its contents sit in a centred column on an iPad.
+  const { width: screenWidth } = useWindowDimensions();
+  const contentSide = Math.max(24, (screenWidth - READABLE_WIDTH) / 2);
   const isFocused = useIsFocused();
   // True while the hero photo is still under the status bar.
   const [heroUnderStatusBar, setHeroUnderStatusBar] = useState(true);
@@ -805,8 +810,9 @@ export default function ItemDetailScreen() {
             style={{
               position: "absolute",
               bottom: 48,
-              left: 20,
-              right: 20,
+              // Lines up with the content column below (20 on a phone).
+              left: contentSide - 4,
+              right: contentSide - 4,
             }}
           >
             {/* Badges */}
@@ -868,7 +874,7 @@ export default function ItemDetailScreen() {
             borderTopRightRadius: 40,
             marginTop: -38,
             paddingTop: 44,
-            paddingHorizontal: 24,
+            paddingHorizontal: contentSide,
             paddingBottom: 8,
           }}
         >

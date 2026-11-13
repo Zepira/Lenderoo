@@ -6,8 +6,8 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-  Platform,
-} from "react-native";
+  Platform } from "react-native";
+import { readableColumn } from "@/lib/layout";
 import { Pressable } from "@/components/ui/pressable";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Camera, BookOpen, Library } from "lucide-react-native";
@@ -393,12 +393,15 @@ export default function AddBookScreen() {
         keyboardShouldPersistTaps="handled"
         enableOnAndroid
         extraScrollHeight={24}
-        contentContainerStyle={{
-          paddingHorizontal: 24,
-          paddingTop: 24,
-          paddingBottom: 48,
-          gap: 16,
-        }}
+        contentContainerStyle={[
+          {
+            paddingHorizontal: 24,
+            paddingTop: 24,
+            paddingBottom: 48,
+            gap: 16,
+          },
+          readableColumn,
+        ]}
       >
         {duplicateWarning && (
           <View

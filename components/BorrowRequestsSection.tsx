@@ -34,6 +34,10 @@ export function BorrowRequestsSection({
   processingId,
 }: BorrowRequestsSectionProps) {
   const [historyFor, setHistoryFor] = useState<BorrowRequestWithDetails | null>(null);
+  // Two cards side by side when there's room (an iPad's Library), one per row on a phone or
+  // inside Settings' narrower column. Measured from the list itself, not the window.
+  const [listWidth, setListWidth] = useState(0);
+  const twoUp = listWidth >= 900;
 
   if (!requests || requests.length === 0) {
     return null;
@@ -100,6 +104,10 @@ export function BorrowRequestsSection({
       </View>
 
       {/* Request Cards */}
+      <View
+        onLayout={(e) => setListWidth(e.nativeEvent.layout.width)}
+        style={twoUp ? { flexDirection: "row", flexWrap: "wrap", gap: 12 } : { gap: 12 }}
+      >
       {requests.map((request) => {
         const isProcessing = processingId === request.id;
         const itemImage = request.itemImages?.[0];
@@ -108,6 +116,7 @@ export function BorrowRequestsSection({
           <View
             key={request.id}
             className="bg-card border border-border rounded-2xl p-3 gap-3"
+            style={twoUp ? { width: "49%", flexGrow: 1 } : undefined}
           >
             <View className="flex-row gap-3">
               {/* Item Thumbnail */}
@@ -213,6 +222,7 @@ export function BorrowRequestsSection({
           </View>
         );
       })}
+      </View>
 
       <Separator className="mt-1" />
       <BorrowerHistoryModal request={historyFor} onClose={() => setHistoryFor(null)} />
@@ -256,8 +266,13 @@ function BorrowerHistoryModal({
 
   return (
     <Modal visible={!!request} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable className="flex-1 bg-black/40" onPress={onClose} accessibilityLabel="Close" />
-      <View className="bg-background rounded-t-3xl px-5 pt-5 pb-10 gap-3" style={{ maxHeight: '70%' }}>
+      <View className="flex-1 bg-black/40 justify-end">
+      <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={onClose} accessibilityLabel="Close" />
+      {/* Full width on a phone; a centred sheet on an iPad. */}
+      <View
+        className="bg-background rounded-t-3xl px-5 pt-5 pb-10 gap-3"
+        style={{ maxHeight: '70%', width: '100%', maxWidth: 640, alignSelf: 'center' }}
+      >
         <Text variant="h3" className="font-semibold">
           {request?.requesterName}'s history with you
         </Text>
@@ -285,6 +300,7 @@ function BorrowerHistoryModal({
         <Button variant="outline" onPress={onClose}>
           <Text>Close</Text>
         </Button>
+      </View>
       </View>
     </Modal>
   );

@@ -6,6 +6,7 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  useWindowDimensions,
 } from "react-native";
 import { Pressable } from "@/components/ui/pressable";
 import { formatCount } from "lib/utils";
@@ -42,6 +43,9 @@ import { useBannerSpace } from "@/components/QuietBanner";
 
 export default function FriendsScreen() {
   const bannerSpace = useBannerSpace();
+  // Two columns of friends on an iPad, one on a phone.
+  const { width: screenWidth } = useWindowDimensions();
+  const twoUp = screenWidth >= 900;
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
@@ -237,12 +241,13 @@ export default function FriendsScreen() {
               </Caption>
             </View>
           ) : (
-            <View style={{ gap: 12 }}>
+            <View style={twoUp ? { flexDirection: "row", flexWrap: "wrap", gap: 12 } : { gap: 12 }}>
               {filtered.map((friend) => (
                 <Pressable
                   key={friend.id}
                   onPress={() => router.push(`/friends/${friend.id}` as any)}
                   style={({ pressed }) => ({
+                    ...(twoUp ? { width: "49%", flexGrow: 1 } : null),
                     backgroundColor: theme.card,
                     borderRadius: 24,
                     padding: 16,
