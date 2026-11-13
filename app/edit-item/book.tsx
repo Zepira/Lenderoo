@@ -8,7 +8,9 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
+import { readableColumn, readableSidePadding } from "@/lib/layout";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +35,9 @@ export default function EditBookScreen() {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
+  // The Cancel/Save bar keeps its buttons in the form's centred column on an iPad.
+  const { width: screenWidth } = useWindowDimensions();
+  const footerSide = readableSidePadding(screenWidth);
   const params = useLocalSearchParams<{
     itemId: string;
     title?: string;
@@ -311,7 +316,7 @@ export default function EditBookScreen() {
         enableOnAndroid
         extraScrollHeight={24}
       >
-        <View className="px-4 pt-6 pb-4 gap-4">
+        <View className="px-4 pt-6 pb-4 gap-4" style={readableColumn}>
           {errors.general && (
             <View className="p-3 bg-red-50 rounded-lg border border-red-200">
               <Text variant="small" className="text-red-600">
@@ -490,6 +495,7 @@ export default function EditBookScreen() {
           flexDirection: "row",
           gap: 12,
           padding: 16,
+          paddingHorizontal: footerSide,
           paddingBottom: 24,
           backgroundColor: isDark ? theme.muted : "#F3F4F6",
           borderTopWidth: 1,

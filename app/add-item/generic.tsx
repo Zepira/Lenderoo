@@ -4,8 +4,8 @@ import {
   View,
   Alert,
   ActivityIndicator,
-  TextInput,
-} from "react-native";
+  TextInput } from "react-native";
+import { readableColumn } from "@/lib/layout";
 import { Pressable } from "@/components/ui/pressable";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Image } from "expo-image";
@@ -190,7 +190,7 @@ export default function AddGenericItemScreen() {
         keyboardShouldPersistTaps="handled"
         enableOnAndroid
         extraScrollHeight={24}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 16 }}
+        contentContainerStyle={[{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 16 }, readableColumn]}
       >
         {errors.general && (
           <View

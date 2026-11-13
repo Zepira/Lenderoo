@@ -54,6 +54,7 @@ import { FeedbackModal } from "@/components/FeedbackModal";
 import { resolveAvatarSource, uploadAvatarImage } from "@/lib/services/avatar";
 import { deleteAccount } from "@/lib/services/account";
 import { BorrowRequestsSection } from "@/components/BorrowRequestsSection";
+import { readableColumn } from "@/lib/layout";
 import { ItemCard } from "@/components/ItemCard";
 import {
   useIncomingBorrowRequests,
@@ -316,7 +317,7 @@ export default function SettingsScreen() {
           </SafeAreaView>
         </View>
 
-        <View style={{ paddingHorizontal: 24, gap: 8 }}>
+        <View style={[{ paddingHorizontal: 24, gap: 8 }, readableColumn]}>
           {/* Awaiting your confirmation — pickup/return handoffs where you're
               the one who needs to tap Confirm before anything changes. */}
           {pendingHandoffs.length > 0 && (

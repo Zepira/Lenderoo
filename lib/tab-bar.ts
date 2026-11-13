@@ -8,3 +8,5 @@ export const TAB_BAR_CONTAINER_HEIGHT = 120;
 export const TAB_BAR_BOTTOM_GAP = 8;
 /** Space the tab bar takes above the bottom safe area. */
 export const TAB_BAR_SPACE = TAB_BAR_CONTAINER_HEIGHT + TAB_BAR_BOTTOM_GAP;
+// The floating bar's widest size: phones never reach it; iPads centre it.
+export const TAB_BAR_MAX_WIDTH = 560;

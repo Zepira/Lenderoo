@@ -19,7 +19,8 @@ export default function WelcomeScreen() {
       {isFocused && <StatusBar style="light" />}
       <SplashView />
 
-      <View className="px-8 pb-10 gap-3">
+      {/* Full width on a phone; a normal-width button on an iPad. */}
+      <View className="px-8 pb-10 gap-3 w-full self-center" style={{ maxWidth: 480 }}>
         <Button
           variant="outline-white"
           onPress={() => router.push("/(auth)/sign-in")}

@@ -25,7 +25,7 @@ export default function BorrowedItemsScreen() {
   const theme = isDark ? THEME.dark : THEME.light;
 
   const { width: screenWidth } = useWindowDimensions();
-  const { numColumns } = calcCardLayout(screenWidth);
+  const { numColumns, cardWidth } = calcCardLayout(screenWidth);
 
   const { items, loading, error, refresh } = useBorrowedByMeItems();
   const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set());
@@ -140,7 +140,7 @@ export default function BorrowedItemsScreen() {
             onPress={() => router.push(`/item/${item.id}` as any)}
             onToggleFavourite={() => handleToggleFavourite(item)}
             onChanged={refresh}
-            style={{ flex: 1 }}
+            style={{ width: cardWidth }}
           />
         )}
       />

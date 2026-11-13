@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Animated, View, Platform, Pressable } from "react-native";
+import { Animated, View, Platform, Pressable, useWindowDimensions } from "react-native";
 import { router, Tabs, useIsFocused } from "expo-router";
 import type { BottomTabBarProps } from "expo-router/tabs";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
@@ -19,6 +19,7 @@ import { THEME } from "@/lib/theme";
 import { AdBar, isAdScreen, useAdBarLift } from "@/components/QuietBanner";
 import {
   TAB_BAR_BOTTOM_GAP,
+  TAB_BAR_MAX_WIDTH,
   TAB_BAR_BTN_SIZE,
   TAB_BAR_CONTAINER_HEIGHT,
   TAB_BAR_NAV_HEIGHT,
@@ -37,6 +38,10 @@ function FloatingTabBar({
   notificationCount,
 }: BottomTabBarProps & { notificationCount: number }) {
   const insets = useSafeAreaInsets();
+  // On a phone the bar spans the screen less a 12pt margin; on an iPad it's a centred pill
+  // no wider than TAB_BAR_MAX_WIDTH, so the four tabs don't drift to the far edges.
+  const { width: screenWidth } = useWindowDimensions();
+  const barSide = Math.max(12, (screenWidth - TAB_BAR_MAX_WIDTH) / 2);
   // On browsing screens the ad bar docks at the bottom edge and the tab bar
   // lifts to sit just above it (0 when no ad is showing). Hidden while a
   // screen is open over the tabs, so the ad never loads out of sight.
@@ -132,8 +137,8 @@ function FloatingTabBar({
       style={{
         position: "absolute",
         bottom: insets.bottom + TAB_BAR_BOTTOM_GAP,
-        left: 12,
-        right: 12,
+        left: barSide,
+        right: barSide,
         height: TAB_BAR_CONTAINER_HEIGHT,
         zIndex: 999,
         transform: [{ translateY: Animated.multiply(lift, -1) }],

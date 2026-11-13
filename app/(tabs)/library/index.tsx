@@ -50,7 +50,7 @@ export default function ItemsScreen() {
   }, [activeFilter]);
 
   const { width: screenWidth } = useWindowDimensions();
-  const { numColumns } = calcCardLayout(screenWidth);
+  const { numColumns, cardWidth } = calcCardLayout(screenWidth);
 
   const { items, loading, error, refresh } = useItems(filter);
   const { items: allItems } = useItems();
@@ -299,7 +299,7 @@ export default function ItemsScreen() {
             onPress={() => router.push(`/item/${item.id}` as any)}
             onToggleFavourite={() => handleToggleFavourite(item)}
             onChanged={refresh}
-            style={{ flex: 1 }}
+            style={{ width: cardWidth }}
           />
         )}
       />
