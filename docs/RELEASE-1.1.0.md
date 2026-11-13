@@ -17,13 +17,13 @@ Everything to paste or click for 1.1.0, in order. Prepared 13 Nov 2026 from `CHA
 ```
 npx eas-cli build --platform all --profile production --non-interactive
 npx eas-cli submit --platform ios --latest      # to TestFlight
-npx eas-cli submit --platform android --latest  # to Play internal testing (after step 0)
+npx eas-cli submit --platform android --latest  # to Play closed testing (Alpha), as a draft
 ```
 
 `runtimeVersion` is now the fingerprint policy and the builds carry the `production` channel, so
 they won't pick up any update published for 1.0.
 
-On the TestFlight and internal-testing builds, with two accounts:
+Release the Alpha draft to the closed testers in Play Console when you're ready (it's a draft so you choose). On the TestFlight and closed-testing builds, with two accounts:
 
 - [ ] Request an item that's lent out: the owner's dialog says "Approve as next in queue"; approve.
 - [ ] The borrower sees "Borrowing Next"; the owner removes them with the × and they get
@@ -76,7 +76,7 @@ data types in `docs/ADS-STORE-DRAFTS.md` §1 go in with the build that turns ads
 > Faster, with a readable status bar, clearer toasts, tidier cards and the right light and dark
 > mode. Send Feedback is now in Settings → Support.
 
-- Promote the internal-testing release to production (staged rollout if offered).
+- **Production access first:** Zepira Labs is a personal Play account, so production opens only after 12 testers have been opted in to closed testing for 14 days (9 opted in on 13 Nov 2026). Then apply for production access, and promote the Alpha release (staged rollout if offered).
 
 ## 4. After release
 
