@@ -21,7 +21,6 @@
   "submit": {
     "production": {
       "android": {
-        "serviceAccountKeyPath": "android/zepira-390c2fd69214.json",
         "track": "internal"
       },
       "ios": {

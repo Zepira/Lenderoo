@@ -6,11 +6,7 @@ Everything to paste or click for 1.1.0, in order. Prepared 13 Nov 2026 from `CHA
 
 ## 0. Before building
 
-- [ ] **Android submission key into EAS** (Alana): `npx eas-cli credentials -p android` in this repo
-      → production → Google Service Account → upload the Play service-account JSON. The file
-      `eas.json` points at (`android/zepira-390c2fd69214.json`) isn't on the Mac any more, so
-      `eas submit` for Android fails until this is done. Then remove `serviceAccountKeyPath` from
-      `eas.json` (Claude Code can).
+- [x] **Android submission key in EAS** (13 Nov 2026): `lenderoo@zepira.iam.gserviceaccount.com`, key `601dbcce…`, assigned to Play Store submissions in `eas credentials`; `serviceAccountKeyPath` removed from `eas.json`. The builds keep the original keystore (the Default build credentials, SHA-1 `8D:42:B6:6E…`); the second keystore set made that day is unused.
 - [ ] **Merge the release PR** (#14) into `master`, so the builds come from `master`.
 - [ ] **Ads stay off:** no `EXPO_PUBLIC_ADMOB_BANNER_*` or `ADMOB_*_APP_ID` in the EAS production
       env, and `app_config` → `ads` → `{"enabled": false}` in Supabase. 1.1.0 ships the ads code
