@@ -75,6 +75,7 @@ import {
   getMyBorrowRequestForItem,
   cancelBorrowRequest,
   getApprovedQueueForItem,
+  removeFromQueue,
 } from "@/lib/services/borrow-requests";
 import { getHistoryForItemWithUsers } from "@/lib/services/database";
 import { isItemFavourited, setItemFavourite } from "@/lib/services/favourites";
@@ -343,6 +344,30 @@ export default function ItemDetailScreen() {
       toast.error(e?.message || "Failed to cancel request");
     } finally {
       setRequesting(false);
+    }
+  };
+
+  // Owner only: take someone out of the queue (their request becomes declined).
+  const handleRemoveFromQueue = async (req: BorrowRequestWithDetails) => {
+    const title = "Remove from queue";
+    const message = `Take ${req.requesterName} out of the queue for "${req.itemName}"? They'll be told their request was declined.`;
+    // Alert.alert ignores custom buttons on web, so fall back to window.confirm.
+    const confirmed =
+      Platform.OS === "web"
+        ? window.confirm(`${title}\n\n${message}`)
+        : await new Promise<boolean>((resolve) => {
+            Alert.alert(title, message, [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: "Remove", style: "destructive", onPress: () => resolve(true) },
+            ]);
+          });
+    if (!confirmed) return;
+    try {
+      await removeFromQueue(req.id);
+      toast.success(`${req.requesterName} removed from the queue`);
+      loadBorrowQueue();
+    } catch (e: any) {
+      toast.error(e?.message || "Couldn't remove them from the queue");
     }
   };
 
@@ -1294,6 +1319,22 @@ export default function ItemDetailScreen() {
                         </TinyLabel>
                         <BodyStrong>{req.requesterName}</BodyStrong>
                       </View>
+                      {isOwner && (
+                        <TouchableOpacity
+                          onPress={() => handleRemoveFromQueue(req)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove ${req.requesterName} from the queue`}
+                          hitSlop={8}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <X size={20} color={theme.mutedForeground} />
+                        </TouchableOpacity>
+                      )}
                     </View>
                   ))}
                 </View>

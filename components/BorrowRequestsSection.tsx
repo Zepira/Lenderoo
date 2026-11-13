@@ -4,7 +4,8 @@
  * Displays incoming borrow requests for the library screen
  */
 
-import { View, Alert, ActivityIndicator, Platform } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Alert, ActivityIndicator, Platform, Modal, Pressable, ScrollView } from "react-native";
 import { Image } from "expo-image";
 import { Text } from "@/components/ui/text";
 import { BodyStrong, Caption } from "@/components/ui/typography";
@@ -15,6 +16,7 @@ import * as LucideIcons from "lucide-react-native";
 import { formatDistanceToNow } from "date-fns";
 import { getInitials } from "@/lib/utils";
 import { resolveAvatarSource } from "@/lib/services/avatar";
+import { getLoansWithMe, type LoanWithMe } from "@/lib/services/database";
 import type { BorrowRequestWithDetails } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
 
@@ -31,30 +33,31 @@ export function BorrowRequestsSection({
   onDeny,
   processingId,
 }: BorrowRequestsSectionProps) {
+  const [historyFor, setHistoryFor] = useState<BorrowRequestWithDetails | null>(null);
+
   if (!requests || requests.length === 0) {
     return null;
   }
 
   const handleApprove = (request: BorrowRequestWithDetails) => {
+    // Lent out to someone else: approving puts them in the queue (approveBorrowRequest).
+    const queued = !!request.itemBorrowedBy && request.itemBorrowedBy !== request.requesterId;
+    const title = queued ? 'Approve as next in queue' : 'Approve Request';
+    const message = queued
+      ? `"${request.itemName}" is lent out at the moment. Let ${request.requesterName} borrow it next? They'll join the queue.`
+      : `Allow ${request.requesterName} to borrow "${request.itemName}"?`;
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        `Allow ${request.requesterName} to borrow "${request.itemName}"?`
-      );
-      if (confirmed) {
+      if (window.confirm(`${title}\n\n${message}`)) {
         onApprove(request.id);
       }
     } else {
-      Alert.alert(
-        'Approve Request',
-        `Allow ${request.requesterName} to borrow "${request.itemName}"?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Approve',
-            onPress: () => { onApprove(request.id); },
-          },
-        ]
-      );
+      Alert.alert(title, message, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: queued ? 'Add to queue' : 'Approve',
+          onPress: () => { onApprove(request.id); },
+        },
+      ]);
     }
   };
 
@@ -150,6 +153,15 @@ export function BorrowRequestsSection({
                     Requested by {request.requesterName}
                   </Caption>
                 </View>
+                <Pressable
+                  onPress={() => setHistoryFor(request)}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                >
+                  <Caption className="text-primary font-sans-bold">
+                    Their history with you
+                  </Caption>
+                </Pressable>
 
                 {/* Optional Message */}
                 {request.message && (
@@ -203,6 +215,77 @@ export function BorrowRequestsSection({
       })}
 
       <Separator className="mt-1" />
+      <BorrowerHistoryModal request={historyFor} onClose={() => setHistoryFor(null)} />
     </View>
+  );
+}
+
+/** A requester's past and current loans of your items, to decide on their request. */
+function BorrowerHistoryModal({
+  request,
+  onClose,
+}: {
+  request: BorrowRequestWithDetails | null;
+  onClose: () => void;
+}) {
+  const [loans, setLoans] = useState<LoanWithMe[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!request) return;
+    let active = true;
+    setLoans(null);
+    setFailed(false);
+    getLoansWithMe(request.requesterId)
+      .then((rows) => active && setLoans(rows))
+      .catch(() => active && setFailed(true));
+    return () => {
+      active = false;
+    };
+  }, [request?.requesterId]);
+
+  const now = new Date();
+  const late = (l: LoanWithMe) =>
+    !!l.dueDate && (l.returnedDate ? l.returnedDate > l.dueDate : now > l.dueDate);
+  const summary = loans
+    ? loans.length === 0
+      ? `${request?.requesterName} hasn't borrowed anything from you yet.`
+      : `Borrowed ${loans.length} ${loans.length === 1 ? 'time' : 'times'} from you` +
+        (loans.some(late) ? ` · ${loans.filter(late).length} late` : ' · always on time')
+    : '';
+
+  return (
+    <Modal visible={!!request} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable className="flex-1 bg-black/40" onPress={onClose} accessibilityLabel="Close" />
+      <View className="bg-background rounded-t-3xl px-5 pt-5 pb-10 gap-3" style={{ maxHeight: '70%' }}>
+        <Text variant="h3" className="font-semibold">
+          {request?.requesterName}'s history with you
+        </Text>
+        {failed ? (
+          <Caption>Couldn't load their history. Try again in a moment.</Caption>
+        ) : !loans ? (
+          <ActivityIndicator size="small" />
+        ) : (
+          <>
+            <Caption>{summary}</Caption>
+            <ScrollView contentContainerStyle={{ gap: 10 }}>
+              {loans.map((l) => (
+                <View key={l.id} className="bg-card border border-border rounded-xl p-3 gap-1">
+                  <BodyStrong numberOfLines={1}>{l.itemName}</BodyStrong>
+                  <Caption>
+                    {l.borrowedDate.toLocaleDateString()} –{' '}
+                    {l.returnedDate ? l.returnedDate.toLocaleDateString() : 'still has it'}
+                    {late(l) ? (l.returnedDate ? ' · returned late' : ' · overdue') : ''}
+                  </Caption>
+                </View>
+              ))}
+            </ScrollView>
+          </>
+        )}
+        <Button variant="outline" onPress={onClose}>
+          <Text>Close</Text>
+        </Button>
+      </View>
+    </Modal>
   );
 }

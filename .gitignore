@@ -37,7 +37,9 @@ node_modules
 .idea
 
 .env
-# local env files
+# local env files (every .env.* except the committed example)
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local

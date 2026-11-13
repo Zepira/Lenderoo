@@ -24,7 +24,7 @@ change `is_unavailable`, `pending_recipient_id` or `borrowed_by` (trigger
 |---|---|---|---|---|
 | 1 | New borrow request created | `borrow_requests` INSERT, `status='pending'` | Item owner | `borrow_request_new` |
 | 2 | Request approved | `borrow_requests` UPDATE → `status='approved'` | Requester | `borrow_request_approved` |
-| 3 | Request denied | `borrow_requests` UPDATE → `status='denied'` | Requester | `borrow_request_denied` |
+| 3 | Request denied, or the owner removes them from the queue (`approved`→`denied`, `removeFromQueue`) | `borrow_requests` UPDATE → `status='denied'` | Requester | `borrow_request_denied` |
 | 4 | Pending request cancelled by requester | `borrow_requests` UPDATE, `pending`→`cancelled` | Item owner | `borrow_request_cancelled` |
 | 5 | Friend request sent | `friend_connections` INSERT, `status='pending'` | Recipient | `friend_request_new` |
 | 6 | Friend request accepted | `friend_connections` UPDATE → `status='active'` | Original sender | `friend_request_accepted` |

@@ -18,4 +18,12 @@ User-visible changes, newest first. These double as the store release notes.
 - Send Feedback has moved to Settings → Support.
 - A small ad bar on some browsing screens helps cover running costs (not on
   Settings or forms, and not in your first week). _Off until switched on._
+- Approving a request for something that's lent out says it puts them next in
+  the queue.
+- See someone's history with your things (what they borrowed, and whether it
+  came back on time) before you approve their request.
+- Take someone out of an item's queue.
+- Invite a friend: share your friend code and a link to the app from Add
+  Friend.
+- The barcode scanner shows a frame to line the barcode up in.
 - Built on Expo SDK 58 for iOS 27.
