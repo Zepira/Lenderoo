@@ -837,6 +837,38 @@ export async function getHistoryForItemWithUsers(
   }));
 }
 
+/** One past or current loan of the signed-in owner's items to a given person. */
+export interface LoanWithMe {
+  id: string;
+  itemName: string;
+  borrowedDate: Date;
+  dueDate?: Date;
+  returnedDate?: Date;
+}
+
+/**
+ * A person's borrowing record with the signed-in user's items, newest first, for deciding on
+ * their request. RLS (049_privacy_rls) limits borrow_history to the item's owner and the
+ * borrower, so this never shows their loans from anyone else.
+ */
+export async function getLoansWithMe(borrowerId: string): Promise<LoanWithMe[]> {
+  const { data, error } = await supabase
+    .from("borrow_history")
+    .select("id, borrowed_date, due_date, returned_date, items!inner(name)")
+    .eq("friend_id", borrowerId)
+    .order("borrowed_date", { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    itemName: (Array.isArray(row.items) ? row.items[0]?.name : row.items?.name) ?? "An item",
+    borrowedDate: new Date(row.borrowed_date),
+    dueDate: row.due_date ? new Date(row.due_date) : undefined,
+    returnedDate: row.returned_date ? new Date(row.returned_date) : undefined,
+  }));
+}
+
 export async function addHistoryEntry(
   entry: Omit<BorrowHistory, "id" | "createdAt">
 ): Promise<BorrowHistory> {

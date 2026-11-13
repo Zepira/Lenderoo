@@ -12,6 +12,7 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Share,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router, Stack } from "expo-router";
@@ -25,6 +26,7 @@ import {
   Contact,
   Copy,
   RefreshCw,
+  Share2,
   X,
 } from "lucide-react-native";
 import * as toast from "@/lib/toast";
@@ -124,6 +126,18 @@ export default function AddUserFriendScreen() {
     if (!myFriendCode) return;
     await Clipboard.setStringAsync(myFriendCode);
     toast.success("Friend code copied!");
+  }
+
+  // Invite someone who isn't on Lenderoo yet: the system share sheet with the code and the site.
+  async function handleShareFriendCode() {
+    if (!myFriendCode) return;
+    try {
+      await Share.share({
+        message: `Add me on Lenderoo so we can lend each other things. My friend code is ${myFriendCode}. Get the app at https://lenderoo.app`,
+      });
+    } catch {
+      // Dismissed, or no share target: nothing to do.
+    }
   }
 
   async function handleRegenerateFriendCode() {
@@ -275,6 +289,11 @@ export default function AddUserFriendScreen() {
                     </Text>
                   </View>
                 </View>
+
+                <Button onPress={handleShareFriendCode} disabled={!myFriendCode}>
+                  <Share2 size={16} color={isDark ? "#000" : "#fff"} />
+                  <Text>Invite a friend</Text>
+                </Button>
 
                 <View className="flex-row gap-2">
                   <Button
@@ -479,8 +498,8 @@ export default function AddUserFriendScreen() {
                     </Text>
                   ) : (
                     <Text variant="small" className="text-muted-foreground">
-                      None of your contacts are on Lenderoo yet. Invite them,
-                      or try adding a friend by code or name instead.
+                      None of your contacts are on Lenderoo yet. Invite them
+                      with Invite a friend above, or add a friend by code or name.
                     </Text>
                   )}
 

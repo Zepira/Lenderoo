@@ -439,6 +439,62 @@ export async function denyBorrowRequest(requestId: string): Promise<BorrowReques
 }
 
 /**
+ * Remove someone from an item's queue (owner only): their approved request becomes denied, which
+ * sends them the usual "Request Declined" notification (docs/NOTIFICATIONS.md #3). Refused while
+ * the item is being handed to them, since that hand-off is already under way.
+ *
+ * @param requestId - ID of the approved (queued) request
+ */
+export async function removeFromQueue(requestId: string): Promise<BorrowRequest> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+
+  const { data: request, error: fetchError } = await supabase
+    .from('borrow_requests')
+    .select('owner_id, requester_id, status, items!inner(borrowed_by, pending_recipient_id)')
+    .eq('id', requestId)
+    .single();
+
+  if (fetchError) {
+    throw new Error(`Failed to fetch request: ${fetchError.message}`);
+  }
+
+  const item = (Array.isArray(request.items) ? request.items[0] : request.items) as
+    | { borrowed_by: string | null; pending_recipient_id: string | null }
+    | null;
+
+  if (request.owner_id !== user.id) {
+    throw new Error('Only the item owner can change its queue');
+  }
+  if (request.status !== 'approved') {
+    throw new Error('Only someone waiting in the queue can be removed');
+  }
+  if (!item?.borrowed_by || item.borrowed_by === request.requester_id) {
+    throw new Error('This request is not waiting in a queue');
+  }
+  if (item.pending_recipient_id === request.requester_id) {
+    throw new Error('The item is already being handed to them');
+  }
+
+  const { data, error } = await supabase
+    .from('borrow_requests')
+    .update({ status: 'denied' })
+    .eq('id', requestId)
+    .eq('status', 'approved')
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to remove from the queue: ${error.message}`);
+  }
+
+  return convertBorrowRequestFromDb(data);
+}
+
+/**
  * Cancel a borrow request (requester only)
  *
  * @param requestId - ID of the request to cancel
