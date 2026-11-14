@@ -92,9 +92,7 @@
         {
           "contactsPermission": "Allow Lenderoo to access your contacts to find friends who are already using the app."
         }
-      ],
-      "expo-image",
-      "expo-status-bar"
+      ]
     ],
     "extra": {
       "router": {},
