@@ -14,7 +14,7 @@ import {
   ActivityIndicator,
   Share,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard-aware-scroll-view";
 import { router, Stack } from "expo-router";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
@@ -261,8 +261,6 @@ export default function AddUserFriendScreen() {
       <KeyboardAwareScrollView
         className="flex-1 bg-background"
         keyboardShouldPersistTaps="handled"
-        enableOnAndroid
-        extraScrollHeight={24}
         contentContainerStyle={{ paddingBottom: 160 }}
       >
         <SafeAreaWrapper>

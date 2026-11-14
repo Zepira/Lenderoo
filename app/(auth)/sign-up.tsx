@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { View, ActivityIndicator, Pressable } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard-aware-scroll-view";
 import { Link, router } from "expo-router";
 import { Text } from "@/components/ui/text";
 import { PageHero } from "@/components/ui/typography";
@@ -109,8 +109,6 @@ export default function SignUpScreen() {
       className="flex-1 bg-background"
       contentContainerClassName="grow px-6 py-8 pb-24"
       keyboardShouldPersistTaps="handled"
-      enableOnAndroid
-      extraScrollHeight={24}
     >
         <View className="w-full max-w-md mx-auto">
           {/* Header */}

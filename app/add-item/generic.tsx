@@ -7,7 +7,7 @@ import {
   TextInput } from "react-native";
 import { readableColumn } from "@/lib/layout";
 import { Pressable } from "@/components/ui/pressable";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard-aware-scroll-view";
 import { Image } from "expo-image";
 import { Camera } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
@@ -188,8 +188,6 @@ export default function AddGenericItemScreen() {
       <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        enableOnAndroid
-        extraScrollHeight={24}
         contentContainerStyle={[{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 16 }, readableColumn]}
       >
         {errors.general && (

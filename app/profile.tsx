@@ -5,7 +5,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Pressable } from "@/components/ui/pressable";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, User, Mail, Phone, Lock, Eye, EyeOff } from "lucide-react-native";
@@ -195,8 +195,6 @@ export default function ProfileScreen() {
       <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        enableOnAndroid
-        extraScrollHeight={24}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48, gap: 16 }}
       >
         {/* ── Personal info card ── */}

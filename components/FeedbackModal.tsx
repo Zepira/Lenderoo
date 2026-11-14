@@ -15,7 +15,7 @@ import {
   Pressable,
   TextInput,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard-aware-scroll-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePickerExpo from "expo-image-picker";
 import { X, ImagePlus } from "lucide-react-native";
@@ -156,7 +156,6 @@ export function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
           backgroundColor: "rgba(0,0,0,0.5)",
         }}
         keyboardShouldPersistTaps="handled"
-        extraScrollHeight={24}
       >
         {/* Backdrop tap-to-close — safety net so the sheet is never unreachable */}
         <Pressable onPress={handleClose} style={{ flex: 1 }} />

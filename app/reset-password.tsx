@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { View, ActivityIndicator, Platform } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard-aware-scroll-view";
 import { router } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { Text } from "@/components/ui/text";
@@ -137,8 +137,6 @@ export default function ResetPasswordScreen() {
       className="bg-background"
       contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }}
       keyboardShouldPersistTaps="handled"
-      enableOnAndroid
-      extraScrollHeight={24}
     >
           <View style={{ gap: 32 }}>
             <View style={{ gap: 8 }}>

@@ -7,7 +7,7 @@ import {
   TextInput,
 } from "react-native";
 import { Pressable } from "@/components/ui/pressable";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard-aware-scroll-view";
 import { Search, BookOpen, ScanBarcode } from "lucide-react-native";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/button";
@@ -133,8 +133,6 @@ export default function SearchBookScreen() {
       <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        enableOnAndroid
-        extraScrollHeight={24}
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48, gap: 16 }}
       >
         {/* Search card */}

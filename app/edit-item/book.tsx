@@ -9,9 +9,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
+  type ScrollViewInstance,
 } from "react-native";
 import { readableColumn, readableSidePadding } from "@/lib/layout";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard-aware-scroll-view";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ export default function EditBookScreen() {
   const { friends } = useFriends();
   const { updateItem, loading: saving } = useUpdateItem();
   const { items: existingItems } = useItems();
-  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -126,7 +127,7 @@ export default function EditBookScreen() {
       if (!title.trim()) {
         console.error("❌ Validation failed: Title is required");
         setErrors({ name: "Title is required" });
-        scrollViewRef.current?.scrollToPosition(0, 0, true);
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         Alert.alert("Missing Information", "Please enter a book title.");
         return;
       }
@@ -175,7 +176,7 @@ export default function EditBookScreen() {
         );
 
         setErrors({ name: "This book is already in your library" });
-        scrollViewRef.current?.scrollToPosition(0, 0, true);
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         return;
       }
 
@@ -252,7 +253,7 @@ export default function EditBookScreen() {
         });
 
         setErrors(fieldErrors);
-        scrollViewRef.current?.scrollToPosition(0, 0, true);
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
 
         Alert.alert(
           "Validation Error",
@@ -264,7 +265,7 @@ export default function EditBookScreen() {
         const errorMessage = error.message || "An unknown error occurred";
         console.error("Error details:", errorMessage);
         setErrors({ general: `Failed to add book: ${errorMessage}` });
-        scrollViewRef.current?.scrollToPosition(0, 0, true);
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
 
         Alert.alert(
           "Error",
@@ -277,7 +278,7 @@ export default function EditBookScreen() {
         setErrors({
           general: "An unexpected error occurred. Please try again.",
         });
-        scrollViewRef.current?.scrollToPosition(0, 0, true);
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
 
         Alert.alert(
           "Error",
@@ -313,8 +314,6 @@ export default function EditBookScreen() {
         ref={scrollViewRef}
         className="flex-1"
         keyboardShouldPersistTaps="handled"
-        enableOnAndroid
-        extraScrollHeight={24}
       >
         <View className="px-4 pt-6 pb-4 gap-4" style={readableColumn}>
           {errors.general && (

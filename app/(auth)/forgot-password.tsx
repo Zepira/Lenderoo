@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView } from '@/components/ui/keyboard-aware-scroll-view';
 import { Link, router } from 'expo-router';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
@@ -67,10 +67,8 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAwareScrollView
       className="flex-1 bg-background"
-      contentContainerClassName="flex-1 justify-center px-6 py-8"
+      contentContainerClassName="grow justify-center px-6 py-8"
       keyboardShouldPersistTaps="handled"
-      enableOnAndroid
-      extraScrollHeight={24}
     >
         <View className="w-full max-w-md mx-auto">
           {/* Header */}

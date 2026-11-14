@@ -3,7 +3,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { View, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from "react-native";
 import { readableColumn, readableSidePadding } from "@/lib/layout";
 import { Pressable } from "@/components/ui/pressable";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard-aware-scroll-view";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -158,8 +158,6 @@ export default function EditGenericItemScreen() {
       <KeyboardAwareScrollView
         className="flex-1"
         keyboardShouldPersistTaps="handled"
-        enableOnAndroid
-        extraScrollHeight={24}
       >
         <View className="px-4 pt-6 pb-4 gap-4" style={readableColumn}>
           {errors.general && (

@@ -245,17 +245,20 @@ import { Text } from '@/components/ui/text';
 
 See `docs/KEYBOARD_HANDLING.md` for the full write-up.
 
-**TL;DR**: `android.softwareKeyboardLayoutMode` is `"pan"` in `app.json`
-(not the RN default `"resize"`). This lets `KeyboardAwareScrollView`
-measure the keyboard accurately. Every form screen uses:
+**TL;DR**: Android no longer resizes or pans the window for the keyboard
+(edge-to-edge), so keyboard handling is done in JS by our own
+`KeyboardAwareScrollView` (`components/ui/keyboard-aware-scroll-view.tsx`).
+Every form screen uses:
 
 ```tsx
-<KeyboardAwareScrollView
-  keyboardShouldPersistTaps="handled"
-  enableOnAndroid
-  extraScrollHeight={24}
->
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard-aware-scroll-view";
+
+<KeyboardAwareScrollView contentContainerStyle={...}>
 ```
+
+Content containers that are vertically centred must use `grow`/`flexGrow: 1`,
+never `flex-1` — a fixed-height content container can't scroll, so the focused
+input can't be revealed.
 
 For **Modal-based sheets** that don't inherit `windowSoftInputMode`:
 - Plain content → `KeyboardAwareScrollView` (see `components/FeedbackModal.tsx`)
