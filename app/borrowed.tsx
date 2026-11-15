@@ -1,3 +1,4 @@
+import { useBottomSpace } from "@/hooks/useTabBarSpace";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { View, FlatList, useWindowDimensions, ActivityIndicator } from "react-native";
 import { router, useIsFocused } from "expo-router";
@@ -18,6 +19,8 @@ import type { Item } from "lib/types";
 import { AdBar, useAdBarLift } from "@/components/QuietBanner";
 
 export default function BorrowedItemsScreen() {
+  // No tab bar; its own ad bar docks at the bottom while it's showing.
+  const bottomSpace = useBottomSpace();
   // No tab bar here, so this screen docks its own ad bar while in front.
   const isFocused = useIsFocused();
   const adLift = useAdBarLift(isFocused);
@@ -111,7 +114,7 @@ export default function BorrowedItemsScreen() {
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 160, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: bottomSpace, gap: 12 }}
         showsVerticalScrollIndicator={false}
         onRefresh={refresh}
         refreshing={loading}

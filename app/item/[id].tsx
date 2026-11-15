@@ -1,3 +1,4 @@
+import { useBottomSpace } from "@/hooks/useTabBarSpace";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   useLocalSearchParams,
@@ -116,6 +117,7 @@ import type { ItemStatus, BookMetadata } from "lib/types";
 const HERO_HEIGHT = 400;
 
 export default function ItemDetailScreen() {
+  const bottomSpace = useBottomSpace({ banner: false });
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
@@ -743,7 +745,7 @@ export default function ItemDetailScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 160 }}
+        contentContainerStyle={{ paddingBottom: bottomSpace }}
         scrollEventThrottle={32}
         onScroll={(e) =>
           setHeroUnderStatusBar(e.nativeEvent.contentOffset.y < HERO_HEIGHT - insets.top)

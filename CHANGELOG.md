@@ -4,6 +4,8 @@ User-visible changes, newest first. These double as the store release notes.
 
 ## Next (unreleased)
 
+- The last item in a list no longer hides behind the tab bar on some phones
+  (Android with button navigation).
 - Saved: tap the heart on a friend's item to save it for later. Find
   everything you've saved in Library → Saved (and a Saved row on Home), with
   whose it is and whether it's free, and get a notification when something

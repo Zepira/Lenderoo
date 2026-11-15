@@ -1,3 +1,4 @@
+import { useTabBarSpace } from "@/hooks/useTabBarSpace";
 import { useState } from "react";
 import {
   View,
@@ -77,6 +78,7 @@ const confirmAsync = (title: string, message: string): Promise<boolean> => {
 };
 
 export default function SettingsScreen() {
+  const bottomSpace = useTabBarSpace({ banner: false });
   const { appUser, user, signOut, updateProfile } = useAuth();
   const { themeMode, setThemeMode, activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
@@ -210,7 +212,7 @@ export default function SettingsScreen() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 160 }}
+        contentContainerStyle={{ paddingBottom: bottomSpace }}
       >
         {/* Header card */}
         <View

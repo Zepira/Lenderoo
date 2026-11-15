@@ -1,3 +1,4 @@
+import { useTabBarSpace } from "@/hooks/useTabBarSpace";
 import { router, useFocusEffect } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -39,10 +40,9 @@ import { resolveAvatarSource } from "@/lib/services/avatar";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
 import { screenChannel, subscribeLogged } from "@/lib/realtime";
-import { useBannerSpace } from "@/components/QuietBanner";
 
 export default function FriendsScreen() {
-  const bannerSpace = useBannerSpace();
+  const bottomSpace = useTabBarSpace();
   // Two columns of friends on an iPad, one on a phone.
   const { width: screenWidth } = useWindowDimensions();
   const twoUp = screenWidth >= 900;
@@ -199,7 +199,7 @@ export default function FriendsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 160 + bannerSpace }}
+        contentContainerStyle={{ paddingBottom: bottomSpace }}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={handleRefresh} />
