@@ -1,4 +1,8 @@
 import { useState, useRef, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { PhotoPicker } from "components/PhotoPicker";
+import { saveItemPhotos } from "@/lib/services/storage";
+import { MAX_PHOTOS } from "@/lib/item-photos";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   View,
@@ -51,6 +55,8 @@ export default function EditBookScreen() {
     description?: string;
     synopsis?: string;
     coverUrl?: string;
+    /** JSON list of photos of their own copy, after the cover. */
+    extraPhotos?: string;
     isbn?: string;
     pageCount?: string;
     publicationYear?: string;
@@ -76,6 +82,8 @@ export default function EditBookScreen() {
   const [genre, setGenre] = useState("");
   const [synopsis, setSynopsis] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
+  const [extraPhotos, setExtraPhotos] = useState<string[]>([]);
+  const originalPhotos = useRef<string[]>([]);
   const [description, setDescription] = useState("");
   const [borrowedBy, setBorrowedBy] = useState("");
   const [notes, setNotes] = useState("");
@@ -101,6 +109,13 @@ export default function EditBookScreen() {
     if (params.synopsis) setSynopsis(params.synopsis);
     if (params.description) setDescription(params.description);
     if (params.coverUrl) setCoverUrl(params.coverUrl);
+    let extras: string[] = [];
+    try {
+      const list = JSON.parse(params.extraPhotos ?? "[]");
+      extras = Array.isArray(list) ? list.filter((u) => typeof u === "string") : [];
+    } catch {}
+    setExtraPhotos(extras);
+    originalPhotos.current = [params.coverUrl, ...extras].filter(Boolean) as string[];
     if (params.isbn) setIsbn(params.isbn);
     if (params.pageCount) setPageCount(params.pageCount);
     if (params.publicationYear) setPublicationYear(params.publicationYear);
@@ -204,7 +219,6 @@ export default function EditBookScreen() {
       const updates = {
         name: title.trim(),
         description: description.trim() || undefined,
-        imageUrl: coverUrl.trim() || undefined,
         borrowedBy: borrowedBy || undefined,
         notes: notes.trim() || undefined,
         metadata,
@@ -221,7 +235,16 @@ export default function EditBookScreen() {
       console.log("💾 Updating item in database...");
       console.log("Update data:", JSON.stringify(updates, null, 2));
 
-      const result = await updateItem(params.itemId!, updates);
+      // Cover then photos of their copy; new local files are uploaded (the cover used to be saved
+      // as the phone's local file path), removed ones tidied away.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      const images = await saveItemPhotos(
+        [coverUrl.trim(), ...extraPhotos].filter(Boolean),
+        user.id,
+        originalPhotos.current
+      );
+      const result = await updateItem(params.itemId!, { ...updates, images });
       await audienceField.save(params.itemId!);
 
       if (!result) {
@@ -363,6 +386,15 @@ export default function EditBookScreen() {
                 keyboardType="url"
               />
             </View>
+
+            {/* Photos of their own copy (condition, signatures), after the cover */}
+            <PhotoPicker
+              photos={extraPhotos}
+              onChange={setExtraPhotos}
+              label="Photos of your copy (optional)"
+              max={MAX_PHOTOS - 1}
+              cover={false}
+            />
 
             {/* Book Title */}
             <View className="gap-2">

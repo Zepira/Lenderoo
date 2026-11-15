@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import * as toast from "@/lib/toast";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { View, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from "react-native";
 import { readableColumn, readableSidePadding } from "@/lib/layout";
@@ -16,7 +18,8 @@ import { CATEGORY_CONFIG, categoryInk } from "@/lib/category-config";
 import { CATEGORY_LABELS } from "@/lib/constants";
 import { CATEGORY_ORDER } from "@/lib/item-filters";
 import { createItemSchema } from "lib/validation";
-import { ImagePicker } from "components/ImagePicker";
+import { PhotoPicker } from "components/PhotoPicker";
+import { saveItemPhotos } from "@/lib/services/storage";
 import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
 import { AudiencePicker } from "components/AudiencePicker";
 import { useAudienceField } from "hooks/useFriendGroups";
@@ -38,7 +41,8 @@ export default function EditGenericItemScreen() {
     category: string;
     name?: string;
     description?: string;
-    imageUrl?: string;
+    /** JSON list of photo URLs, cover first. */
+    images?: string;
     notes?: string;
     borrowedBy?: string;
     maxBorrowDays?: string;
@@ -57,7 +61,15 @@ export default function EditGenericItemScreen() {
   // Form state
   const [name, setName] = useState(params.name || "");
   const [description, setDescription] = useState(params.description || "");
-  const [imageUrl, setImageUrl] = useState(params.imageUrl || "");
+  const originalPhotos = useMemo<string[]>(() => {
+    try {
+      const list = JSON.parse(params.images ?? "[]");
+      return Array.isArray(list) ? list.filter((u) => typeof u === "string") : [];
+    } catch {
+      return [];
+    }
+  }, [params.images]);
+  const [photos, setPhotos] = useState<string[]>(originalPhotos);
   const [borrowedBy, setBorrowedBy] = useState(params.borrowedBy || "");
   const [notes, setNotes] = useState(params.notes || "");
   const [maxBorrowDays, setMaxBorrowDays] = useState<number | null>(
@@ -103,7 +115,6 @@ export default function EditGenericItemScreen() {
         name: name.trim(),
         category,
         description: description.trim() || undefined,
-        imageUrl: imageUrl.trim() || undefined,
         borrowedBy: borrowedBy || undefined,
         notes: notes.trim() || undefined,
         metadata: condition ? { condition } : undefined,
@@ -116,7 +127,18 @@ export default function EditGenericItemScreen() {
         borrowedDate: borrowedBy ? new Date() : undefined,
       });
 
-      await updateItem(params.itemId!, updates);
+      // Upload new photos, keep the rest, tidy away removed ones (was saving the phone's local
+      // file path before, so friends never saw a changed photo).
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      let images: string[];
+      try {
+        images = await saveItemPhotos(photos, user.id, originalPhotos);
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to upload photos");
+        return;
+      }
+      await updateItem(params.itemId!, { ...updates, images });
       await audienceField.save(params.itemId!);
 
       router.back();
@@ -226,18 +248,8 @@ export default function EditGenericItemScreen() {
             )}
           </View>
 
-          {/* Item Image */}
-          <View className="gap-2">
-            <Label className="font-semibold">Item Photo (Optional)</Label>
-            <ImagePicker
-              imageUrl={imageUrl}
-              onImageSelected={(uri) => setImageUrl(uri)}
-              onImageRemoved={() => setImageUrl("")}
-            />
-            <Text variant="small" className="text-muted-foreground">
-              Take a photo or choose from your library
-            </Text>
-          </View>
+          {/* Photos (up to 8; the first is the cover) */}
+          <PhotoPicker photos={photos} onChange={setPhotos} label="Photos (optional)" />
 
           {/* Friend Selector */}
           <View

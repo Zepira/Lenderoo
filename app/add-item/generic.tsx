@@ -22,11 +22,11 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { useCreateItem, useItems } from "hooks";
 import { CATEGORY_CONFIG, categoryInk } from "@/lib/category-config";
 import { createItemSchema } from "lib/validation";
-import { ImagePicker } from "components/ImagePicker";
+import { PhotoPicker } from "components/PhotoPicker";
 import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
 import { AudiencePicker } from "components/AudiencePicker";
 import { useAudienceField } from "hooks/useFriendGroups";
-import { uploadItemImage, validateImage } from "@/lib/services/storage";
+import { saveItemPhotos } from "@/lib/services/storage";
 import { supabase } from "@/lib/supabase";
 import * as toast from "@/lib/toast";
 import type { ItemCategory } from "lib/types";
@@ -74,18 +74,18 @@ export default function AddGenericItemScreen() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  // Cover first (lib/item-photos.ts); local files are uploaded on save.
+  const [photos, setPhotos] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [maxBorrowDays, setMaxBorrowDays] = useState<number | null>(null);
   const [condition, setCondition] = useState<"fair" | "good" | "perfect" | "">("");
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showImagePicker, setShowImagePicker] = useState(false);
 
   useEffect(() => {
     if (params.name) setName(params.name);
     if (params.description) setDescription(params.description);
-    if (params.imageUrl) setImageUrl(params.imageUrl);
+    if (params.imageUrl) setPhotos([params.imageUrl]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -121,26 +121,21 @@ export default function AddGenericItemScreen() {
         return;
       }
 
-      let uploadedImageUrl: string | undefined;
-      if (imageUrl && !imageUrl.startsWith("http")) {
-        try {
-          await validateImage(imageUrl);
-          uploadedImageUrl = await uploadItemImage(imageUrl, user.id);
-        } catch (err: any) {
-          toast.error(err.message || "Failed to upload image");
-          setUploading(false);
-          isSubmitting.current = false;
-          return;
-        }
-      } else {
-        uploadedImageUrl = imageUrl.trim() || undefined;
+      let savedPhotos: string[] = [];
+      try {
+        savedPhotos = await saveItemPhotos(photos, user.id);
+      } catch (err: any) {
+        toast.error(err.message || "Failed to upload photos");
+        setUploading(false);
+        isSubmitting.current = false;
+        return;
       }
 
       const itemData = {
         name: name.trim(),
         description: description.trim() || undefined,
         category,
-        images: uploadedImageUrl ? [uploadedImageUrl] : undefined,
+        images: savedPhotos.length ? savedPhotos : undefined,
         notes: notes.trim() || undefined,
         metadata: condition ? { condition } : undefined,
         maxBorrowDays: maxBorrowDays ?? undefined,
@@ -223,51 +218,8 @@ export default function AddGenericItemScreen() {
             gap: 20,
           }}
         >
-          {/* Photo picker */}
-          {showImagePicker ? (
-            <ImagePicker
-              autoOpen={!imageUrl}
-              imageUrl={imageUrl}
-              onImageSelected={(uri) => { setImageUrl(uri); setShowImagePicker(false); }}
-              onImageRemoved={() => { setImageUrl(""); setShowImagePicker(false); }}
-            />
-          ) : (
-            <Pressable
-              onPress={() => setShowImagePicker(true)}
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-            >
-              <View
-                style={{
-                  borderWidth: 2,
-                  borderStyle: imageUrl ? "solid" : "dashed",
-                  borderColor: imageUrl ? cfg.color + "60" : theme.border,
-                  borderRadius: 20,
-                  paddingVertical: imageUrl ? 12 : 28,
-                  alignItems: "center",
-                  gap: 10,
-                  backgroundColor: imageUrl ? cfg.color + "08" : "transparent",
-                  overflow: "hidden",
-                }}
-              >
-                {imageUrl ? (
-                  <View style={{ alignItems: "center", gap: 8 }}>
-                    <Image
-                      source={{ uri: imageUrl }}
-                      style={{ width: 90, height: 120, borderRadius: 10 }}
-                      contentFit="cover"
-                      cachePolicy="memory"
-                    />
-                    <Caption style={{ color: categoryInk(category, isDark) }}>Tap to change photo</Caption>
-                  </View>
-                ) : (
-                  <>
-                    <Camera size={28} color={theme.mutedForeground} />
-                    <TinyLabel>Add Photo (Optional)</TinyLabel>
-                  </>
-                )}
-              </View>
-            </Pressable>
-          )}
+          {/* Photos (up to 8; the first is the cover) */}
+          <PhotoPicker photos={photos} onChange={setPhotos} label="Photos (optional)" />
 
           {/* Name */}
           <View style={{ gap: 8 }}>

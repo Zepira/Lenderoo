@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from "react";
+import { PhotoPicker } from "components/PhotoPicker";
+import { saveItemPhotos } from "@/lib/services/storage";
+import { MAX_PHOTOS } from "@/lib/item-photos";
 import { useRouter, useLocalSearchParams, useRootNavigation } from "expo-router";
 import {
   View,
@@ -93,6 +96,8 @@ export default function AddBookScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
+  // Photos of their own copy, saved after the cover (lib/item-photos.ts).
+  const [extraPhotos, setExtraPhotos] = useState<string[]>([]);
 
   const [seriesBooks, setSeriesBooks] = useState<SeriesBook[]>([]);
   const [loadingSeriesBooks, setLoadingSeriesBooks] = useState(false);
@@ -291,11 +296,16 @@ export default function AddBookScreen() {
         }
       }
 
+      const extraUploaded = await saveItemPhotos(extraPhotos, user.id);
+
       const itemData = {
         name: title.trim(),
         description: description.trim() || undefined,
         category: "book" as const,
-        images: imageUrl ? [imageUrl] : undefined,
+        images: (() => {
+          const all = [imageUrl, ...extraUploaded].filter(Boolean) as string[];
+          return all.length ? all : undefined;
+        })(),
         notes: notes.trim() || undefined,
         metadata,
         maxBorrowDays: maxBorrowDays ?? undefined,
@@ -517,6 +527,14 @@ export default function AddBookScreen() {
               }}
             />
           )}
+
+          <PhotoPicker
+            photos={extraPhotos}
+            onChange={setExtraPhotos}
+            label="Photos of your copy (optional)"
+            max={MAX_PHOTOS - 1}
+            cover={false}
+          />
 
           {/* Title */}
           <View style={{ gap: 8 }}>
