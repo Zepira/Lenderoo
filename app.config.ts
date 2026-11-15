@@ -11,8 +11,17 @@ const GOOGLE_TEST_APP_IDS = {
 const TRACKING_DESCRIPTION =
   "Lets Lenderoo show ads that are more relevant to you. You'll still see the same number of ads either way.";
 
+// Android push needs Firebase Cloud Messaging config (Firebase project lenderoo-prod; no
+// Analytics). EAS builds get it from the GOOGLE_SERVICES_JSON file env var; local builds use a
+// gitignored ./google-services.json. Without it, Android can't get a push token.
+const googleServicesFile = process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json";
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...(config as ExpoConfig),
+  android: {
+    ...(config.android ?? {}),
+    googleServicesFile,
+  },
   plugins: [
     ...(config.plugins ?? []).filter(
       (p) => (Array.isArray(p) ? p[0] : p) !== "expo-tracking-transparency",

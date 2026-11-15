@@ -85,7 +85,14 @@ export async function registerPushToken(userId: string): Promise<void> {
   const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
   if (!projectId) return;
 
-  const { data: token } = await N.getExpoPushTokenAsync({ projectId });
+  // Fails on a build without push config (e.g. Android before google-services.json was added).
+  // No token just means no pushes on this device; it mustn't break sign-in.
+  let token: string | undefined;
+  try {
+    ({ data: token } = await N.getExpoPushTokenAsync({ projectId }));
+  } catch {
+    return;
+  }
   if (!token) return;
 
   await supabase.from('users').update({ push_token: token }).eq('id', userId);

@@ -69,3 +69,6 @@ build-out/
 *.apk
 coverage/
 .*.log
+
+# Firebase config for Android push (EAS: GOOGLE_SERVICES_JSON file env var)
+google-services.json

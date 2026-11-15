@@ -10,6 +10,12 @@ to the token in `users.push_token` (see `lib/notifications.ts` for
 registration and tap-routing, `NotificationData` for the full set of
 payload shapes the client understands).
 
+**Android** needs Firebase Cloud Messaging (Firebase project `lenderoo-prod`, no Analytics):
+`google-services.json` comes from the `GOOGLE_SERVICES_JSON` EAS file env var (a gitignored
+local copy for local builds; `app.config.ts`), and Expo sends through the FCM V1 service-account
+key assigned in `eas credentials` (Android → production → Push Notifications (FCM V1)). Until
+15 Nov 2026 neither existed, so Android devices never got a push token and received nothing.
+
 ## Trigger-based (fires immediately on a DB write)
 
 A Postgres trigger (`notify_push_webhook()`, `supabase/migrations/028_push_notification_webhooks.sql`)
