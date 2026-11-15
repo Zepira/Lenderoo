@@ -20,6 +20,7 @@ export type ItemCategory =
   | "game"
   | "sports"
   | "kitchen"
+  | "camping"
   | "other";
 
 /**

@@ -4,6 +4,10 @@ User-visible changes, newest first. These double as the store release notes.
 
 ## Next (unreleased)
 
+- Filter by category and sort (newest, A–Z, due back soonest) in My Library,
+  Borrowed, a friend's library and Explore.
+- New Camping & outdoors category, and you can now change an item's category
+  when you edit it.
 - Choose who sees each item. Sort friends into your own groups (Close
   friends, Family, Work friends, or any name you like), then show an item to
   all friends, only some groups, or everyone except some groups. Friends never

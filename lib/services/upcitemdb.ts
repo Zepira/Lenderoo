@@ -51,8 +51,12 @@ const CATEGORY_KEYWORDS: { category: ItemCategory; keywords: string[] }[] = [
     ],
   },
   {
+    category: "camping",
+    keywords: ["camping", "tent", "sleeping bag", "hiking", "backpacking", "outdoor recreation"],
+  },
+  {
     category: "sports",
-    keywords: ["sports", "outdoors", "fitness", "exercise", "camping"],
+    keywords: ["sports", "outdoors", "fitness", "exercise"],
   },
   {
     category: "tool",
