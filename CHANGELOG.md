@@ -4,6 +4,11 @@ User-visible changes, newest first. These double as the store release notes.
 
 ## Next (unreleased)
 
+- Saved: tap the heart on a friend's item to save it for later. Find
+  everything you've saved in Library → Saved (and a Saved row on Home), with
+  whose it is and whether it's free, and get a notification when something
+  you saved is free to borrow again (turn it off per item with the bell).
+- The heart no longer shows on your own items.
 - Notifications now arrive on Android phones too.
 - Filter by category and sort (newest, A–Z, due back soonest) in My Library,
   Borrowed, a friend's library and Explore.

@@ -46,6 +46,7 @@ export const queryKeys = {
     detail: (id: string) => ['friends', 'detail', id] as const,
     items: (friendId: string) => ['friends', 'items', friendId] as const,
   },
+  saved: ['saved'] as const,
   groups: {
     all: ['groups'] as const,
     items: ['groups', 'items'] as const,
