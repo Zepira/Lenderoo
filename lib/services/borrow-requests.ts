@@ -6,6 +6,7 @@
 
 import { supabase } from '../supabase';
 import { addHistoryEntry } from './database';
+import { isLentToSomeoneElse } from '../borrow-requests/request-context';
 import type { BorrowRequest, BorrowRequestWithDetails, BorrowRequestRow } from '../types';
 
 // ============================================================================
@@ -169,7 +170,40 @@ export async function getIncomingBorrowRequests(): Promise<BorrowRequestWithDeta
     throw new Error(`Failed to fetch incoming requests: ${error.message}`);
   }
 
-  return (data || []).map(convertBorrowRequestWithDetailsFromDb);
+  return withCurrentLoans((data || []).map(convertBorrowRequestWithDetailsFromDb));
+}
+
+/**
+ * Adds who has each item now and when it's due back, for requests on items lent to someone
+ * else, so the owner sees it on the request card. Best effort: if either lookup fails, the
+ * card still shows "Lent to someone else".
+ */
+async function withCurrentLoans(
+  requests: BorrowRequestWithDetails[]
+): Promise<BorrowRequestWithDetails[]> {
+  const lent = requests.filter((r) => isLentToSomeoneElse(r));
+  if (lent.length === 0) return requests;
+  const itemIds = [...new Set(lent.map((r) => r.itemId))];
+  const borrowerIds = [...new Set(lent.map((r) => r.itemBorrowedBy as string))];
+  const [items, people] = await Promise.all([
+    supabase.from('items').select('id, due_date').in('id', itemIds),
+    supabase.from('public_profiles').select('id, name').in('id', borrowerIds),
+  ]);
+  const due = new Map<string, string | null>(
+    (items.data ?? []).map((i: { id: string; due_date: string | null }) => [i.id, i.due_date])
+  );
+  const names = new Map<string, string>(
+    (people.data ?? []).map((p: { id: string; name: string }) => [p.id, p.name])
+  );
+  return requests.map((r) => {
+    if (!isLentToSomeoneElse(r)) return r;
+    const dueDate = due.get(r.itemId);
+    return {
+      ...r,
+      itemBorrowerName: names.get(r.itemBorrowedBy as string) || undefined,
+      itemDueDate: dueDate ? new Date(dueDate) : undefined,
+    };
+  });
 }
 
 /**

@@ -301,6 +301,10 @@ export interface BorrowRequestWithDetails extends BorrowRequest {
   itemImages?: string[];
   /** ID of user currently borrowing the item (if any) */
   itemBorrowedBy?: string;
+  /** Name of whoever has the item now, when it's lent to someone else (incoming requests only) */
+  itemBorrowerName?: string;
+  /** When the current loan is due back (incoming requests only) */
+  itemDueDate?: Date;
   /** Name of the requester */
   requesterName: string;
   /** Avatar URL of the requester */

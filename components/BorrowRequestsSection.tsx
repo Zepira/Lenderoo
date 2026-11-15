@@ -14,10 +14,18 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import * as LucideIcons from "lucide-react-native";
 import { formatDistanceToNow } from "date-fns";
+import {
+  isLentToSomeoneElse,
+  lentLabel,
+  ordinal,
+  requestOrder,
+  requestedAt,
+} from "@/lib/borrow-requests/request-context";
 import { getInitials } from "@/lib/utils";
 import { resolveAvatarSource } from "@/lib/services/avatar";
 import { getLoansWithMe, type LoanWithMe } from "@/lib/services/database";
 import type { BorrowRequestWithDetails } from "@/lib/types";
+import { THEME } from "@/lib/theme";
 import { CategoryBadge } from "./CategoryBadge";
 
 interface BorrowRequestsSectionProps {
@@ -42,13 +50,15 @@ export function BorrowRequestsSection({
   if (!requests || requests.length === 0) {
     return null;
   }
+  // Two people asking for the same item: say who asked first, so the owner can decide.
+  const order = requestOrder(requests);
 
   const handleApprove = (request: BorrowRequestWithDetails) => {
     // Lent out to someone else: approving puts them in the queue (approveBorrowRequest).
-    const queued = !!request.itemBorrowedBy && request.itemBorrowedBy !== request.requesterId;
+    const queued = isLentToSomeoneElse(request);
     const title = queued ? 'Approve as next in queue' : 'Approve Request';
     const message = queued
-      ? `"${request.itemName}" is lent out at the moment. Let ${request.requesterName} borrow it next? They'll join the queue.`
+      ? `"${request.itemName}" is lent out at the moment (${lentLabel(request)}). Let ${request.requesterName} borrow it next? They'll join the queue.`
       : `Allow ${request.requesterName} to borrow "${request.itemName}"?`;
     if (Platform.OS === 'web') {
       if (window.confirm(`${title}\n\n${message}`)) {
@@ -111,6 +121,8 @@ export function BorrowRequestsSection({
       {requests.map((request) => {
         const isProcessing = processingId === request.id;
         const itemImage = request.itemImages?.[0];
+        const lentOut = isLentToSomeoneElse(request);
+        const place = order.get(request.id);
 
         return (
           <View
@@ -118,6 +130,22 @@ export function BorrowRequestsSection({
             className="bg-card border border-border rounded-2xl p-3 gap-3"
             style={twoUp ? { width: "49%", flexGrow: 1 } : undefined}
           >
+            {/* Already lent out to someone else: approving queues this person instead. */}
+            {lentOut && (
+              <View
+                className="flex-row items-center gap-2 bg-secondary/15 border border-secondary rounded-xl px-3 py-2"
+                accessibilityRole="text"
+              >
+                <LucideIcons.Clock size={16} color={THEME.light.secondary} />
+                <View className="flex-1">
+                  <Caption className="text-foreground font-sans-bold">{lentLabel(request)}</Caption>
+                  <Caption className="text-foreground" style={{ fontSize: 12, lineHeight: 16 }}>
+                    Approving adds {request.requesterName} to the queue.
+                  </Caption>
+                </View>
+              </View>
+            )}
+
             <View className="flex-row gap-3">
               {/* Item Thumbnail */}
               {/* Stretches to the height of the details beside it */}
@@ -188,10 +216,18 @@ export function BorrowRequestsSection({
                   </Caption>
                 )}
 
-                {/* Timestamp */}
+                {/* When they asked: the exact time, so the owner can tell who asked first */}
                 <Caption style={{ fontSize: 12, lineHeight: 16 }}>
-                  {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                  Requested {requestedAt(request.createdAt)} ·{' '}
+                  {formatDistanceToNow(request.createdAt, { addSuffix: true })}
                 </Caption>
+                {place && (
+                  <Caption className="text-primary font-sans-bold" style={{ fontSize: 12, lineHeight: 16 }}>
+                    {place.position === 1
+                      ? `Asked first · ${place.of} people want this`
+                      : `Asked ${ordinal(place.position)} of ${place.of} for this item`}
+                  </Caption>
+                )}
               </View>
             </View>
 

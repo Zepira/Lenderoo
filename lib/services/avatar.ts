@@ -1,5 +1,5 @@
 import { stripImageMetadata } from './image';
-import { supabase } from "../supabase";
+import { uploadImageBuffer } from './storage';
 
 // ── Preset avatars ────────────────────────────────────────────────────────────
 
@@ -94,28 +94,5 @@ export async function uploadAvatarImage(
 ): Promise<string> {
   // Strip EXIF metadata before upload by re-encoding as JPEG
   const processedUri = await stripImageMetadata(uri);
-
-  // After re-encoding the file is always JPEG
-  const mimeType = "image/jpeg";
-  const path = `${userId}/${Date.now()}.jpg`;
-
-  // React Native FormData accepts { uri, name, type } as a file entry.
-  const formData = new FormData();
-  formData.append("file", {
-    uri: processedUri,
-    name: `avatar.jpg`,
-    type: mimeType,
-  } as any);
-
-  const { error } = await supabase.storage
-    .from("avatars")
-    .upload(path, formData, { upsert: true, contentType: mimeType });
-
-  if (error) throw error;
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("avatars").getPublicUrl(path);
-
-  return publicUrl;
+  return uploadImageBuffer(processedUri, "avatars", `${userId}/${Date.now()}.jpg`, true);
 }
