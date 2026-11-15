@@ -2,6 +2,16 @@
 
 User-visible changes, newest first. These double as the store release notes.
 
+## Next (unreleased)
+
+- Taking a photo or picking one from your gallery for your avatar works again
+  (it showed "Unsupported FormDataPart implementation").
+- Borrow requests for something that's already lent out say so at the top of
+  the card: who has it, when it's due back, and that approving puts them in
+  the queue.
+- Each request shows the date and time it was sent, and when two people ask
+  for the same thing, which of them asked first.
+
 ## 1.1.0 (unreleased)
 
 - Faster and lighter: Lenderoo no longer keeps checking your favourites in

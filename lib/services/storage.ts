@@ -88,12 +88,17 @@ async function compressImage(uri: string): Promise<string> {
 /**
  * Read a local (already-compressed) image file and upload it to the given
  * storage bucket/path, returning its public URL. Shared by every
- * bucket-specific uploader below.
+ * bucket-specific uploader below, and by avatar uploads (lib/services/avatar.ts).
+ *
+ * Always send an ArrayBuffer, never React Native's FormData `{ uri, name, type }`
+ * file part: Expo's fetch rejects that with "Unsupported FormDataPart
+ * implementation" (it broke Take Photo / Gallery avatars).
  */
-async function uploadImageBuffer(
+export async function uploadImageBuffer(
   compressedUri: string,
   bucket: string,
-  filePath: string
+  filePath: string,
+  upsert = false
 ): Promise<string> {
   const contentType = 'image/jpeg';
 
@@ -116,7 +121,7 @@ async function uploadImageBuffer(
     .from(bucket)
     .upload(filePath, arrayBuffer, {
       contentType,
-      upsert: false,
+      upsert,
     });
 
   if (error) {
