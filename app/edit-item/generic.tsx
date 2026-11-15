@@ -16,6 +16,8 @@ import { CATEGORY_CONFIG } from "@/lib/category-config";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
 import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
+import { AudiencePicker } from "components/AudiencePicker";
+import { useAudienceField } from "hooks/useFriendGroups";
 import { cn } from "lib/utils";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -44,6 +46,7 @@ export default function EditGenericItemScreen() {
   const router = useRouter();
   const { friends } = useFriends();
   const { updateItem, loading } = useUpdateItem();
+  const audienceField = useAudienceField(params.itemId);
   const { items: existingItems } = useItems();
 
   // Form state
@@ -108,6 +111,7 @@ export default function EditGenericItemScreen() {
       });
 
       await updateItem(params.itemId!, updates);
+      await audienceField.save(params.itemId!);
 
       router.back();
     } catch (error) {
@@ -379,6 +383,13 @@ export default function EditGenericItemScreen() {
 
           {/* Max Borrow Duration */}
           <MaxBorrowDurationInput days={maxBorrowDays} onChange={setMaxBorrowDays} />
+
+          <AudiencePicker
+            value={audienceField.audience}
+            onChange={audienceField.setAudience}
+            groups={audienceField.groups}
+            friendIds={audienceField.friendIds}
+          />
         </View>
       </KeyboardAwareScrollView>
 
