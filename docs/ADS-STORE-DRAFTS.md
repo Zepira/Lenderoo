@@ -89,6 +89,10 @@ listings, so AdMob can find the file. AdMob verifies it within about a day.
 
 ## 5. App Review notes (1.1.0: ads code included, ads switched off)
 
+_Superseded 13 Nov 2026: 1.1.0 launches with the real AdMob ids in its build, so the
+switch alone can start ads. The current review note and store answers are in
+`docs/RELEASE-1.1.0.md`._
+
 1.1.0 ships the ads code dormant: the kill switch is off and the build has
 no real AdMob ad unit ids, so it never requests an ad, never starts the ad
 SDK and never shows Apple's tracking prompt. A reviewer will still find
