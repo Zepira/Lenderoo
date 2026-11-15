@@ -6,11 +6,15 @@ mechanics behind each one. **Keep this file up to date** — see the rule in
 must update the matching row here in the same change.
 
 All pushes go through the Expo Push API (`https://exp.host/--/api/v2/push/send`)
-to the token in `users.push_token` (see `lib/notifications.ts` for
+to **every device the person is signed in on**: `user_push_tokens`, one row per device (migration
+053, via `register_push_token()` / `unregister_push_token()`; a token moves to whoever signs in on
+that device and is removed on sign-out). The functions read them with `push_tokens_for()`, which
+also includes the old single `users.push_token` so builds from before 053 keep working (see `lib/notifications.ts` for
 registration and tap-routing, `NotificationData` for the full set of
 payload shapes the client understands).
 
-**Android** needs Firebase Cloud Messaging (Firebase project `lenderoo-prod`, no Analytics):
+**Android** uses a white, transparent status-bar icon (`assets/images/notification-icon.png`,
+set on the `expo-notifications` plugin), not the full-colour app icon. It also needs Firebase Cloud Messaging (Firebase project `lenderoo-prod`, no Analytics):
 `google-services.json` comes from the `GOOGLE_SERVICES_JSON` EAS file env var (a gitignored
 local copy for local builds; `app.config.ts`), and Expo sends through the FCM V1 service-account
 key assigned in `eas credentials` (Android → production → Push Notifications (FCM V1)). Until

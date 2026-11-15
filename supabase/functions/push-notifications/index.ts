@@ -11,7 +11,8 @@ interface WebhookPayload {
 }
 
 interface ExpoPushMessage {
-  to: string;
+  /** Every device the person is signed in on (migration 053). */
+  to: string | string[];
   title: string;
   body: string;
   data?: Record<string, unknown>;
@@ -52,12 +53,14 @@ Deno.serve(async (req) => {
 
     if (!res.ok) continue;
 
-    // Remove invalid/expired tokens returned by Expo
+    // Remove invalid/expired tokens returned by Expo (one ticket per device, in order).
     const result = await res.json();
-    const ticket = result.data;
-    if (ticket?.status === 'error' && ticket?.details?.error === 'DeviceNotRegistered') {
-      await supabase.from('users').update({ push_token: null }).eq('push_token', message.to);
-    }
+    const tickets = Array.isArray(result.data) ? result.data : [result.data];
+    const tos = Array.isArray(message.to) ? message.to : [message.to];
+    const dead = tickets
+      .map((t: any, j: number) => (t?.details?.error === 'DeviceNotRegistered' ? tos[j] : null))
+      .filter(Boolean);
+    if (dead.length > 0) await supabase.rpc('forget_push_tokens', { p_tokens: dead });
   }
 
   return new Response('ok', { status: 200 });
@@ -65,16 +68,14 @@ Deno.serve(async (req) => {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** All of a person's device tokens (migration 053), or null if they have none. */
 async function getPushToken(
   supabase: ReturnType<typeof createClient>,
   userId: string,
-): Promise<string | null> {
-  const { data } = await supabase
-    .from('users')
-    .select('push_token')
-    .eq('id', userId)
-    .single();
-  return (data?.push_token as string | null) ?? null;
+): Promise<string[] | null> {
+  const { data } = await supabase.rpc('push_tokens_for', { p_users: [userId] });
+  const tokens = [...new Set(((data ?? []) as { token: string }[]).map((r) => r.token).filter(Boolean))];
+  return tokens.length > 0 ? tokens : null;
 }
 
 async function getUserName(

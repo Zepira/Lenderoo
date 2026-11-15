@@ -96,7 +96,45 @@ export async function registerPushToken(userId: string): Promise<void> {
   }
   if (!token) return;
 
-  await supabase.from('users').update({ push_token: token }).eq('id', userId);
+  lastRegisteredToken = token;
+  // One row per device (migration 053), so a phone and an iPad both get pushes. Falls back to
+  // the old single column on a database that doesn't have it yet.
+  const { error } = await supabase.rpc('register_push_token', {
+    p_token: token,
+    p_platform: Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : null,
+  });
+  if (error) {
+    await supabase.from('users').update({ push_token: token }).eq('id', userId);
+  }
+}
+
+let lastRegisteredToken: string | null = null;
+
+/**
+ * Before signing out: stop sending this account's notifications to this device. Must run while
+ * the session is still valid. Never throws; a failure just leaves the token until it's replaced.
+ */
+export async function unregisterPushToken(): Promise<void> {
+  try {
+    let token = lastRegisteredToken;
+    if (!token) {
+      const N = loadNotifications();
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
+      if (!N || !projectId) return;
+      const { status } = await N.getPermissionsAsync();
+      if (status !== 'granted') return;
+      token = (await N.getExpoPushTokenAsync({ projectId })).data;
+    }
+    if (!token) return;
+    const { error } = await supabase.rpc('unregister_push_token', { p_token: token });
+    if (error) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) await supabase.from('users').update({ push_token: null }).eq('id', user.id).eq('push_token', token);
+    }
+    lastRegisteredToken = null;
+  } catch {
+    // Signing out must still work.
+  }
 }
 
 let notificationsReady = false;

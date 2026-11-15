@@ -9,7 +9,10 @@ User-visible changes, newest first. These double as the store release notes.
   whose it is and whether it's free, and get a notification when something
   you saved is free to borrow again (turn it off per item with the bell).
 - The heart no longer shows on your own items.
-- Notifications now arrive on Android phones too.
+- Notifications now arrive on Android phones too, with a proper kangaroo
+  icon in the status bar.
+- Notifications reach every phone and tablet you're signed in on, not just
+  the last one, and stop on a device once you sign out of it.
 - Filter by category and sort (newest, A–Z, due back soonest) in My Library,
   Borrowed, a friend's library and Explore.
 - New Camping & outdoors category, and you can now change an item's category
