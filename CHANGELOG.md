@@ -2,7 +2,7 @@
 
 User-visible changes, newest first. These double as the store release notes.
 
-## Next (unreleased)
+## 1.1.0 (unreleased)
 
 - Add up to 8 photos to an item (books: the cover plus photos of your copy).
   Pick several at once, tap one to make it the cover, and swipe through them
@@ -37,9 +37,6 @@ User-visible changes, newest first. These double as the store release notes.
   the queue.
 - Each request shows the date and time it was sent, and when two people ask
   for the same thing, which of them asked first.
-
-## 1.1.0 (unreleased)
-
 - Faster and lighter: Lenderoo no longer keeps checking your favourites in
   the background, which was using battery and data while the app sat open.
 - Friends list, Library's "+" and other buttons look right again, and
