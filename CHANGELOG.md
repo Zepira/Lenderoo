@@ -4,6 +4,7 @@ User-visible changes, newest first. These double as the store release notes.
 
 ## Next (unreleased)
 
+- Notifications now arrive on Android phones too.
 - Filter by category and sort (newest, A–Z, due back soonest) in My Library,
   Borrowed, a friend's library and Explore.
 - New Camping & outdoors category, and you can now change an item's category
