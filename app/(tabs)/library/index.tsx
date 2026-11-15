@@ -1,3 +1,4 @@
+import { useTabBarSpace } from "@/hooks/useTabBarSpace";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Alert,
@@ -29,12 +30,11 @@ import { useItemFilters } from "@/hooks/useItemFilters";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { ErrorState } from "@/components/ErrorState";
-import { useBannerSpace } from "@/components/QuietBanner";
 
 type FilterTab = "all" | "available" | "lent";
 
 export default function ItemsScreen() {
-  const bannerSpace = useBannerSpace();
+  const bottomSpace = useTabBarSpace();
   const params = useLocalSearchParams<{ filter?: FilterTab; view?: "saved" }>();
   // My items, or Saved (friends' things you've hearted, migration 052).
   const [view, setView] = useState<"mine" | "saved">(params.view === "saved" ? "saved" : "mine");
@@ -280,7 +280,7 @@ export default function ItemsScreen() {
       />
 
       {view === "saved" ? (
-        <SavedList header={viewSwitch} bottomSpace={bannerSpace} />
+        <SavedList header={viewSwitch} bottomSpace={bottomSpace} />
       ) : (
       <FlatList
         key={numColumns}
@@ -288,7 +288,7 @@ export default function ItemsScreen() {
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 160 + bannerSpace, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: bottomSpace, gap: 12 }}
         showsVerticalScrollIndicator={false}
         onRefresh={refresh}
         refreshing={loading}

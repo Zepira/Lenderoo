@@ -6,6 +6,7 @@
  * 2. Searching for users by name
  */
 
+import { useTabBarSpace } from "@/hooks/useTabBarSpace";
 import { useState, useEffect } from "react";
 import {
   View,
@@ -48,6 +49,7 @@ import * as Clipboard from "expo-clipboard";
 import { FloatingBackButton } from "@/components/FloatingBackButton";
 
 export default function AddUserFriendScreen() {
+  const bottomSpace = useTabBarSpace({ banner: false });
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
 
@@ -263,7 +265,7 @@ export default function AddUserFriendScreen() {
         keyboardShouldPersistTaps="handled"
         enableOnAndroid
         extraScrollHeight={24}
-        contentContainerStyle={{ paddingBottom: 160 }}
+        contentContainerStyle={{ paddingBottom: bottomSpace }}
       >
         <SafeAreaWrapper>
           <FloatingBackButton />

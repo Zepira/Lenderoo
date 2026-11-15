@@ -21,6 +21,7 @@ import * as toast from "@/lib/toast";
  * Library → Saved: friends' things you've hearted, to come back to (migration 052). Each card says
  * whose it is and whether it's free, with a bell to turn the "it's free again" alert on or off.
  */
+/** `bottomSpace`: the screen's full bottom padding (useTabBarSpace). */
 export function SavedList({ header, bottomSpace }: { header: ReactElement; bottomSpace: number }) {
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
@@ -76,7 +77,7 @@ export function SavedList({ header, bottomSpace }: { header: ReactElement; botto
       keyExtractor={(i) => i.id}
       numColumns={numColumns}
       columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
-      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 160 + bottomSpace, gap: 12 }}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: bottomSpace, gap: 12 }}
       showsVerticalScrollIndicator={false}
       onRefresh={() => {
         void refresh();

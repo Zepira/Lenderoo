@@ -1,3 +1,4 @@
+import { useTabBarSpace } from "@/hooks/useTabBarSpace";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   View,
@@ -35,7 +36,6 @@ import type {
   BorrowRequest,
   ItemAvailabilitySubscription,
 } from "lib/types";
-import { useBannerSpace } from "@/components/QuietBanner";
 
 const CATEGORIES = Object.keys(CATEGORY_CONFIG) as ItemCategory[];
 
@@ -100,7 +100,7 @@ function CategoryCard({
 }
 
 export default function ExploreScreen() {
-  const bannerSpace = useBannerSpace();
+  const bottomSpace = useTabBarSpace();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory | null>(null);
   const [subscriptionMap, setSubscriptionMap] = useState<
@@ -321,7 +321,7 @@ export default function ExploreScreen() {
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: outerPadding,
-            paddingBottom: 160 + bannerSpace,
+            paddingBottom: bottomSpace,
             gap: gap,
           }}
           keyboardShouldPersistTaps="handled"
@@ -362,7 +362,7 @@ export default function ExploreScreen() {
           columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
           contentContainerStyle={{
             paddingHorizontal: 16,
-            paddingBottom: 160 + bannerSpace,
+            paddingBottom: bottomSpace,
             gap: 12,
           }}
           showsVerticalScrollIndicator={false}
