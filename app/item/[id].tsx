@@ -1,5 +1,7 @@
 import { useBottomSpace } from "@/hooks/useTabBarSpace";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { PhotoGallery, PhotoDots, PhotoViewer } from "@/components/PhotoGallery";
+import { photosOf } from "@/lib/item-photos";
 import {
   useLocalSearchParams,
   useRouter,
@@ -132,6 +134,9 @@ export default function ItemDetailScreen() {
   const isFocused = useIsFocused();
   // True while the hero photo is still under the status bar.
   const [heroUnderStatusBar, setHeroUnderStatusBar] = useState(true);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerStart, setViewerStart] = useState(0);
   const { item, loading, error, refresh } = useItem(id!);
 
   const isBorrower =
@@ -141,6 +146,11 @@ export default function ItemDetailScreen() {
     !!item.borrowedDate &&
     !item.returnedDate;
   const isOwner = item && user && item.userId === user.id;
+  // Back to the cover whenever the photos change (an edit can reorder or remove them).
+  const photosSignature = (item?.images ?? []).join("|");
+  useEffect(() => {
+    setPhotoIndex(0);
+  }, [photosSignature]);
   // Who can see it (owner only: friends never learn an item has a rule, migration 051).
   const { audience } = useItemAudience(item?.id, !!isOwner);
   const { groups: friendGroups } = useFriendGroups();
@@ -497,8 +507,9 @@ export default function ItemDetailScreen() {
   const cfg = CATEGORY_CONFIG[item.category] ?? CATEGORY_CONFIG.other;
   const pageBg = isDark ? theme.muted : "#FFFFFF";
   const pageBgClear = isDark ? "rgba(30, 41, 59, 0)" : "rgba(255, 255, 255, 0)";
-  const imageUrl =
-    item.images?.[0] ?? (item as any).imageUrls?.[0] ?? (item as any).imageUrl;
+  // Every photo, cover first (lib/item-photos.ts); swipeable, tap for full screen.
+  const photos = photosOf(item as any);
+  const imageUrl = photos[0];
   const bookMeta =
     item.category === "book" ? (item.metadata as BookMetadata) : null;
   const maxBorrowDurationLabel = formatMaxBorrowDuration(item.maxBorrowDays);
@@ -755,12 +766,18 @@ export default function ItemDetailScreen() {
         <View style={{ height: HERO_HEIGHT, width: "100%" }}>
           {imageUrl ? (
             <View>
-              <Image
-                source={{ uri: imageUrl }}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="cover"
+              <PhotoGallery
+                photos={photos}
+                height={HERO_HEIGHT}
+                index={photoIndex}
+                onIndexChange={setPhotoIndex}
+                onOpen={(i) => {
+                  setViewerStart(i);
+                  setViewerOpen(true);
+                }}
               />
               <LinearGradient
+                pointerEvents="none"
                 // Array of colors showing the progression from top to bottom
                 colors={[
                   "rgba(0, 0, 0, 0.07)",
@@ -795,6 +812,7 @@ export default function ItemDetailScreen() {
 
           {/* Gradient overlay */}
           <LinearGradient
+            pointerEvents="none"
             colors={["transparent", "rgba(0,0,0,0.65)"]}
             locations={[0.35, 1]}
             style={{
@@ -815,11 +833,19 @@ export default function ItemDetailScreen() {
             />
           )}
 
+          {/* Swipe dots, just above the content card that overlaps the photo */}
+          <PhotoDots
+            count={photos.length}
+            index={photoIndex}
+            style={{ position: "absolute", left: 0, right: 0, bottom: 50 }}
+          />
+
           {/* Floating info */}
           <View
+            pointerEvents="box-none"
             style={{
               position: "absolute",
-              bottom: 48,
+              bottom: photos.length > 1 ? 68 : 48,
               // Lines up with the content column below (20 on a phone).
               left: contentSide - 4,
               right: contentSide - 4,
@@ -875,6 +901,16 @@ export default function ItemDetailScreen() {
             )}
           </View>
         </View>
+
+        <PhotoViewer
+          photos={photos}
+          startIndex={viewerStart}
+          visible={viewerOpen}
+          onClose={(last) => {
+            setViewerOpen(false);
+            setPhotoIndex(last);
+          }}
+        />
 
         {/* ── Content card ── */}
         <View

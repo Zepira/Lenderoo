@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { photosOf } from "@/lib/item-photos";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { View, ActivityIndicator } from "react-native";
 import { Text } from "@/components/ui/text";
@@ -17,9 +18,9 @@ export default function EditItemRouter() {
         const params = new URLSearchParams({
           itemId: item.id,
           title: item.name,
-          ...((item.images?.[0] || item.imageUrls?.[0] || item.imageUrl) && {
-            coverUrl: item.images?.[0] || item.imageUrls?.[0] || item.imageUrl
-          }),
+          ...(photosOf(item)[0] && { coverUrl: photosOf(item)[0] }),
+          // Photos of their own copy, after the cover.
+          ...(photosOf(item).length > 1 && { extraPhotos: JSON.stringify(photosOf(item).slice(1)) }),
           ...(item.description && { description: item.description }),
           ...(item.notes && { notes: item.notes }),
           ...(item.borrowedBy && { borrowedBy: item.borrowedBy }),
@@ -59,9 +60,8 @@ export default function EditItemRouter() {
           category: item.category,
           name: item.name,
           ...(item.description && { description: item.description }),
-          ...((item.images?.[0] || item.imageUrls?.[0] || item.imageUrl) && {
-            imageUrl: item.images?.[0] || item.imageUrls?.[0] || item.imageUrl
-          }),
+          // Every photo, cover first (lib/item-photos.ts).
+          ...(photosOf(item).length > 0 && { images: JSON.stringify(photosOf(item)) }),
           ...(item.notes && { notes: item.notes }),
           ...(item.borrowedBy && { borrowedBy: item.borrowedBy }),
           ...(item.maxBorrowDays && { maxBorrowDays: item.maxBorrowDays.toString() }),

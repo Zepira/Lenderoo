@@ -10,6 +10,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { decode } from 'base64-arraybuffer';
 import { stripImageMetadata } from './image';
+import { isLocalPhoto, removedStoredPhotos } from '../item-photos';
 
 const BUCKET_NAME = 'item-images';
 const MAX_IMAGE_WIDTH = 1200; // Max width in pixels
@@ -384,4 +385,25 @@ export async function validateImage(uri: string): Promise<boolean> {
   } catch (error) {
     throw error;
   }
+}
+
+/**
+ * Saves an item's photos (cover first): uploads new local ones in order, keeps ones already
+ * uploaded, and deletes our stored copies of any that were removed (`before`), in the
+ * background. Returns the final list for items.images.
+ */
+export async function saveItemPhotos(
+  photos: string[],
+  userId: string,
+  before: string[] = []
+): Promise<string[]> {
+  for (const uri of photos) {
+    if (isLocalPhoto(uri)) await validateImage(uri);
+  }
+  const saved = await Promise.all(
+    photos.map((uri) => (isLocalPhoto(uri) ? uploadItemImage(uri, userId) : Promise.resolve(uri)))
+  );
+  const gone = removedStoredPhotos(before, saved, BUCKET_NAME);
+  if (gone.length) deleteItemImages(gone).catch(() => {});
+  return saved;
 }

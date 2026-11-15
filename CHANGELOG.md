@@ -4,6 +4,11 @@ User-visible changes, newest first. These double as the store release notes.
 
 ## Next (unreleased)
 
+- Add up to 8 photos to an item (books: the cover plus photos of your copy).
+  Pick several at once, tap one to make it the cover, and swipe through them
+  on the item page or tap to see them full screen.
+- Changing an item's photo when editing it now works for friends too (it used
+  to save a link that only worked on your own phone).
 - The last item in a list no longer hides behind the tab bar on some phones
   (Android with button navigation).
 - Saved: tap the heart on a friend's item to save it for later. Find
