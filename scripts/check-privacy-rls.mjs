@@ -111,6 +111,27 @@ const sam = await signIn('demo@lenderoo.test');
 }
 
 
+// ── Installed app version (migration 054): only the dashboard can read it ─────
+{
+  const sam = await signIn('demo@lenderoo.test');
+  const { error: recErr } = await sam.c.rpc('record_app_version', { p_platform: 'ios', p_app_version: '1.2.0', p_build_number: '22', p_os_version: '27.0' });
+  check('the app can record its version', !recErr, recErr?.message);
+  await sam.c.rpc('record_app_version', { p_platform: 'ios', p_app_version: '1.2.1', p_build_number: '23', p_os_version: '27.0' });
+  const { data: rows } = await admin.from('user_app_versions').select('app_version, build_number').eq('user_id', sam.id);
+  check('one row per platform, updated to the latest build', rows.length === 1 && rows[0].app_version === '1.2.1' && rows[0].build_number === '23', JSON.stringify(rows));
+  for (const t of ['user_app_versions', 'app_version_report']) {
+    const r = await sam.c.from(t).select('*');
+    check(`a signed-in user can't read ${t}`, emptyOrDenied(r), JSON.stringify(r.data).slice(0, 120));
+    const a = await anon.from(t).select('*');
+    check(`anon can't read ${t}`, emptyOrDenied(a));
+  }
+  const { error: anonRec } = await anon.rpc('record_app_version', { p_platform: 'ios', p_app_version: '9.9.9' });
+  check("anon can't record a version", Boolean(anonRec));
+  const { error: writeErr } = await sam.c.from('user_app_versions').insert({ user_id: sam.id, platform: 'android', app_version: '0.0.1' });
+  check("can't write the table directly", Boolean(writeErr));
+  await admin.from('user_app_versions').delete().eq('user_id', sam.id);
+}
+
 // ── Friend groups and item visibility (migration 051) ───────────────────────
 {
   const sam = await signIn('demo@lenderoo.test');
@@ -214,6 +235,7 @@ async function deleteAccountCheck(user) {
   await user.c.from('users').update({ phone: '0400000000', avatar_url: `${API_URL}/storage/v1/object/public/avatars/${user.id}/a.png` }).eq('id', user.id);
   await admin.from('friends').insert({ user_id: user.id, name: 'Legacy contact' });
   const { data: g } = await user.c.from('friend_groups').insert({ owner_id: user.id, name: 'Work friends' }).select().single();
+  await user.c.rpc('record_app_version', { p_platform: 'android', p_app_version: '1.1.0', p_build_number: '28' });
   const { data: samG } = await admin.from('friend_groups').insert({ owner_id: '00000000-0000-4000-a000-000000000001', name: 'Outsider test' }).select().single();
   await admin.from('friend_group_members').insert({ group_id: samG.id, friend_id: user.id });
 
@@ -240,6 +262,8 @@ async function deleteAccountCheck(user) {
   const { data: inGroups } = await admin.from('friend_group_members').select('group_id').eq('friend_id', user.id);
   check("delete-account: removed from other people's groups", (inGroups ?? []).length === 0);
   await admin.from('friend_groups').delete().eq('id', samG.id);
+  const { data: versions } = await admin.from('user_app_versions').select('user_id').eq('user_id', user.id);
+  check('delete-account: their app version rows deleted', (versions ?? []).length === 0);
 }
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nAll checks passed');

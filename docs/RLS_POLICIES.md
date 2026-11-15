@@ -105,6 +105,16 @@ every rule and the default. `scripts/check-privacy-rls.mjs` checks all of this o
 
 ---
 
+### 📱 Installed app versions (migration 054)
+
+**Table**: `user_app_versions`, one row per person per platform (version, build, OS, first and last
+seen), written only through `record_app_version()` (the app calls it on sign-in and on returning
+to the foreground, at most every 30 minutes). **No API role can read it**, not even the person
+themselves. Alana reads it in the Supabase SQL editor: `SELECT * FROM app_version_report;` (newest
+build first, by platform). `delete-account` removes the rows. Checked by `scripts/check-privacy-rls.mjs`.
+
+---
+
 ### 📚 Borrow History Table
 
 **Purpose**: Track historical record of borrowed items
