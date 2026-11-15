@@ -1,7 +1,8 @@
 import "../global.css";
 
 import * as React from "react";
-import { View, LogBox, Linking, Platform } from "react-native";
+import { View, LogBox, Linking, Platform, AppState } from "react-native";
+import { recordAppVersion } from "@/lib/services/app-version";
 import {
   configureNotifications,
   registerPushToken,
@@ -95,6 +96,18 @@ function RootLayoutContent() {
   React.useEffect(() => {
     if (!user) return;
     registerPushToken(user.id).catch(() => {});
+  }, [user?.id]);
+
+  // Which build this person has (migration 054, app_version_report): on sign-in, then each time
+  // the app comes back to the foreground (at most every 30 minutes).
+  React.useEffect(() => {
+    if (!user) return;
+    const userId = user.id;
+    void recordAppVersion(userId, { force: true });
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void recordAppVersion(userId);
+    });
+    return () => sub.remove();
   }, [user?.id]);
 
   // Handle notification taps (app opened from background/killed via notification)
