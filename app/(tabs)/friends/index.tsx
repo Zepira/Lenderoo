@@ -182,7 +182,20 @@ export default function FriendsScreen() {
     <View
       style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}
     >
-      <ScreenHeader title="My Friends" onBack={() => router.back()} />
+      <ScreenHeader
+        title="My Friends"
+        onBack={() => router.back()}
+        right={
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={() => router.push("/friend-groups")}
+            accessibilityLabel="Friend groups"
+          >
+            <Text>Groups</Text>
+          </Button>
+        }
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

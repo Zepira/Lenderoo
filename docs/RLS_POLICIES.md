@@ -51,12 +51,16 @@ Row Level Security (RLS) is enabled on all tables in the database. This ensures 
 
 **Policies**:
 - ✅ **View own items** - Users can view all items they own
-- ✅ **View friends' items** - Users can view items owned by their active friends
+- ✅ **View friends' items** - Users can view items owned by their active friends,
+  **if the item's rule lets them** (migration 051, `public.item_visible_to`)
   - *Why?* Needed for:
     - Browsing friends' items
     - Creating borrow requests
     - Showing item counts
   - *Security*: Only works if there's an active friendship in `friend_connections`
+  - *Visibility*: an item with no `item_audience` row is visible to every friend. `only` shows it
+    to friends in the chosen groups; `except` hides it from them. Someone with a pending or
+    approved request keeps seeing it.
 - ✅ **Insert own items** - Users can create their own items
 - ✅ **Update own items** - Users can update their own items
   - *Includes*: Setting `borrowed_by` when approving borrow requests
@@ -79,11 +83,25 @@ SELECT * FROM items WHERE user_id = '...' -- Works due to RLS policies
 **Policies**:
 - ✅ **View outgoing requests** - Users can view requests they sent (`requester_id`)
 - ✅ **View incoming requests** - Users can view requests for items they own (`owner_id`)
-- ✅ **Create requests** - Users can create requests as the requester
+- ✅ **Create requests** - Users can create requests as the requester, only for an item they
+  can see (migration 051 replaced the old requester-only policy)
 - ✅ **Update as requester** - Requesters can update their requests (for cancellation)
 - ✅ **Update as owner** - Owners can update requests for their items (for approval/denial)
 
 **Access Pattern**: Bidirectional - both requester and owner can see and manage requests
+
+---
+
+### 🔒 Friend groups and item visibility (migration 051)
+
+**Tables**: `friend_groups` (owner's named groups), `friend_group_members` (who's in each),
+`item_audience` (an item's rule: `all` / `only` / `except` + group ids), and
+`users.default_visibility` / `default_visibility_groups` (the default for new items).
+
+**Policies**: owner only, for everything. Friends can never read groups, memberships or an item's
+rule; an item hidden from them simply doesn't come back from `items`. New items get the owner's
+default in the same insert (`items_default_audience` trigger). Deleting a group removes it from
+every rule and the default. `scripts/check-privacy-rls.mjs` checks all of this on the local stack.
 
 ---
 

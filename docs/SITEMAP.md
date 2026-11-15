@@ -13,6 +13,9 @@ Navigation routes, database calls, and table relationships for every screen.
 | `friend_connections` | User-to-user friendships — user_id, friend_user_id, status (pending / active) |
 | `borrow_requests` | Borrow and queue requests — item_id, requester_id, owner_id, status (pending / approved / denied / cancelled) |
 | `borrow_history` | Completed borrow records — item_id, friend_id, borrowed_date, returned_date |
+| `friend_groups` | An owner's friend groups (owner only) — owner_id, name |
+| `friend_group_members` | Who's in each group (owner only) — group_id, friend_id |
+| `item_audience` | Who can see an item (owner only) — item_id, visibility (all / only / except), group_ids. No row = all friends |
 | `feedback` | In-app feedback submissions |
 | `notification_settings` | Singleton config for scheduled reminder copy/timing — see `docs/NOTIFICATIONS.md` |
 
@@ -64,6 +67,7 @@ Navigation routes, database calls, and table relationships for every screen.
 │   ├── book                        Edit book form
 │   └── generic                     Edit generic item form
 /profile                            Edit profile
+/friend-groups                      Friend groups and the default for new items (Settings, Friends header)
 ```
 
 ---

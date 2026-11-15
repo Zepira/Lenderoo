@@ -658,3 +658,24 @@ export type BorrowHistoryRow = WithTimestamps<BorrowHistory>;
 export type UserRow = WithTimestamps<User>;
 export type BorrowRequestRow = WithTimestamps<BorrowRequest>;
 export type ItemAvailabilitySubscriptionRow = WithTimestamps<ItemAvailabilitySubscription>;
+
+// ============================================================================
+// Friend groups and item visibility (migration 051)
+// ============================================================================
+
+/** Who can see and request an item: every friend, only some groups, or all but some groups. */
+export type ItemVisibility = 'all' | 'only' | 'except';
+
+export interface ItemAudience {
+  visibility: ItemVisibility;
+  /** The owner's groups the rule names (empty for 'all'). */
+  groupIds: string[];
+}
+
+/** One of the owner's own friend groups. Only the owner can ever read these. */
+export interface FriendGroup {
+  id: string;
+  name: string;
+  /** User ids of the friends in it. */
+  memberIds: string[];
+}

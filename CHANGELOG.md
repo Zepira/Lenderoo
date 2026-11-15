@@ -4,6 +4,12 @@ User-visible changes, newest first. These double as the store release notes.
 
 ## Next (unreleased)
 
+- Choose who sees each item. Sort friends into your own groups (Close
+  friends, Family, Work friends, or any name you like), then show an item to
+  all friends, only some groups, or everyone except some groups. Friends never
+  see your groups or know something is hidden from them.
+- Set who new items are visible to by default, in Settings → Friend Groups &
+  Visibility.
 - Taking a photo or picking one from your gallery for your avatar works again
   (it showed "Unsupported FormDataPart implementation").
 - Borrow requests for something that's already lent out say so at the top of

@@ -24,6 +24,8 @@ import { CATEGORY_CONFIG, categoryInk } from "@/lib/category-config";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
 import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
+import { AudiencePicker } from "components/AudiencePicker";
+import { useAudienceField } from "hooks/useFriendGroups";
 import { uploadItemImage, validateImage } from "@/lib/services/storage";
 import { supabase } from "@/lib/supabase";
 import * as toast from "@/lib/toast";
@@ -64,6 +66,7 @@ export default function AddGenericItemScreen() {
   const theme = isDark ? THEME.dark : THEME.light;
 
   const { createItem, loading } = useCreateItem();
+  const audienceField = useAudienceField();
   const { items: existingItems } = useItems();
   const isSubmitting = useRef<boolean>(false);
 
@@ -142,7 +145,8 @@ export default function AddGenericItemScreen() {
       };
 
       createItemSchema.parse(itemData);
-      await createItem({ ...itemData, userId: user.id });
+      const created = await createItem({ ...itemData, userId: user.id });
+      await audienceField.save(created.id);
       toast.success("Item added successfully!");
       router.replace("/(tabs)/library");
     } catch (error) {
@@ -326,6 +330,13 @@ export default function AddGenericItemScreen() {
 
           {/* Max borrow duration */}
           <MaxBorrowDurationInput days={maxBorrowDays} onChange={setMaxBorrowDays} />
+
+          <AudiencePicker
+            value={audienceField.audience}
+            onChange={audienceField.setAudience}
+            groups={audienceField.groups}
+            friendIds={audienceField.friendIds}
+          />
         </View>
 
         {/* Notes card */}

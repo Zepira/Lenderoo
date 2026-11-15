@@ -34,6 +34,7 @@ import {
   ChevronRight,
   Clock,
   Edit,
+  Eye,
   EyeOff,
   Heart,
   Package,
@@ -58,6 +59,8 @@ import {
   useFriendsItems,
 } from "hooks/useItems";
 import { useUserProfile, useFriends } from "hooks/useFriends";
+import { useFriendGroups, useItemAudience } from "hooks/useFriendGroups";
+import { audienceLabel } from "lib/visibility";
 import { CATEGORY_CONFIG } from "@/lib/category-config";
 import {
   formatDate,
@@ -136,6 +139,9 @@ export default function ItemDetailScreen() {
     !!item.borrowedDate &&
     !item.returnedDate;
   const isOwner = item && user && item.userId === user.id;
+  // Who can see it (owner only: friends never learn an item has a rule, migration 051).
+  const { audience } = useItemAudience(item?.id, !!isOwner);
+  const { groups: friendGroups } = useFriendGroups();
   // Load the borrower's public profile for display purposes.
   // Guard against querying our own ID (stale data where isBorrower would be false).
   const borrowerUserId =
@@ -965,6 +971,22 @@ export default function ItemDetailScreen() {
               </LabelStrong>
             </View>
           </View>
+
+          {/* ── Who can see it (owner only) ── */}
+          {isOwner && (
+            <Pressable
+              onPress={handleEdit}
+              accessibilityRole="button"
+              accessibilityLabel={`Who can see it: ${audienceLabel(audience, friendGroups)}. Change`}
+              style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 20 }}
+            >
+              <Eye size={16} color={theme.mutedForeground} />
+              <Caption style={{ flex: 1, color: theme.mutedForeground }} numberOfLines={2}>
+                Who can see it: {audienceLabel(audience, friendGroups)}
+              </Caption>
+              <Caption style={{ color: theme.primaryInk, fontWeight: "600" }}>Change</Caption>
+            </Pressable>
+          )}
 
           {/* ── Description ── */}
           {item.description && !bookMeta && (

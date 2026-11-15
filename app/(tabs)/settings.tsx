@@ -16,6 +16,7 @@ import {
   User,
   Lock,
   Users,
+  Eye,
   Bell,
   LogOut,
   Camera,
@@ -365,12 +366,17 @@ export default function SettingsScreen() {
               icon={<Users size={20} color={THEME.light.primary} />}
               label="My Friends"
               onPress={() => router.push("/(tabs)/friends" as any)}
-              isLast
+            />
+            <SettingsItem
+              icon={<Eye size={20} color={THEME.light.primary} />}
+              label="Friend Groups & Visibility"
+              onPress={() => router.push("/friend-groups" as any)}
             />
             <SettingsItem
               icon={<User size={20} color={THEME.light.primary} />}
               label="Profile"
               onPress={() => router.push("/profile" as any)}
+              isLast
             />
           </View>
 

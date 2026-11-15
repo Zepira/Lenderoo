@@ -110,6 +110,75 @@ const sam = await signIn('demo@lenderoo.test');
   check('borrow_requests_with_details: rows with names, no emails', br.data.length > 0 && br.data.every((r) => r.requester_name && r.owner_name && r.requester_email === null && r.owner_email === null), br.error?.message);
 }
 
+
+// ── Friend groups and item visibility (migration 051) ───────────────────────
+{
+  const sam = await signIn('demo@lenderoo.test');
+  const priya = await signIn('priya@lenderoo.test');
+  const josh = await signIn('josh@lenderoo.test');
+  const { data: samItems } = await sam.c.from('items').select('id').eq('user_id', sam.id).is('borrowed_by', null).limit(1);
+  const itemId = samItems[0].id;
+  const sees = async (who) => (await rows(who.c.from('items').select('id').eq('id', itemId))).data.length === 1;
+
+  const { data: group, error: gErr } = await sam.c.from('friend_groups').insert({ owner_id: sam.id, name: 'Close friends' }).select().single();
+  check('owner creates a group', !gErr, gErr?.message);
+  const { error: mErr } = await sam.c.from('friend_group_members').insert({ group_id: group.id, friend_id: priya.id });
+  check('owner adds a friend to it', !mErr, mErr?.message);
+  try {
+    check('no rule: every friend sees the item', (await sees(priya)) && (await sees(josh)));
+
+    await sam.c.from('item_audience').upsert({ item_id: itemId, visibility: 'only', group_ids: [group.id] });
+    check("'only': a member sees it", await sees(priya));
+    check("'only': a non-member doesn't", !(await sees(josh)));
+    const { error: reqErr } = await josh.c.from('borrow_requests').insert({ item_id: itemId, requester_id: josh.id, owner_id: sam.id, status: 'pending' });
+    check("'only': a non-member can't request it", Boolean(reqErr));
+
+    await sam.c.from('item_audience').upsert({ item_id: itemId, visibility: 'except', group_ids: [group.id] });
+    check("'except': a member doesn't see it", !(await sees(priya)));
+    check("'except': everyone else does", await sees(josh));
+
+    // Someone who already asked keeps seeing it when the owner narrows it later.
+    const { data: req, error: jReqErr } = await josh.c.from('borrow_requests').insert({ item_id: itemId, requester_id: josh.id, owner_id: sam.id, status: 'pending' }).select().single();
+    check('a visible item can be requested', !jReqErr, jReqErr?.message);
+    await sam.c.from('item_audience').upsert({ item_id: itemId, visibility: 'only', group_ids: [group.id] });
+    check('a pending requester still sees an item narrowed later', await sees(josh));
+    if (req) await admin.from('borrow_requests').delete().eq('id', req.id);
+    check('...and stops once the request is gone', !(await sees(josh)));
+
+    for (const t of ['friend_groups', 'friend_group_members', 'item_audience']) {
+      const r = await rows(priya.c.from(t).select('*'));
+      check(`a friend can't read the owner's ${t}`, r.data.length === 0, `${r.data.length} rows`);
+    }
+    const { data: pItems } = await priya.c.from('items').select('id').eq('user_id', priya.id).limit(1);
+    const { error: stealErr } = await priya.c.from('item_audience').upsert({ item_id: pItems[0].id, visibility: 'only', group_ids: [group.id] });
+    check("can't use someone else's group on your item", Boolean(stealErr));
+    const { error: foreignErr } = await priya.c.from('item_audience').upsert({ item_id: itemId, visibility: 'all' });
+    check("can't change the rule on someone else's item", Boolean(foreignErr) || !(await sees(josh)));
+    const { error: addErr } = await priya.c.from('friend_group_members').insert({ group_id: group.id, friend_id: priya.id });
+    check("can't add yourself to someone else's group", Boolean(addErr));
+
+    await sam.c.from('users').update({ default_visibility: 'only', default_visibility_groups: [group.id] }).eq('id', sam.id);
+    const { data: fresh, error: freshErr } = await sam.c.from('items').insert({ user_id: sam.id, name: 'Visibility check item', category: 'other' }).select('id').single();
+    check('a new item is saved', !freshErr, freshErr?.message);
+    if (fresh) {
+      const { data: fa } = await sam.c.from('item_audience').select('visibility, group_ids').eq('item_id', fresh.id).single();
+      check("a new item starts with the owner's default", fa?.visibility === 'only' && fa.group_ids[0] === group.id, JSON.stringify(fa));
+      const v = async (who) => (await rows(who.c.from('items').select('id').eq('id', fresh.id))).data.length === 1;
+      check('...so friends outside it never see it', !(await v(josh)) && (await v(priya)));
+      await admin.from('items').delete().eq('id', fresh.id);
+    }
+    await sam.c.from('friend_groups').delete().eq('id', group.id);
+    const { data: aud } = await admin.from('item_audience').select('group_ids').eq('item_id', itemId).single();
+    check('deleting a group takes it out of item rules', aud.group_ids.length === 0, JSON.stringify(aud));
+    const { data: me } = await admin.from('users').select('default_visibility_groups').eq('id', sam.id).single();
+    check("...and out of the owner's default", me.default_visibility_groups.length === 0, JSON.stringify(me));
+  } finally {
+    await admin.from('item_audience').delete().eq('item_id', itemId);
+    await admin.from('friend_groups').delete().eq('id', group.id);
+    await admin.from('users').update({ default_visibility: 'all', default_visibility_groups: [] }).eq('id', sam.id);
+  }
+}
+
 // ── A user with no friends sees no one's history ────────────────────────────
 const outsiderEmail = `outsider-${Date.now()}@lenderoo.test`;
 const { data: created, error: createErr } = await admin.auth.admin.createUser({ email: outsiderEmail, password: PASSWORD, email_confirm: true, user_metadata: { name: 'Outsider', phone: '0400 000 000' } });
@@ -144,6 +213,9 @@ async function deleteAccountCheck(user) {
   }
   await user.c.from('users').update({ phone: '0400000000', avatar_url: `${API_URL}/storage/v1/object/public/avatars/${user.id}/a.png` }).eq('id', user.id);
   await admin.from('friends').insert({ user_id: user.id, name: 'Legacy contact' });
+  const { data: g } = await user.c.from('friend_groups').insert({ owner_id: user.id, name: 'Work friends' }).select().single();
+  const { data: samG } = await admin.from('friend_groups').insert({ owner_id: '00000000-0000-4000-a000-000000000001', name: 'Outsider test' }).select().single();
+  await admin.from('friend_group_members').insert({ group_id: samG.id, friend_id: user.id });
 
   const { data: session } = await user.c.auth.getSession();
   const res = await fetch(`${API_URL}/functions/v1/delete-account`, { method: 'POST', headers: { Authorization: `Bearer ${session.session.access_token}`, apikey: ANON } });
@@ -163,6 +235,11 @@ async function deleteAccountCheck(user) {
   check('delete-account: profile row tombstoned', row.name === 'Deleted User' && !row.phone && !row.avatar_url && !row.friend_code && !row.push_token && row.deleted_at, JSON.stringify(row));
   const { data: legacy } = await admin.from('friends').select('id').eq('user_id', user.id);
   check('delete-account: legacy friends rows deleted', (legacy ?? []).length === 0);
+  const { data: groups } = await admin.from('friend_groups').select('id').eq('owner_id', user.id);
+  check('delete-account: their friend groups deleted', (groups ?? []).length === 0 && Boolean(g));
+  const { data: inGroups } = await admin.from('friend_group_members').select('group_id').eq('friend_id', user.id);
+  check("delete-account: removed from other people's groups", (inGroups ?? []).length === 0);
+  await admin.from('friend_groups').delete().eq('id', samG.id);
 }
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nAll checks passed');

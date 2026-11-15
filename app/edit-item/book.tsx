@@ -23,6 +23,8 @@ import { useFriends, useUpdateItem, useItems } from "hooks";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
 import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
+import { AudiencePicker } from "components/AudiencePicker";
+import { useAudienceField } from "hooks/useFriendGroups";
 import type { BookMetadata } from "lib/types";
 import { cn } from "lib/utils";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -61,6 +63,7 @@ export default function EditBookScreen() {
   }>();
   const { friends } = useFriends();
   const { updateItem, loading: saving } = useUpdateItem();
+  const audienceField = useAudienceField(params.itemId);
   const { items: existingItems } = useItems();
   const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
 
@@ -219,6 +222,7 @@ export default function EditBookScreen() {
       console.log("Update data:", JSON.stringify(updates, null, 2));
 
       const result = await updateItem(params.itemId!, updates);
+      await audienceField.save(params.itemId!);
 
       if (!result) {
         throw new Error(
@@ -485,6 +489,13 @@ export default function EditBookScreen() {
 
             {/* Max Borrow Duration */}
             <MaxBorrowDurationInput days={maxBorrowDays} onChange={setMaxBorrowDays} />
+
+            <AudiencePicker
+              value={audienceField.audience}
+              onChange={audienceField.setAudience}
+              groups={audienceField.groups}
+              friendIds={audienceField.friendIds}
+            />
           </View>
         </View>
       </KeyboardAwareScrollView>

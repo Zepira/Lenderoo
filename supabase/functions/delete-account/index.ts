@@ -159,6 +159,11 @@ Deno.serve(async (req) => {
       .delete()
       .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`);
 
+    // Their friend groups (names they typed, and who's in them), and their place in other
+    // people's groups (migration 051). Items they kept are tombstoned, so their rules go too.
+    await supabase.from('friend_groups').delete().eq('owner_id', userId);
+    await supabase.from('friend_group_members').delete().eq('friend_id', userId);
+
     await supabase.from('item_favourites').delete().eq('user_id', userId);
     await supabase.from('item_availability_subscriptions').delete().eq('user_id', userId);
     await supabase.from('user_contact_hashes').delete().eq('user_id', userId);

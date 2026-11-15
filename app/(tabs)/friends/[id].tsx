@@ -59,6 +59,7 @@ import * as toast from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
 import { screenChannel, subscribeLogged } from "@/lib/realtime";
 import { THEME } from "@/lib/theme";
+import { FriendGroupChips } from "@/components/FriendGroupChips";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import {
   PageTitle,
@@ -574,6 +575,9 @@ export default function FriendDetailScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 24, gap: 20 }}>
+          {/* ── Your groups (private to you) ── */}
+          <FriendGroupChips friendId={friend.id} friendName={friend.name} />
+
           {/* ── Tab switcher ── */}
           <View
             style={{

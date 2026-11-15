@@ -23,6 +23,8 @@ import { createItemSchema } from "lib/validation";
 import { supabase } from "@/lib/supabase";
 import { ImagePicker } from "components/ImagePicker";
 import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
+import { AudiencePicker } from "components/AudiencePicker";
+import { useAudienceField } from "hooks/useFriendGroups";
 import type { BookMetadata } from "lib/types";
 import { searchSeriesBooks, findSeriesId } from "@/lib/services/hardcover";
 
@@ -66,6 +68,7 @@ export default function AddBookScreen() {
   }>();
 
   const { createItem, loading: saving } = useCreateItem();
+  const audienceField = useAudienceField();
   const { items: existingItems } = useItems();
   const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
   const isSubmitting = useRef(false);
@@ -301,6 +304,7 @@ export default function AddBookScreen() {
       createItemSchema.parse(itemData);
       const result = await createItem({ ...itemData, userId: user.id });
       if (!result) throw new Error("Failed to create item");
+      await audienceField.save(result.id);
 
       const booksToAdd = seriesBooks.filter((b) =>
         selectedSeriesBookIds.has(b.hardcoverId),
@@ -323,7 +327,7 @@ export default function AddBookScreen() {
         };
 
         try {
-          await createItem({
+          const added = await createItem({
             name: book.title,
             category: "book",
             images: book.coverUrl ? [book.coverUrl] : undefined,
@@ -331,6 +335,7 @@ export default function AddBookScreen() {
             maxBorrowDays: maxBorrowDays ?? undefined,
             userId: user.id,
           });
+          await audienceField.save(added.id);
         } catch {
           // Skip books that fail to add; primary book is already saved.
         }
@@ -790,6 +795,13 @@ export default function AddBookScreen() {
           </View>
 
           <MaxBorrowDurationInput days={maxBorrowDays} onChange={setMaxBorrowDays} />
+
+          <AudiencePicker
+            value={audienceField.audience}
+            onChange={audienceField.setAudience}
+            groups={audienceField.groups}
+            friendIds={audienceField.friendIds}
+          />
         </View>
 
         {/* Submit */}

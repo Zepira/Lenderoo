@@ -46,6 +46,12 @@ export const queryKeys = {
     detail: (id: string) => ['friends', 'detail', id] as const,
     items: (friendId: string) => ['friends', 'items', friendId] as const,
   },
+  groups: {
+    all: ['groups'] as const,
+    items: ['groups', 'items'] as const,
+    item: (itemId: string) => ['groups', 'item', itemId] as const,
+    default: ['groups', 'default'] as const,
+  },
   borrowRequests: {
     incoming: ['borrow-requests', 'incoming'] as const,
     outgoing: ['borrow-requests', 'outgoing'] as const,
