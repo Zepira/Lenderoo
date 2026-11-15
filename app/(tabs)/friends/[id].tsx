@@ -60,6 +60,8 @@ import { supabase } from "@/lib/supabase";
 import { screenChannel, subscribeLogged } from "@/lib/realtime";
 import { THEME } from "@/lib/theme";
 import { FriendGroupChips } from "@/components/FriendGroupChips";
+import { ItemFilterBar } from "@/components/ItemFilterBar";
+import { useItemFilters } from "@/hooks/useItemFilters";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import {
   PageTitle,
@@ -303,8 +305,10 @@ export default function FriendDetailScreen() {
   );
   // "Library" tab — this friend's items. I'm a prospective/queued borrower,
   // so a ready-to-confirm pickup sorts ahead of everything else.
+  // Category chips and sort first; then pending pickups and favourites float to the top.
+  const libraryFilters = useItemFilters(ownedItems);
   const sortedOwnedItems = sortByPendingActionThenFavourite(
-    withFavourite(ownedItems),
+    withFavourite(libraryFilters.filtered),
     user?.id,
   );
   const sortedHistoryItems = sortFavouritesFirst(withFavourite(historyItems));
@@ -657,6 +661,15 @@ export default function FriendDetailScreen() {
                     }}
                   >
                     <Caption className="text-center">{`Browse ${firstName}'s library`}</Caption>
+                  </View>
+                  <View style={{ marginBottom: 12 }}>
+                    <ItemFilterBar
+                      items={ownedItems}
+                      category={libraryFilters.category}
+                      sort={libraryFilters.sort}
+                      onCategoryChange={libraryFilters.setCategory}
+                      onSortChange={libraryFilters.setSort}
+                    />
                   </View>
                   <View
                     style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}

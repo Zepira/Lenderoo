@@ -39,6 +39,7 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
   game: "Game",
   sports: "Sports",
   kitchen: "Kitchen",
+  camping: "Camping Gear",
   other: "Item",
 };
 
@@ -49,6 +50,7 @@ const PLACEHOLDERS: Partial<Record<ItemCategory, string>> = {
   game: "e.g. Settlers of Catan",
   sports: "e.g. Tennis Racket",
   kitchen: "e.g. Stand Mixer",
+  camping: "e.g. 4-person tent",
 };
 
 export default function AddGenericItemScreen() {

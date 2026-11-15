@@ -21,6 +21,7 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   game: "Games",
   sports: "Sports",
   kitchen: "Kitchen",
+  camping: "Camping",
   other: "Other",
 };
 
@@ -32,6 +33,7 @@ export const CATEGORY_ICONS: Record<ItemCategory, string> = {
   game: "Gamepad2",
   sports: "Dumbbell",
   kitchen: "ChefHat",
+  camping: "Tent",
   other: "Package",
 };
 
@@ -43,6 +45,7 @@ export const CATEGORY_COLORS: Record<ItemCategory, string> = {
   game: "$pink9",
   sports: "$green9",
   kitchen: "$yellow9",
+  camping: "$green11",
   other: "$gray9",
 };
 
@@ -87,6 +90,11 @@ export const CATEGORY_CONFIG: Record<
     label: CATEGORY_LABELS.kitchen,
     icon: CATEGORY_ICONS.kitchen,
     color: CATEGORY_COLORS.kitchen,
+  },
+  camping: {
+    label: CATEGORY_LABELS.camping,
+    icon: CATEGORY_ICONS.camping,
+    color: CATEGORY_COLORS.camping,
   },
   other: {
     label: CATEGORY_LABELS.other,

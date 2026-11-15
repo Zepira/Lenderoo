@@ -19,6 +19,7 @@ export const itemCategorySchema = z.enum([
   "game",
   "sports",
   "kitchen",
+  "camping",
   "other",
 ]);
 

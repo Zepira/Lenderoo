@@ -8,9 +8,10 @@ import {
 } from "react-native";
 import { Pressable } from "@/components/ui/pressable";
 import { useFocusEffect, useRouter } from "expo-router";
-import { X } from "lucide-react-native";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
+import { ItemFilterBar } from "@/components/ItemFilterBar";
+import { applyItemFilters, validFilters, type ItemSort } from "@/lib/item-filters";
 import { ItemCard, calcCardLayout } from "@/components/ItemCard";
 import { ErrorState } from "@/components/ErrorState";
 import { CATEGORY_CONFIG, categoryInk } from "@/lib/category-config";
@@ -46,6 +47,7 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
   game: "Game",
   sports: "Sports",
   kitchen: "Kitchen",
+  camping: "Camping",
   other: "Other",
 };
 
@@ -223,21 +225,19 @@ export default function ExploreScreen() {
     }, [loadItems]),
   );
 
+  const [sort, setSort] = useState<ItemSort>("recent");
+  const searchedItems = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.toLowerCase();
+    return items.filter((i) => i.name.toLowerCase().includes(q));
+  }, [items, search]);
+  // The category from the grid (or the chips) and the sort (lib/item-filters.ts); favourites
+  // still float to the top.
   const filteredItems = useMemo(() => {
-    let result = items;
-    if (selectedCategory) {
-      result = result.filter((i) => i.category === selectedCategory);
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((i) => i.name.toLowerCase().includes(q));
-    }
-    const withFavourites = result.map((i) => ({
-      ...i,
-      isFavourite: favouriteIds.has(i.id),
-    }));
-    return sortFavouritesFirst(withFavourites);
-  }, [items, selectedCategory, search, favouriteIds]);
+    const valid = validFilters(searchedItems, { category: null, sort });
+    const result = applyItemFilters(searchedItems, { category: selectedCategory, sort: valid.sort });
+    return sortFavouritesFirst(result.map((i) => ({ ...i, isFavourite: favouriteIds.has(i.id) })));
+  }, [searchedItems, selectedCategory, sort, favouriteIds]);
 
   // Two friends can own "the same item" (e.g. the same book) — collapse
   // those into one card instead of showing duplicates side by side. The
@@ -282,35 +282,18 @@ export default function ExploreScreen() {
     rows.push(row);
   }
 
-  const activeCategoryColor = selectedCategory
-    ? categoryInk(selectedCategory, isDark)
-    : undefined;
-
-  const categoryChip = selectedCategory && activeCategoryColor ? (
-    <View style={{ flexDirection: "row", marginBottom: 4 }}>
-      <Pressable onPress={() => setSelectedCategory(null)}>
-        {({ pressed }) => (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              backgroundColor: activeCategoryColor + "18",
-              borderRadius: 8,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              opacity: pressed ? 0.7 : 1,
-            }}
-          >
-            <Text style={{ color: activeCategoryColor, fontSize: 13 }}>
-              {CATEGORY_LABELS[selectedCategory]}
-            </Text>
-            <X size={11} color={activeCategoryColor} />
-          </View>
-        )}
-      </Pressable>
+  const listHeader = (
+    <View style={{ marginBottom: 4 }}>
+      <ItemFilterBar
+        items={searchedItems}
+        category={selectedCategory}
+        sort={validFilters(searchedItems, { category: null, sort }).sort}
+        onCategoryChange={setSelectedCategory}
+        onSortChange={setSort}
+        bleed={16}
+      />
     </View>
-  ) : undefined;
+  );
 
   if (error) {
     return (
@@ -386,7 +369,7 @@ export default function ExploreScreen() {
           onRefresh={loadItems}
           refreshing={loading}
           keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={categoryChip}
+          ListHeaderComponent={listHeader}
           ListEmptyComponent={
             loading || (!favouritesReady && items.length > 0) ? (
               <View style={{ alignItems: "center", paddingTop: 48 }}>

@@ -22,6 +22,8 @@ import { ItemCard, calcCardLayout } from "@/components/ItemCard";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
 import { SegmentedTabs } from "@/components/SegmentedTabs";
+import { ItemFilterBar } from "@/components/ItemFilterBar";
+import { useItemFilters } from "@/hooks/useItemFilters";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
 import { ErrorState } from "@/components/ErrorState";
@@ -77,17 +79,19 @@ export default function ItemsScreen() {
     };
   }, [favouriteIdsKey]);
 
-  const filteredItems = useMemo(() => {
+  const searchedItems = useMemo(() => {
     const q = search.toLowerCase();
-    const result = search.trim()
-      ? items.filter((item) => item.name.toLowerCase().includes(q))
-      : items;
-    const withFavourites = result.map((i) => ({
-      ...i,
-      isFavourite: favouriteIds.has(i.id),
-    }));
-    return sortFavouritesFirst(withFavourites);
-  }, [items, search, favouriteIds]);
+    return search.trim() ? items.filter((item) => item.name.toLowerCase().includes(q)) : items;
+  }, [items, search]);
+  // Category chips and sort (lib/item-filters.ts); favourites still float to the top.
+  const listFilters = useItemFilters(searchedItems);
+  const filteredItems = useMemo(
+    () =>
+      sortFavouritesFirst(
+        listFilters.filtered.map((i) => ({ ...i, isFavourite: favouriteIds.has(i.id) }))
+      ),
+    [listFilters.filtered, favouriteIds]
+  );
 
   const handleToggleFavourite = useCallback(
     async (item: Item) => {
@@ -290,6 +294,14 @@ export default function ItemsScreen() {
               tabs={tabs}
               activeKey={activeFilter}
               onChange={(key) => setActiveFilter(key as FilterTab)}
+            />
+            <ItemFilterBar
+              items={searchedItems}
+              category={listFilters.category}
+              sort={listFilters.sort}
+              onCategoryChange={listFilters.setCategory}
+              onSortChange={listFilters.setSort}
+              bleed={16}
             />
           </View>
         }

@@ -31,6 +31,7 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
   game: "Game",
   sports: "Sports",
   kitchen: "Kitchen",
+  camping: "Camping & outdoors",
   other: "Other",
 };
 

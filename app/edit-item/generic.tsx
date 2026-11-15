@@ -12,7 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Check, ChevronDown, ChevronUp, UserCircle } from "lucide-react-native";
 import { useFriends, useUpdateItem, useItems } from "hooks";
 import { CATEGORY_CONFIG as CATEGORY_CONFIG_CONSTANTS, type ItemCategory } from "lib/constants";
-import { CATEGORY_CONFIG } from "@/lib/category-config";
+import { CATEGORY_CONFIG, categoryInk } from "@/lib/category-config";
+import { CATEGORY_LABELS } from "@/lib/constants";
+import { CATEGORY_ORDER } from "@/lib/item-filters";
 import { createItemSchema } from "lib/validation";
 import { ImagePicker } from "components/ImagePicker";
 import { MaxBorrowDurationInput } from "components/MaxBorrowDurationInput";
@@ -42,7 +44,10 @@ export default function EditGenericItemScreen() {
     maxBorrowDays?: string;
     condition?: string;
   }>();
-  const category = (params.category || "other") as ItemCategory;
+  // Changeable here, so things like camping gear can move into a better-fitting category.
+  const [category, setCategory] = useState<ItemCategory>(
+    (params.category || "other") as ItemCategory
+  );
   const router = useRouter();
   const { friends } = useFriends();
   const { updateItem, loading } = useUpdateItem();
@@ -96,6 +101,7 @@ export default function EditGenericItemScreen() {
 
       const updates = {
         name: name.trim(),
+        category,
         description: description.trim() || undefined,
         imageUrl: imageUrl.trim() || undefined,
         borrowedBy: borrowedBy || undefined,
@@ -349,6 +355,42 @@ export default function EditGenericItemScreen() {
                 {errors.notes}
               </Text>
             )}
+          </View>
+
+          {/* Category (books have their own form, so they stay books) */}
+          <View className="gap-2">
+            <Label className="font-semibold">Category</Label>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {CATEGORY_ORDER.filter((c) => c !== "book").map((c) => {
+                const ink = categoryInk(c, isDark);
+                const Icon = CATEGORY_CONFIG[c].Icon;
+                const selected = category === c;
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => setCategory(c)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: 999,
+                      backgroundColor: selected ? ink + "22" : theme.card,
+                      borderWidth: 1.5,
+                      borderColor: selected ? ink : theme.border,
+                    }}
+                  >
+                    <Icon size={14} color={ink} />
+                    <Caption style={{ color: selected ? ink : theme.foreground, fontWeight: selected ? "600" : "400" }}>
+                      {CATEGORY_LABELS[c]}
+                    </Caption>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
 
           {/* Condition */}

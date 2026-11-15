@@ -5,6 +5,7 @@ import {
   Smartphone,
   Gamepad2,
   Trophy,
+  Tent,
   UtensilsCrossed,
   Package,
 } from "lucide-react-native";
@@ -31,6 +32,7 @@ export const CATEGORY_CONFIG: Record<ItemCategory, CategoryStyle> = {
   game: { color: THEME.light.destructive, ink: same(THEME.light.destructive), Icon: Gamepad2 },
   sports: { color: "#10B981", ink: same("#10B981"), Icon: Trophy },
   kitchen: { color: "#F97316", ink: same("#F97316"), Icon: UtensilsCrossed },
+  camping: { color: "#15803D", ink: same("#15803D"), Icon: Tent },
   other: { color: "#6B7280", ink: same("#6B7280"), Icon: Package },
 };
 
