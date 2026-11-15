@@ -44,23 +44,24 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  let query = supabase.from('users').select('id, push_token').not('push_token', 'is', null);
-  if (payload.userIds && payload.userIds.length > 0) {
-    query = query.in('id', payload.userIds);
+  // Everyone (or the given users), on every device they're signed in on (migration 053).
+  let ids = payload.userIds ?? [];
+  if (ids.length === 0) {
+    const { data: all, error: allErr } = await supabase.from('users').select('id').is('deleted_at', null);
+    if (allErr) return new Response(`query error: ${allErr.message}`, { status: 500 });
+    ids = (all ?? []).map((u) => u.id as string);
   }
-
-  const { data: users, error } = await query;
+  const { data: rows, error } = await supabase.rpc('push_tokens_for', { p_users: ids });
   if (error) {
     return new Response(`query error: ${error.message}`, { status: 500 });
   }
-  if (!users || users.length === 0) {
+  const tokens = [...new Set(((rows ?? []) as { token: string }[]).map((r) => r.token).filter(Boolean))];
+  if (tokens.length === 0) {
     return new Response('no matching users with a push token', { status: 200 });
   }
 
-  const messages: ExpoPushMessage[] = users
-    .filter((u) => u.push_token)
-    .map((u) => ({
-      to: u.push_token as string,
+  const messages: ExpoPushMessage[] = tokens.map((token) => ({
+      to: token,
       title: payload.title,
       body: payload.body,
       data: payload.data,

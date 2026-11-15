@@ -4,7 +4,8 @@ const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface ExpoPushMessage {
-  to: string;
+  /** Every device the person is signed in on (migration 053). */
+  to: string | string[];
   title: string;
   body: string;
   data?: Record<string, unknown>;
@@ -136,20 +137,28 @@ Deno.serve(async (req) => {
 
   const { data: users } = await supabase
     .from('users')
-    .select('id, name, push_token')
+    .select('id, name')
     // Overdue entries are always added for both owner and borrower, so every
     // name the copy needs is already a key here.
     .in('id', [...byUser.keys()])
-    .returns<{ id: string; name: string | null; push_token: string | null }[]>();
+    .returns<{ id: string; name: string | null }[]>();
   const userById = new Map((users ?? []).map((u) => [u.id, u]));
   const nameOf = (id: string) => userById.get(id)?.name ?? 'a friend';
+  // Every device each person is signed in on (migration 053).
+  const { data: tokenRows } = await supabase.rpc('push_tokens_for', { p_users: [...byUser.keys()] });
+  const tokensByUser = new Map<string, string[]>();
+  for (const r of (tokenRows ?? []) as { user_id: string; token: string }[]) {
+    const list = tokensByUser.get(r.user_id) ?? [];
+    if (r.token && !list.includes(r.token)) list.push(r.token);
+    tokensByUser.set(r.user_id, list);
+  }
 
   const messages: ExpoPushMessage[] = [];
   for (const [userId, entries] of byUser) {
-    const token = userById.get(userId)?.push_token;
-    if (!token) continue;
+    const tokens = tokensByUser.get(userId) ?? [];
+    if (tokens.length === 0) continue;
     messages.push({
-      to: token,
+      to: tokens,
       sound: 'default',
       ...buildMessage(entries, {
         nameOf,
@@ -176,10 +185,24 @@ Deno.serve(async (req) => {
 
   if (messages.length === 0) return new Response('no reachable recipients', { status: 200 });
 
-  // Expo accepts up to 100 messages per request.
+  // Expo accepts up to 100 notifications per request, counting each device a message goes to.
+  const batches: ExpoPushMessage[][] = [];
+  let current: ExpoPushMessage[] = [];
+  let count = 0;
+  for (const m of messages) {
+    const n = Array.isArray(m.to) ? m.to.length : 1;
+    if (count + n > 100 && current.length > 0) {
+      batches.push(current);
+      current = [];
+      count = 0;
+    }
+    current.push(m);
+    count += n;
+  }
+  if (current.length > 0) batches.push(current);
+
   let sent = 0;
-  for (let i = 0; i < messages.length; i += 100) {
-    const batch = messages.slice(i, i + 100);
+  for (const batch of batches) {
     const res = await fetch(EXPO_PUSH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -188,15 +211,15 @@ Deno.serve(async (req) => {
     if (!res.ok) continue;
     sent += batch.length;
 
+    // One ticket per device, in the order of each message's tokens.
     const result = await res.json();
     const tickets = Array.isArray(result.data) ? result.data : [result.data];
+    const recipients = batch.flatMap((m) => (Array.isArray(m.to) ? m.to : [m.to]));
     const deadTokens = tickets
-      .map((t: any, j: number) =>
-        t?.details?.error === 'DeviceNotRegistered' ? batch[j].to : null,
-      )
+      .map((t: any, j: number) => (t?.details?.error === 'DeviceNotRegistered' ? recipients[j] : null))
       .filter(Boolean);
     if (deadTokens.length > 0) {
-      await supabase.from('users').update({ push_token: null }).in('push_token', deadTokens);
+      await supabase.rpc('forget_push_tokens', { p_tokens: deadTokens });
     }
   }
 

@@ -164,6 +164,7 @@ Deno.serve(async (req) => {
     await supabase.from('friend_groups').delete().eq('owner_id', userId);
     await supabase.from('friend_group_members').delete().eq('friend_id', userId);
 
+    await supabase.from('user_push_tokens').delete().eq('user_id', userId);
     await supabase.from('item_favourites').delete().eq('user_id', userId);
     await supabase.from('item_availability_subscriptions').delete().eq('user_id', userId);
     await supabase.from('user_contact_hashes').delete().eq('user_id', userId);

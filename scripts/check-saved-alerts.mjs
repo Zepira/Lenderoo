@@ -88,7 +88,7 @@ try {
   const back = { ...row, borrowed_by: null, borrowed_date: null, due_date: null, pending_recipient_id: null };
   const msgs = await call(back, { ...row, pending_recipient_id: sam.id });
   const saved = msgs.filter((m) => m.data?.type === 'saved_item_available');
-  const to = saved.map((m) => m.to).sort();
+  const to = saved.flatMap((m) => (Array.isArray(m.to) ? m.to : [m.to])).sort();
   check('returned: only Priya is told', JSON.stringify(to) === JSON.stringify([tokens[priya.id]]), JSON.stringify(to));
   check('...not the borrower who just had it, not Mei (alert off), not Josh (hidden from him)', !to.includes(tokens[borrower]) && !to.includes(tokens[mei.id]) && !to.includes(tokens[josh.id]));
   check('...with the owner and item named', /'s ".+" is free to borrow again\./.test(saved[0]?.body ?? ''), saved[0]?.body);
@@ -100,7 +100,7 @@ try {
   check('returned but marked unavailable: nobody told', !stillOff.some((m) => m.data?.type === 'saved_item_available'));
 
   const onAgain = await call({ ...back, is_unavailable: false }, { ...back, is_unavailable: true });
-  check('switched back to available: Priya told', onAgain.filter((m) => m.data?.type === 'saved_item_available').map((m) => m.to).join() === tokens[priya.id]);
+  check('switched back to available: Priya told', onAgain.filter((m) => m.data?.type === 'saved_item_available').flatMap((m) => (Array.isArray(m.to) ? m.to : [m.to])).join() === tokens[priya.id]);
 
   const { data: freed } = await admin.from('items').select('id').eq('user_id', sam.id).is('borrowed_by', null).limit(1);
   const plain = await call({ id: freed[0].id, user_id: sam.id, borrowed_by: null, is_unavailable: false, name: 'x' }, { id: freed[0].id, user_id: sam.id, borrowed_by: null, is_unavailable: false });

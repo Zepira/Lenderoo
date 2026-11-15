@@ -7,6 +7,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { unregisterPushToken } from '@/lib/notifications';
 import { supabase } from '../lib/supabase';
 import type { User } from '../lib/types';
 
@@ -166,6 +167,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signOut() {
     try {
       console.log('🚪 Signing out...');
+      // This device stops getting this account's notifications (needs the session, so first).
+      await unregisterPushToken();
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('❌ Supabase signOut error:', error);
