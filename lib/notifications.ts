@@ -34,6 +34,7 @@ export type NotificationData =
   | { type: 'item_due_soon'; itemId: string }
   | { type: 'item_overdue'; itemId: string }
   | { type: 'item_available'; itemId: string }
+  | { type: 'saved_item_available'; itemId: string }
   | { type: 'item_claimed_back'; itemId: string }
   | { type: 'confirm_pickup'; itemId: string }
   | { type: 'confirm_return'; itemId: string }
@@ -157,6 +158,7 @@ export function handleNotificationTap(data: NotificationData): void {
     case 'item_due_soon':
     case 'item_overdue':
     case 'item_available':
+    case 'saved_item_available':
     case 'item_claimed_back':
     case 'confirm_pickup':
     case 'confirm_return':

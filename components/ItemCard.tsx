@@ -226,7 +226,8 @@ export const ItemCard = memo(function ItemCard({
     );
   }
 
-  const heartButton = onToggleFavourite && (
+  // Saving is for friends' things (migration 052): no heart on your own items.
+  const heartButton = onToggleFavourite && item.userId !== user?.id && (
     <Button
       variant="outline"
       size="xs"

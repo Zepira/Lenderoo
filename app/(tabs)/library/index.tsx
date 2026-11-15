@@ -23,6 +23,8 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { CardSearchInput } from "@/components/CardSearchInput";
 import { SegmentedTabs } from "@/components/SegmentedTabs";
 import { ItemFilterBar } from "@/components/ItemFilterBar";
+import { SavedList } from "@/components/SavedList";
+import { useSaved } from "@/hooks/useSaved";
 import { useItemFilters } from "@/hooks/useItemFilters";
 import { THEME } from "@/lib/theme";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -33,7 +35,14 @@ type FilterTab = "all" | "available" | "lent";
 
 export default function ItemsScreen() {
   const bannerSpace = useBannerSpace();
-  const params = useLocalSearchParams<{ filter?: FilterTab }>();
+  const params = useLocalSearchParams<{ filter?: FilterTab; view?: "saved" }>();
+  // My items, or Saved (friends' things you've hearted, migration 052).
+  const [view, setView] = useState<"mine" | "saved">(params.view === "saved" ? "saved" : "mine");
+  useEffect(() => {
+    if (params.view === "saved") setView("saved");
+    else if (params.filter) setView("mine");
+  }, [params.view, params.filter]);
+  const { saved } = useSaved();
   const [activeFilter, setActiveFilter] = useState<FilterTab>(
     params.filter === "available" || params.filter === "lent" ? params.filter : "all"
   );
@@ -237,6 +246,17 @@ export default function ItemsScreen() {
     );
   }
 
+  const viewSwitch = (
+    <SegmentedTabs
+      tabs={[
+        { key: "mine", label: "My items", count: allCount },
+        { key: "saved", label: "Saved", count: saved.length },
+      ]}
+      activeKey={view}
+      onChange={(key) => setView(key as "mine" | "saved")}
+    />
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? theme.muted : "#F3F4F6" }}>
       <ScreenHeader
@@ -259,6 +279,9 @@ export default function ItemsScreen() {
         }
       />
 
+      {view === "saved" ? (
+        <SavedList header={viewSwitch} bottomSpace={bannerSpace} />
+      ) : (
       <FlatList
         key={numColumns}
         data={favouritesReady || items.length === 0 ? filteredItems : []}
@@ -279,6 +302,7 @@ export default function ItemsScreen() {
         }
         ListHeaderComponent={
           <View style={{ gap: 12, marginBottom: 4 }}>
+            {viewSwitch}
             <BorrowRequestsSection
               requests={incomingRequests}
               onApprove={handleApproveBorrowRequest}
@@ -315,6 +339,7 @@ export default function ItemsScreen() {
           />
         )}
       />
+      )}
     </View>
   );
 }

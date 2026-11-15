@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '../supabase'
+import { queryClient, queryKeys } from '../query-client'
 
 /**
  * Get the current user's favourited item IDs across a batch of items
@@ -69,4 +70,52 @@ export async function setItemFavourite(
       .eq('user_id', user.id)
     if (error) throw new Error(`Failed to unfavourite item: ${error.message}`)
   }
+  // Saved (Library tab, Home row) reads item_favourites, so refresh it after any heart tap.
+  queryClient.invalidateQueries({ queryKey: queryKeys.saved })
+}
+
+// ── Saved (migration 052) ────────────────────────────────────────────────────
+
+export interface SavedEntry {
+  itemId: string
+  /** Tell me when it's free to borrow again. */
+  notify: boolean
+  savedAt: Date
+}
+
+/**
+ * Everything the current user has saved, newest first. Item rows are loaded separately
+ * (useItemsByIds), so an item that's been deleted, unfriended or hidden from them simply drops
+ * out of the list.
+ */
+export async function getSavedEntries(): Promise<SavedEntry[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+  const { data, error } = await supabase
+    .from('item_favourites')
+    .select('item_id, notify, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(`Couldn't load your saved items: ${error.message}`)
+  return (data ?? []).map((r: { item_id: string; notify: boolean | null; created_at: string }) => ({
+    itemId: r.item_id,
+    notify: r.notify ?? true,
+    savedAt: new Date(r.created_at),
+  }))
+}
+
+/** Turns the "tell me when it's free" alert on or off for one saved item. */
+export async function setSavedNotify(itemId: string, notify: boolean): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { error } = await supabase
+    .from('item_favourites')
+    .update({ notify })
+    .eq('item_id', itemId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(`Couldn't change the alert: ${error.message}`)
 }

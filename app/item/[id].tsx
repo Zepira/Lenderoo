@@ -689,7 +689,8 @@ export default function ItemDetailScreen() {
         </Pressable>
       </View>
 
-      {/* Favourite heart — mirrors back button */}
+      {/* Save heart — mirrors back button. Friends' items only (migration 052). */}
+      {!isOwner && (
       <View
         style={{
           position: "absolute",
@@ -722,6 +723,7 @@ export default function ItemDetailScreen() {
           />
         </Pressable>
       </View>
+      )}
 
       {/* White status bar over the hero photo (it has a dark scrim, below);
           the most recently mounted <StatusBar> wins, so the root layout's

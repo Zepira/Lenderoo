@@ -25,6 +25,7 @@ import { useThemeContext } from "@/contexts/ThemeContext";
 import { THEME } from "@/lib/theme";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DashboardSection } from "@/components/dashboard/DashboardSection";
+import { useSaved } from "@/hooks/useSaved";
 import { ErrorState } from "@/components/ErrorState";
 import { useBannerSpace } from "@/components/QuietBanner";
 
@@ -57,6 +58,7 @@ export default function HomeScreen() {
     refresh: refreshOutgoing,
   } = useOutgoingBorrowRequests();
   const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set());
+  const { saved: savedItems, unsave, refresh: refreshSaved } = useSaved();
 
   const activeOutgoingRequests = outgoingRequests.filter(
     (r) => r.status === "pending" || r.status === "approved",
@@ -123,6 +125,7 @@ export default function HomeScreen() {
       refreshBorrowed(),
       refreshAll(),
       refreshOutgoing(),
+      refreshSaved(),
     ]);
   };
 
@@ -278,6 +281,23 @@ export default function HomeScreen() {
                 onViewAll={() => router.push("/(tabs)/library?filter=lent" as any)}
                 onChanged={refresh}
                 getPriority={(item) => getPendingActionPriority(item, user?.id)}
+                bleed={PAGE_PADDING}
+                fadeColor={pageBg}
+              />
+              {/* Friends' things you've hearted, free-to-borrow first (migration 052). */}
+              <DashboardSection
+                title="Saved"
+                items={savedItems}
+                onItemPress={(item) => router.push(`/item/${item.id}` as any)}
+                onToggleFavourite={(item) =>
+                  void unsave(item.id).catch(() => toast.error("Couldn't remove it. Try again."))
+                }
+                onViewAll={() => router.push("/(tabs)/library?view=saved" as any)}
+                getRequest={(item) => outgoingRequestsByItemId.get(item.id)}
+                onChanged={() => {
+                  void refresh();
+                  void refreshSaved();
+                }}
                 bleed={PAGE_PADDING}
                 fadeColor={pageBg}
               />

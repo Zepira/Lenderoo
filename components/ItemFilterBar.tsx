@@ -27,6 +27,8 @@ interface ItemFilterBarProps {
   showCategories?: boolean;
   /** The parent's horizontal padding, so the chips scroll to the screen edge. */
   bleed?: number;
+  /** What the default ("recent") order is called here, when it isn't newest first (Saved). */
+  defaultSortLabel?: { short: string; long: string };
 }
 
 /**
@@ -41,7 +43,10 @@ export function ItemFilterBar({
   onSortChange,
   showCategories = true,
   bleed = 24,
+  defaultSortLabel,
 }: ItemFilterBarProps) {
+  const shortLabel = (s: ItemSort) => (s === "recent" && defaultSortLabel ? defaultSortLabel.short : SORT_SHORT[s]);
+  const longLabel = (s: ItemSort) => (s === "recent" && defaultSortLabel ? defaultSortLabel.long : SORT_LABELS[s]);
   const { activeTheme } = useThemeContext();
   const isDark = activeTheme === "dark";
   const theme = isDark ? THEME.dark : THEME.light;
@@ -69,13 +74,13 @@ export function ItemFilterBar({
     <Pressable
       onPress={() => setSortOpen((o) => !o)}
       accessibilityRole="button"
-      accessibilityLabel={`Sort: ${SORT_LABELS[sort]}`}
+      accessibilityLabel={`Sort: ${longLabel(sort)}`}
       accessibilityState={{ expanded: sortOpen }}
       style={chip(sortOpen)}
     >
       <ArrowUpDown size={14} color={theme.mutedForeground} />
       <Caption style={{ color: theme.foreground }} numberOfLines={1}>
-        {SORT_SHORT[sort]}
+        {shortLabel(sort)}
       </Caption>
     </Pressable>
   );
@@ -145,7 +150,7 @@ export function ItemFilterBar({
               >
                 {selected && <Check size={14} color={theme.primaryInk} />}
                 <Caption style={{ color: selected ? theme.primaryInk : theme.foreground, fontWeight: selected ? "600" : "400" }}>
-                  {SORT_LABELS[s]}
+                  {longLabel(s)}
                 </Caption>
               </Pressable>
             );

@@ -34,6 +34,11 @@ Deno.serve(async (req) => {
   );
 
   const messages = await buildMessages(supabase, payload);
+  // Local testing only (scripts/check-saved-alerts.mjs): return what would be sent instead of
+  // sending it. Never set on the hosted project.
+  if (Deno.env.get('PUSH_DRY_RUN') === '1') {
+    return Response.json(messages);
+  }
   if (messages.length === 0) {
     return new Response('no notification needed', { status: 200 });
   }
@@ -255,6 +260,10 @@ async function buildMessages(
     // so that case is excluded and the borrower isn't double-notified.
     const oldBorrowerId = old_record?.borrowed_by as string | null | undefined;
     const ownerId = record.user_id as string;
+    const messages: ExpoPushMessage[] = [];
+    // Who already got an item_available push for this change (not told twice by #13).
+    const told = new Set<string>();
+
     if (
       type === 'UPDATE' &&
       oldBorrowerId &&
@@ -262,18 +271,19 @@ async function buildMessages(
       oldRecipientId !== ownerId
     ) {
       const token = await getPushToken(supabase, oldBorrowerId);
-      if (!token) return [];
-      const [itemName, ownerName] = await Promise.all([
-        getItemName(supabase, itemId),
-        getUserName(supabase, ownerId),
-      ]);
-      return [{
-        to: token,
-        title: 'Item returned',
-        body: `${ownerName} marked "${itemName}" as returned.`,
-        data: { type: 'item_claimed_back', itemId },
-        sound: 'default',
-      }];
+      if (token) {
+        const [itemName, ownerName] = await Promise.all([
+          getItemName(supabase, itemId),
+          getUserName(supabase, ownerId),
+        ]);
+        messages.push({
+          to: token,
+          title: 'Item returned',
+          body: `${ownerName} marked "${itemName}" as returned.`,
+          data: { type: 'item_claimed_back', itemId },
+          sound: 'default',
+        });
+      }
     }
 
     if (type === 'UPDATE' && wasUnavailable && isNowAvailable) {
@@ -284,35 +294,70 @@ async function buildMessages(
         .eq('item_id', itemId)
         .is('notified_at', null);
 
-      if (!subs || subs.length === 0) return [];
-
-      const itemName = await getItemName(supabase, itemId);
-      const messages: ExpoPushMessage[] = [];
-      for (const sub of subs) {
-        const token = await getPushToken(supabase, sub.user_id as string);
-        if (token) {
-          messages.push({
-            to: token,
-            title: 'Now Available',
-            body: `"${itemName}" is available to borrow again`,
-            data: { type: 'item_available', itemId },
-            sound: 'default',
-          });
+      if (subs && subs.length > 0) {
+        const itemName = await getItemName(supabase, itemId);
+        for (const sub of subs) {
+          told.add(sub.user_id as string);
+          const token = await getPushToken(supabase, sub.user_id as string);
+          if (token) {
+            messages.push({
+              to: token,
+              title: 'Now Available',
+              body: `"${itemName}" is available to borrow again`,
+              data: { type: 'item_available', itemId },
+              sound: 'default',
+            });
+          }
         }
+
+        // Clear all waiting subscriptions regardless of whether a push token
+        // was on file, so the same subscriber isn't notified again next time.
+        await supabase
+          .from('item_availability_subscriptions')
+          .update({ notified_at: new Date().toISOString() })
+          .eq('item_id', itemId)
+          .is('notified_at', null);
       }
-
-      // Clear all waiting subscriptions regardless of whether a push token
-      // was on file, so the same subscriber isn't notified again next time.
-      await supabase
-        .from('item_availability_subscriptions')
-        .update({ notified_at: new Date().toISOString() })
-        .eq('item_id', itemId)
-        .is('notified_at', null);
-
-      return messages;
     }
 
-    return [];
+    // Saved items (#13, migration 052): the item is free to borrow again — back with the owner
+    // (a return or claim-back, not a hand-on to the next borrower) or switched from unavailable
+    // to available while not lent out. Everyone who saved it, can still see it and hasn't turned
+    // the alert off is told; never the owner or whoever just had it.
+    const backOnShelf =
+      type === 'UPDATE' &&
+      record.borrowed_by == null &&
+      record.is_unavailable !== true &&
+      (oldBorrowerId != null || wasUnavailable);
+    if (backOnShelf) {
+      const { data: watchers } = await supabase.rpc('saved_item_watchers', {
+        p_item: itemId,
+        p_exclude: oldBorrowerId ?? null,
+      });
+      const ids = ((watchers ?? []) as unknown[])
+        .map((w) => (typeof w === 'string' ? w : (w as { saved_item_watchers: string }).saved_item_watchers))
+        .filter((id) => id && !told.has(id));
+      if (ids.length > 0) {
+        const [itemName, ownerName] = await Promise.all([
+          getItemName(supabase, itemId),
+          getUserName(supabase, ownerId),
+        ]);
+        for (const id of ids) {
+          const token = await getPushToken(supabase, id);
+          if (token) {
+            messages.push({
+              to: token,
+              title: 'Saved item is free',
+              body: `${ownerName}'s "${itemName}" is free to borrow again.`,
+              data: { type: 'saved_item_available', itemId },
+              sound: 'default',
+            });
+          }
+        }
+      }
+    }
+
+    return messages;
   }
 
   return [];
