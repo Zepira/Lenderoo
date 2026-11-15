@@ -2,6 +2,21 @@
 
 This guide covers how to deploy your Expo/React Native app using GitHub Actions.
 
+## Store builds on this Mac (recommended)
+
+The EAS cloud's free plan allows 15 iOS builds a month, shared by every Zepira app, and GitHub
+Actions isn't paid for. Build locally instead and upload with `eas submit`:
+
+```bash
+scripts/build-local.sh ios       # TestFlight
+scripts/build-local.sh android   # Play closed testing (alpha), as a draft to release
+```
+
+It uses EAS's signing credentials and build numbers, so builds look the same as cloud ones. Two
+local-only quirks are handled by the script: `yarn` comes from corepack, and Android needs the
+gitignored `./google-services.json` passed by path (local builds don't load EAS file variables).
+First used 15 Nov 2026 for 1.1.0 (iOS 23, Android 30).
+
 ## Prerequisites
 
 1. **Expo Account**: Sign up at [expo.dev](https://expo.dev)
